@@ -213,11 +213,13 @@ export function CategoryBreakdown() {
                       <Tooltip
                         formatter={(value: number) => formatCurrency(value)}
                         contentStyle={{
-                          backgroundColor: "rgba(26, 26, 26, 0.95)",
-                          border: "1px solid rgba(245, 245, 240, 0.2)",
+                          backgroundColor: "#FFFFFF",
+                          border: "1px solid #000000",
                           borderRadius: "8px",
-                          color: "#F5F5F0",
+                          color: "#000000",
                           padding: "8px",
+                          fontWeight: "bold",
+                          boxShadow: "0 4px 8px rgba(0,0,0,0.5)"
                         }}
                       />
                     </PieChart>
@@ -249,12 +251,16 @@ export function CategoryBreakdown() {
                       <Tooltip
                         formatter={(value: number) => [`$${value}`, "Amount"]}
                         contentStyle={{
-                          backgroundColor: "rgba(26, 26, 26, 0.95)",
-                          border: "1px solid rgba(245, 245, 240, 0.2)",
+                          backgroundColor: "#FFFFFF",
+                          border: "1px solid #000000",
                           borderRadius: "8px",
-                          color: "#F5F5F0",
+                          color: "#000000",
                           padding: "8px",
+                          fontWeight: "bold",
+                          boxShadow: "0 4px 8px rgba(0,0,0,0.5)"
                         }}
+                        labelStyle={{ color: "#000000", fontWeight: "bold" }}
+                        cursor={{ fill: "#252525" }}
                       />
                       <Bar 
                         dataKey="value" 
@@ -426,11 +432,13 @@ export function CategoryBreakdown() {
             <Tooltip
               formatter={(value: number) => formatCurrency(value)}
               contentStyle={{
-                backgroundColor: "rgba(26, 26, 26, 0.95)",
-                border: "1px solid rgba(245, 245, 240, 0.2)",
+                backgroundColor: "#FFFFFF",
+                border: "1px solid #000000",
                 borderRadius: "8px",
-                color: "#F5F5F0",
+                color: "#000000",
                 padding: "8px",
+                fontWeight: "bold",
+                boxShadow: "0 4px 8px rgba(0,0,0,0.5)"
               }}
             />
             <Legend
@@ -459,14 +467,14 @@ export function CategoryBreakdown() {
           ))}
         </div>
 
-        <div className="mt-2 pt-2 border-t border-cream/10 flex justify-between items-center">
+        <div className="mt-6 pt-4 border-t border-cream/10 flex justify-between items-center">
           <span className="text-sm font-medium text-cream">Total</span>
           <span className="text-sm font-medium text-cream">${total}</span>
         </div>
 
         <button
           onClick={toggleExpanded}
-          className="mt-2 w-full text-center text-xs text-cream/60 hover:text-cream flex items-center justify-center group transition-colors duration-200"
+          className="mt-4 w-full text-center text-xs text-cream/60 hover:text-cream flex items-center justify-center group transition-colors duration-200"
         >
           View detailed breakdown
           <ChevronRight className="h-3 w-3 ml-1 transform group-hover:translate-x-1 transition-transform duration-300" />
