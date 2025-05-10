@@ -263,13 +263,7 @@ export default function DashboardPage() {
                 <h2 className="text-lg font-medium font-outfit">Spending by Category</h2>
                 <button 
                   className="text-cream/60 text-sm hover:text-cream transition-colors flex items-center group"
-                  onClick={() => {
-                    // Find the "View detailed breakdown" button in the CategoryBreakdown component and click it
-                    const viewAllButton = document.querySelector('.category-breakdown-expand-btn');
-                    if (viewAllButton) {
-                      (viewAllButton as HTMLButtonElement).click();
-                    }
-                  }}
+                  onClick={() => router.push("/dashboard/analytics")}
                 >
                   View All
                   <ChevronRight className="h-4 w-4 ml-1 transform group-hover:translate-x-1 transition-transform duration-300" />
@@ -283,7 +277,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-medium font-outfit">Recent Transactions</h2>
               <button
-                onClick={() => router.push("/dashboard/expenses")}
+                onClick={() => router.push("/dashboard/analytics")}
                 className="text-cream/60 text-sm hover:text-cream transition-colors flex items-center group"
               >
                 View All

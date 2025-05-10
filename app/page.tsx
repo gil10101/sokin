@@ -358,17 +358,6 @@ export default function LandingPage() {
                 Sokin<span className="text-xs align-super">™</span>
               </span>
             </div>
-            <div className="flex flex-wrap gap-8">
-              <Link href="#" className="text-sm text-cream/60 hover:text-cream transition-colors font-outfit">
-                Privacy
-              </Link>
-              <Link href="#" className="text-sm text-cream/60 hover:text-cream transition-colors font-outfit">
-                Terms
-              </Link>
-              <Link href="#" className="text-sm text-cream/60 hover:text-cream transition-colors font-outfit">
-                Contact
-              </Link>
-            </div>
             <div className="flex items-center gap-4">
               {user ? (
                 <Link
@@ -398,9 +387,6 @@ export default function LandingPage() {
               )}
             </div>
           </div>
-          <p className="text-center text-sm text-cream/40 mt-12">
-            &copy; {new Date().getFullYear()} Sokin<span className="text-xs align-super">™</span>. All rights reserved.
-          </p>
         </div>
       </footer>
     </div>
