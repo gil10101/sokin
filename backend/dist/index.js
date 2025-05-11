@@ -1,0 +1,65 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = __importDefault(require("express"));
+const cors_1 = __importDefault(require("cors"));
+const helmet_1 = __importDefault(require("helmet"));
+const dotenv_1 = __importDefault(require("dotenv"));
+// Load environment variables
+dotenv_1.default.config();
+// Import utilities
+const logger_1 = __importDefault(require("./utils/logger"));
+// Initialize Firebase - this is now handled in the config/firebase.ts file
+require("./config/firebase");
+// Import middleware
+const rateLimiter_1 = require("./middleware/rateLimiter");
+const errorHandler_1 = require("./middleware/errorHandler");
+// Create Express app
+const app = (0, express_1.default)();
+const port = process.env.PORT || 5000;
+// Basic middleware
+app.use((0, helmet_1.default)());
+app.use((0, cors_1.default)({
+    origin: process.env.CORS_ORIGIN || '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
+app.use(express_1.default.json());
+app.use(express_1.default.urlencoded({ extended: true }));
+// Apply rate limiting to all requests
+app.use((0, rateLimiter_1.rateLimiter)(100, 15 * 60 * 1000)); // 100 requests per 15 minutes
+// Routes
+const expenses_1 = __importDefault(require("./routes/expenses"));
+const users_1 = __importDefault(require("./routes/users"));
+const budgets_1 = __importDefault(require("./routes/budgets"));
+app.use('/api/expenses', expenses_1.default);
+app.use('/api/users', users_1.default);
+app.use('/api/budgets', budgets_1.default);
+// Health check route
+app.get('/health', (req, res) => {
+    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+// 404 handler
+app.use((req, res) => {
+    res.status(404).json({ error: 'Route not found' });
+});
+// Global error handler
+app.use(errorHandler_1.errorHandler);
+// Start server
+app.listen(port, () => {
+    logger_1.default.info(`Server running on port ${port}`);
+});
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (err) => {
+    logger_1.default.error('Unhandled Promise Rejection', { error: err });
+    // In production, consider graceful shutdown:
+    // process.exit(1);
+});
+// Handle uncaught exceptions
+process.on('uncaughtException', (err) => {
+    logger_1.default.error('Uncaught Exception', { error: err });
+    // In production, consider graceful shutdown:
+    // process.exit(1);
+});
