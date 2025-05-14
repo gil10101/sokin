@@ -774,16 +774,16 @@ export default function SubscriptionsPage() {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
               <div className="flex flex-col gap-2">
                 <h3 className="text-lg font-medium">Overview</h3>
-                <div className="flex gap-6">
-                  <div>
+                <div className="flex">
+                  <div className="pr-6 border-r border-cream/10">
                     <p className="text-sm text-cream/60">Monthly Cost</p>
                     <p className="text-xl font-medium">${monthlyTotal.toFixed(2)}</p>
                   </div>
-                  <div>
+                  <div className="px-6 border-r border-cream/10">
                     <p className="text-sm text-cream/60">Annual Cost</p>
                     <p className="text-xl font-medium">${annualTotal.toFixed(2)}</p>
                   </div>
-                  <div>
+                  <div className="pl-6">
                     <p className="text-sm text-cream/60">Active Subscriptions</p>
                     <p className="text-xl font-medium">{filteredSubscriptions.length}</p>
                   </div>
@@ -871,6 +871,14 @@ export default function SubscriptionsPage() {
               </div>
             ) : (
               <div className="space-y-4">
+                <div className="hidden md:grid grid-cols-12 gap-4 border-b border-cream/10 pb-2">
+                  <div className="col-span-3 text-sm font-medium text-cream/60 px-4">Subscription</div>
+                  <div className="col-span-2 text-sm font-medium text-cream/60 text-center border-l border-cream/10 px-2">Billing Cycle</div>
+                  <div className="col-span-3 text-sm font-medium text-cream/60 text-center border-l border-cream/10 px-2">Next Payment</div>
+                  <div className="col-span-2 text-sm font-medium text-cream/60 text-center border-l border-cream/10 px-2">Payment Method</div>
+                  <div className="col-span-2 text-sm font-medium text-cream/60 text-center border-l border-cream/10 px-2">Amount</div>
+                </div>
+                
                 {filteredSubscriptions.map((subscription) => (
                   <Collapsible
                     key={subscription.id}
@@ -879,8 +887,8 @@ export default function SubscriptionsPage() {
                     className="border border-cream/10 rounded-lg overflow-hidden"
                   >
                     <div className="bg-cream/5 hover:bg-cream/10 transition-colors p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
+                      <div className="flex items-center justify-between md:grid md:grid-cols-12 md:gap-4">
+                        <div className="flex items-center gap-4 col-span-3">
                           <div className="h-10 w-10 rounded-md bg-cream/10 flex items-center justify-center overflow-hidden">
                             {subscription.logo ? (
                               <img
@@ -898,51 +906,64 @@ export default function SubscriptionsPage() {
                           </div>
                         </div>
 
-                        <div className="hidden md:flex items-center gap-8">
-                          <div className="text-right">
-                            <p className="text-sm text-cream/60">Billing Cycle</p>
-                            <p>
-                              {formatBillingCycle(
-                                subscription.billingCycle,
-                                subscription.customInterval,
-                                subscription.customIntervalUnit,
-                              )}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-sm text-cream/60">Next Payment</p>
-                            <p>{format(new Date(subscription.nextPaymentDate), "MMM d, yyyy")}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-sm text-cream/60">Payment Method</p>
-                            <p>{subscription.paymentMethod}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-sm text-cream/60">Amount</p>
-                            <p className="font-medium">${subscription.amount.toFixed(2)}</p>
+                        <div className="hidden md:flex justify-center items-center col-span-2 border-l border-cream/10 h-full">
+                          <span>
+                            {formatBillingCycle(
+                              subscription.billingCycle,
+                              subscription.customInterval,
+                              subscription.customIntervalUnit,
+                            )}
+                          </span>
+                        </div>
+                        
+                        <div className="hidden md:flex justify-center items-center col-span-3 border-l border-cream/10 h-full">
+                          <span>{format(new Date(subscription.nextPaymentDate), "MMM d, yyyy")}</span>
+                        </div>
+                        
+                        <div className="hidden md:flex justify-center items-center col-span-2 border-l border-cream/10 h-full">
+                          <span>{subscription.paymentMethod}</span>
+                        </div>
+                        
+                        <div className="hidden md:flex justify-center items-center col-span-2 border-l border-cream/10 h-full">
+                          <div className="flex items-center">
+                            <span className="font-medium">${subscription.amount.toFixed(2)}</span>
+                            <CollapsibleTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 ml-2 text-cream/60 hover:text-cream hover:bg-cream/10 flex-shrink-0"
+                              >
+                                {expandedSubscriptions[subscription.id] ? (
+                                  <ChevronUp className="h-4 w-4" />
+                                ) : (
+                                  <ChevronDown className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </CollapsibleTrigger>
                           </div>
                         </div>
 
                         <div className="flex md:hidden flex-col items-end">
-                          <p className="font-medium">${subscription.amount.toFixed(2)}</p>
+                          <div className="flex items-center">
+                            <p className="font-medium">${subscription.amount.toFixed(2)}</p>
+                            <CollapsibleTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 ml-2 text-cream/60 hover:text-cream hover:bg-cream/10 flex-shrink-0"
+                              >
+                                {expandedSubscriptions[subscription.id] ? (
+                                  <ChevronUp className="h-4 w-4" />
+                                ) : (
+                                  <ChevronDown className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </CollapsibleTrigger>
+                          </div>
                           <p className="text-xs text-cream/60">
                             Next: {format(new Date(subscription.nextPaymentDate), "MMM d")}
                           </p>
                         </div>
-
-                        <CollapsibleTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-cream/60 hover:text-cream hover:bg-cream/10"
-                          >
-                            {expandedSubscriptions[subscription.id] ? (
-                              <ChevronUp className="h-4 w-4" />
-                            ) : (
-                              <ChevronDown className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </CollapsibleTrigger>
                       </div>
                     </div>
 
