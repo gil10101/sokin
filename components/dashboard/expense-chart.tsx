@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useRef, useMemo } from "react"
-import { Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Area, ComposedChart } from "recharts"
+import { Bar, XAxis, YAxis, CartesianGrid, Tooltip, Area, ComposedChart } from "recharts"
 import { ChartContainer } from "@/components/ui/chart"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { motion } from "framer-motion"
@@ -55,13 +55,12 @@ interface ExpenseChartProps {
 export function ExpenseChart({ timeframe = "30days" }: ExpenseChartProps) {
   const [mounted, setMounted] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [chartDimensions, setChartDimensions] = useState({ width: 711, height: 400 })
   const chartRef = useRef<HTMLDivElement>(null)
   
   // Use useMemo to cache the chart data based on timeframe
   const chartData = useMemo(() => generateChartData(timeframe), [timeframe])
   
-  // No more separate animatedData state that triggers re-renders
-
   useEffect(() => {
     setMounted(true)
     setLoading(true)
@@ -74,18 +73,25 @@ export function ExpenseChart({ timeframe = "30days" }: ExpenseChartProps) {
     return () => clearTimeout(timer)
   }, [timeframe])
 
-  // Only handle resize without setting state
+  // Handle resize to maintain responsiveness
   useEffect(() => {
-    if (!mounted) return
+    if (!mounted || !chartRef.current) return
+
+    const updateDimensions = () => {
+      if (chartRef.current) {
+        const containerWidth = chartRef.current.clientWidth
+        setChartDimensions({
+          width: containerWidth || 711,
+          height: 400
+        })
+      }
+    }
+
+    // Initial update
+    updateDimensions()
 
     const handleResize = () => {
-      // No longer setting state here, just force repaint if needed
-      if (chartRef.current) {
-        // Force repaint without state update
-        chartRef.current.style.display = 'none'
-        void chartRef.current.offsetHeight // Force recalculation
-        chartRef.current.style.display = ''
-      }
+      updateDimensions()
     }
 
     window.addEventListener("resize", handleResize)
@@ -109,7 +115,7 @@ export function ExpenseChart({ timeframe = "30days" }: ExpenseChartProps) {
   return (
     <motion.div
       ref={chartRef}
-      className="h-[400px]"
+      className="h-[400px] w-full"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
@@ -125,10 +131,14 @@ export function ExpenseChart({ timeframe = "30days" }: ExpenseChartProps) {
             color: "hsl(var(--chart-2))",
           },
         }}
-        className="h-[400px]"
+        className="h-[400px] w-full"
       >
-        <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
+          <ComposedChart 
+            width={chartDimensions.width}
+            height={chartDimensions.height}
+            data={chartData} 
+            margin={{ top: 10, right: 10, left: 0, bottom: 20 }}
+          >
             <defs>
               <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="rgba(245, 245, 240, 0.8)" stopOpacity={0.8} />
@@ -196,7 +206,6 @@ export function ExpenseChart({ timeframe = "30days" }: ExpenseChartProps) {
               isAnimationActive={!loading}
             />
           </ComposedChart>
-        </ResponsiveContainer>
       </ChartContainer>
     </motion.div>
   )

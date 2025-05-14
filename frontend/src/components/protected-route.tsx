@@ -27,7 +27,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   // Don't render anything until client-side
   if (!mounted) {
     return (
-      <div className="flex h-screen items-center justify-center bg-dark text-cream">
+      <div className="flex h-screen items-center justify-center bg-dark text-cream" aria-hidden="true" data-aria-hidden="true">
         <LoadingSpinner size="lg" />
       </div>
     )
@@ -36,7 +36,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   // Show loading state
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-dark text-cream">
+      <div className="flex h-screen items-center justify-center bg-dark text-cream" aria-hidden="true" data-aria-hidden="true">
         <LoadingSpinner size="lg" />
       </div>
     )
@@ -45,7 +45,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   // If we're redirecting, show loading
   if (redirecting) {
     return (
-      <div className="flex h-screen items-center justify-center bg-dark text-cream">
+      <div className="flex h-screen items-center justify-center bg-dark text-cream" aria-hidden="true" data-aria-hidden="true">
         <LoadingSpinner size="lg" />
         <span className="ml-4 text-cream/60">Redirecting to login...</span>
       </div>
