@@ -5,21 +5,21 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { collection, query, where, orderBy, getDocs, addDoc, doc, updateDoc, deleteDoc } from "firebase/firestore"
-import { db } from "@/lib/firebase"
-import { useAuth } from "@/contexts/auth-context"
+import { db } from "../../../lib/firebase"
+import { useAuth } from "../../../contexts/auth-context"
 import { format } from "date-fns"
-import { DashboardSidebar } from "@/components/dashboard/sidebar"
-import { PageHeader } from "@/components/dashboard/page-header"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { DashboardSidebar } from "../../../components/dashboard/sidebar"
+import { PageHeader } from "../../../components/dashboard/page-header"
+import { Button } from "../../../components/ui/button"
+import { Input } from "../../../components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/select"
+import { Calendar } from "../../../components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "../../../components/ui/popover"
 import { CalendarIcon, Plus, Pencil, Trash2, AlertCircle } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
-import { MotionContainer } from "@/components/ui/motion-container"
-import { BudgetProgressCard } from "@/components/dashboard/budget-progress-card"
-import { Textarea } from "@/components/ui/textarea"
+import { useToast } from "../../../hooks/use-toast"
+import { MotionContainer } from "../../../components/ui/motion-container"
+import { BudgetProgressCard } from "../../../components/dashboard/budget-progress-card"
+import { Textarea } from "../../../components/ui/textarea"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,7 +29,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+} from "../../../components/ui/alert-dialog"
 import {
   Dialog,
   DialogContent,
@@ -37,8 +37,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+} from "../../../components/ui/dialog"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../components/ui/tabs"
 import { motion } from "framer-motion"
 
 // Default categories

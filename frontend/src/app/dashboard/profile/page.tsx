@@ -12,16 +12,16 @@ import {
   EmailAuthProvider,
   reauthenticateWithCredential,
 } from "firebase/auth"
-import { auth, db } from "@/lib/firebase"
+import { auth, db } from "../../../lib/firebase"
 import { useAuthState } from "react-firebase-hooks/auth"
 import { motion } from "framer-motion"
-import { DashboardSidebar } from "@/components/dashboard/sidebar"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { DashboardSidebar } from "../../../components/dashboard/sidebar"
+import { Input } from "../../../components/ui/input"
+import { Button } from "../../../components/ui/button"
+import { Avatar, AvatarFallback, AvatarImage } from "../../../components/ui/avatar"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../components/ui/tabs"
 import { Eye, EyeOff, Save, User } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "../../../hooks/use-toast"
 
 export default function ProfilePage() {
   const [collapsed, setCollapsed] = useState(false)

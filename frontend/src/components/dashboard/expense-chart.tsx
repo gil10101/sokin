@@ -2,8 +2,8 @@
 
 import { useEffect, useState, useRef, useMemo } from "react"
 import { Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Area, ComposedChart } from "recharts"
-import { ChartContainer } from "@/components/ui/chart"
-import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { ChartContainer } from "../../components/ui/chart"
+import { LoadingSpinner } from "../../components/ui/loading-spinner"
 import { motion } from "framer-motion"
 
 // Generate data based on timeframe

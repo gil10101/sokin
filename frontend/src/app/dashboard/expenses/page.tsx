@@ -4,14 +4,14 @@ import React from "react"
 
 import { useState, useEffect } from "react"
 import { collection, query, where, orderBy, getDocs, deleteDoc, doc } from "firebase/firestore"
-import { db } from "@/lib/firebase"
-import { useAuth } from "@/contexts/auth-context"
+import { db } from "../../../lib/firebase"
+import { useAuth } from "../../../contexts/auth-context"
 import { format, isValid, parseISO } from "date-fns"
-import { DashboardSidebar } from "@/components/dashboard/sidebar"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { DashboardSidebar } from "../../../components/dashboard/sidebar"
+import { Input } from "../../../components/ui/input"
+import { Button } from "../../../components/ui/button"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../components/ui/table"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/select"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,14 +22,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+} from "../../../components/ui/alert-dialog"
 import { Search, Trash2, Edit, PlusCircle, ChevronDown, ChevronRight } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "../../../hooks/use-toast"
 import { useRouter } from "next/navigation"
-import { MotionContainer } from "@/components/ui/motion-container"
-import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { MotionContainer } from "../../../components/ui/motion-container"
+import { LoadingSpinner } from "../../../components/ui/loading-spinner"
 // Import the useNotifications hook
-import { useNotifications } from "@/contexts/notifications-context"
+import { useNotifications } from "../../../contexts/notifications-context"
 
 interface Expense {
   id: string

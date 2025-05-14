@@ -2,18 +2,18 @@
 
 import { useState, useEffect } from "react"
 import { collection, query, where, getDocs } from "firebase/firestore"
-import { auth, db } from "@/lib/firebase"
+import { auth, db } from "../../../lib/firebase"
 import { useAuthState } from "react-firebase-hooks/auth"
 import { format, subMonths } from "date-fns"
 import { motion } from "framer-motion"
-import { DashboardSidebar } from "@/components/dashboard/sidebar"
-import { MonthlyTrendsChart } from "@/components/dashboard/monthly-trends-chart"
-import { CategoryComparisonChart } from "@/components/dashboard/category-comparison-chart"
-import { SpendingHeatmap } from "@/components/dashboard/spending-heatmap"
-import { BudgetProgressChart } from "@/components/dashboard/budget-progress-chart"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useToast } from "@/hooks/use-toast"
-import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { DashboardSidebar } from "../../../components/dashboard/sidebar"
+import { MonthlyTrendsChart } from "../../../components/dashboard/monthly-trends-chart"
+import { CategoryComparisonChart } from "../../../components/dashboard/category-comparison-chart"
+import { SpendingHeatmap } from "../../../components/dashboard/spending-heatmap"
+import { BudgetProgressChart } from "../../../components/dashboard/budget-progress-chart"
+import { Tabs, TabsList, TabsTrigger } from "../../../components/ui/tabs"
+import { useToast } from "../../../hooks/use-toast"
+import { LoadingSpinner } from "../../../components/ui/loading-spinner"
 
 export default function AnalyticsPage() {
   const [collapsed, setCollapsed] = useState(false)

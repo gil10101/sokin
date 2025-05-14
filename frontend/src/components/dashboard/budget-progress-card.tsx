@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from "react"
 import { collection, query, where, getDocs } from "firebase/firestore"
-import { db } from "@/lib/firebase"
-import { useAuth } from "@/contexts/auth-context"
+import { db } from "../../lib/firebase"
+import { useAuth } from "../../contexts/auth-context"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell, ResponsiveContainer, LabelList } from "recharts"
-import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { LoadingSpinner } from "../../components/ui/loading-spinner"
 
 interface BudgetProgress {
   category: string

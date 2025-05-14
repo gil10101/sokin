@@ -67,7 +67,7 @@ export default function LandingPage() {
 
   if (!mounted) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-dark text-cream">
+      <div className="flex min-h-screen items-center justify-center bg-dark text-cream" aria-hidden="true" data-aria-hidden="true">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cream"></div>
       </div>
     )

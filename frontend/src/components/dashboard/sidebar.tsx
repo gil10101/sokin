@@ -13,12 +13,12 @@ import {
   Repeat,
 } from "lucide-react"
 import { useState, useEffect } from "react"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { useAuth } from "@/contexts/auth-context"
+import { Avatar, AvatarFallback, AvatarImage } from "../../components/ui/avatar"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../../components/ui/tooltip"
+import { useAuth } from "../../contexts/auth-context"
 import { usePathname } from "next/navigation"
 // Import the NotificationsDropdown
-import { NotificationsDropdown } from "@/components/notifications/notifications-dropdown"
+import { NotificationsDropdown } from "../../components/notifications/notifications-dropdown"
 
 interface DashboardSidebarProps {
   collapsed: boolean

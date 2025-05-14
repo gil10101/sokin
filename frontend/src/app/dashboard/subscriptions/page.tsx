@@ -1,22 +1,22 @@
 "use client"
 
-import { AlertDialogTrigger } from "@/components/ui/alert-dialog"
+import { AlertDialogTrigger } from "../../../components/ui/alert-dialog"
 
 import type React from "react"
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { collection, query, where, orderBy, getDocs, addDoc, doc, deleteDoc } from "firebase/firestore"
-import { db } from "@/lib/firebase"
-import { useAuth } from "@/contexts/auth-context"
+import { db } from "../../../lib/firebase"
+import { useAuth } from "../../../contexts/auth-context"
 import { format, addMonths, addDays, addYears } from "date-fns"
-import { DashboardSidebar } from "@/components/dashboard/sidebar"
-import { PageHeader } from "@/components/dashboard/page-header"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { DashboardSidebar } from "../../../components/dashboard/sidebar"
+import { PageHeader } from "../../../components/dashboard/page-header"
+import { Button } from "../../../components/ui/button"
+import { Input } from "../../../components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/select"
+import { Calendar } from "../../../components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "../../../components/ui/popover"
 import {
   Dialog,
   DialogContent,
@@ -24,7 +24,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
+} from "../../../components/ui/dialog"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,9 +34,9 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+} from "../../../components/ui/alert-dialog"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../../../components/ui/collapsible"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../components/ui/table"
 import {
   Plus,
   CalendarIcon,
@@ -49,9 +49,9 @@ import {
   SortAsc,
   SortDesc,
 } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
-import { LoadingSpinner } from "@/components/ui/loading-spinner"
-import { MotionContainer } from "@/components/ui/motion-container"
+import { useToast } from "../../../hooks/use-toast"
+import { LoadingSpinner } from "../../../components/ui/loading-spinner"
+import { MotionContainer } from "../../../components/ui/motion-container"
 
 // Define subscription interface
 interface Subscription {

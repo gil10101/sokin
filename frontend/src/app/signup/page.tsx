@@ -6,10 +6,10 @@ import { useState } from "react"
 import Link from "next/link"
 import { Eye, EyeOff, ArrowRight } from "lucide-react"
 import { motion } from "framer-motion"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { useToast } from "@/hooks/use-toast"
-import { useAuth } from "@/contexts/auth-context"
+import { Input } from "../../components/ui/input"
+import { Button } from "../../components/ui/button"
+import { useToast } from "../../hooks/use-toast"
+import { useAuth } from "../../contexts/auth-context"
 
 export default function SignupPage() {
   const [name, setName] = useState("")

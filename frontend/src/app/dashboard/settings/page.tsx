@@ -2,17 +2,17 @@
 
 import { useState, useEffect } from "react"
 import { doc, getDoc, updateDoc } from "firebase/firestore"
-import { auth, db } from "@/lib/firebase"
+import { auth, db } from "../../../lib/firebase"
 import { useAuthState } from "react-firebase-hooks/auth"
 import { motion } from "framer-motion"
-import { DashboardSidebar } from "@/components/dashboard/sidebar"
-import { Button } from "@/components/ui/button"
-import { Switch } from "@/components/ui/switch"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { DashboardSidebar } from "../../../components/dashboard/sidebar"
+import { Button } from "../../../components/ui/button"
+import { Switch } from "../../../components/ui/switch"
+import { Label } from "../../../components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/select"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../components/ui/tabs"
 import { Save, Moon, Globe, CreditCard } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "../../../hooks/use-toast"
 
 interface Settings {
   theme: string;

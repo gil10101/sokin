@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
-import { api } from '@/lib/api';
-import { ApiError } from '@/lib/types';
-import { useAuth } from '@/contexts/auth-context';
+import { api } from '../lib/api';
+import { ApiError } from '../lib/types';
+import { useAuth } from '../contexts/auth-context';
 
 /**
  * A hook for making API calls with loading and error state management
