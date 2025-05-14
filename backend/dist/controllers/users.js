@@ -14,6 +14,9 @@ const getUserProfile = async (req, res) => {
         if (!req.user || !req.user.uid) {
             throw new errorHandler_1.AppError('Unauthorized: User ID missing', 401, true);
         }
+        if (!firebase_1.db) {
+            throw new errorHandler_1.AppError('Database not initialized', 500, true);
+        }
         const userId = req.user.uid;
         const cacheKey = `user_${userId}`;
         // Try to get from cache first
@@ -26,6 +29,9 @@ const getUserProfile = async (req, res) => {
         const userDoc = await firebase_1.db.collection('users').doc(userId).get();
         if (!userDoc.exists) {
             // User document doesn't exist yet, get information from Firebase Auth
+            if (!firebase_1.auth) {
+                throw new errorHandler_1.AppError('Authentication service not initialized', 500, true);
+            }
             try {
                 const userRecord = await firebase_1.auth.getUser(userId);
                 // Create minimal user object
@@ -74,6 +80,9 @@ const updateUserProfile = async (req, res) => {
         if (!req.user || !req.user.uid) {
             throw new errorHandler_1.AppError('Unauthorized: User ID missing', 401, true);
         }
+        if (!firebase_1.db) {
+            throw new errorHandler_1.AppError('Database not initialized', 500, true);
+        }
         const userId = req.user.uid;
         const { displayName, photoURL, settings } = req.body;
         // Build update object with only provided fields
@@ -91,6 +100,9 @@ const updateUserProfile = async (req, res) => {
         cache_1.default.del(`user_${userId}`);
         // Get updated user data
         const updatedUserDoc = await firebase_1.db.collection('users').doc(userId).get();
+        if (!updatedUserDoc.exists) {
+            throw new errorHandler_1.AppError('User not found after update', 404, true);
+        }
         const userData = {
             id: updatedUserDoc.id,
             ...updatedUserDoc.data()

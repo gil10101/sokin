@@ -11,6 +11,10 @@ export const getUserProfile = async (req: Request, res: Response): Promise<void>
       throw new AppError('Unauthorized: User ID missing', 401, true);
     }
 
+    if (!db) {
+      throw new AppError('Database not initialized', 500, true);
+    }
+
     const userId = req.user.uid;
     const cacheKey = `user_${userId}`;
     
@@ -26,6 +30,10 @@ export const getUserProfile = async (req: Request, res: Response): Promise<void>
     
     if (!userDoc.exists) {
       // User document doesn't exist yet, get information from Firebase Auth
+      if (!auth) {
+        throw new AppError('Authentication service not initialized', 500, true);
+      }
+      
       try {
         const userRecord = await auth.getUser(userId);
         
@@ -78,6 +86,10 @@ export const updateUserProfile = async (req: Request, res: Response): Promise<vo
       throw new AppError('Unauthorized: User ID missing', 401, true);
     }
 
+    if (!db) {
+      throw new AppError('Database not initialized', 500, true);
+    }
+
     const userId = req.user.uid;
     const { displayName, photoURL, settings } = req.body;
     
@@ -96,6 +108,10 @@ export const updateUserProfile = async (req: Request, res: Response): Promise<vo
     
     // Get updated user data
     const updatedUserDoc = await db.collection('users').doc(userId).get();
+    if (!updatedUserDoc.exists) {
+      throw new AppError('User not found after update', 404, true);
+    }
+    
     const userData = {
       id: updatedUserDoc.id,
       ...updatedUserDoc.data()

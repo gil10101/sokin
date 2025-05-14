@@ -3,8 +3,8 @@
 import type React from "react"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { useAuth } from "@/contexts/auth-context"
-import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { useAuth } from "../contexts/auth-context"
+import { LoadingSpinner } from "./ui/loading-spinner"
 
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()

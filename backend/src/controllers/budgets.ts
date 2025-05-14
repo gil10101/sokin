@@ -3,12 +3,17 @@ import { db } from '../config/firebase';
 import { AppError } from '../middleware/errorHandler';
 import logger from '../utils/logger';
 import cache from '../utils/cache';
+import { DocumentData } from 'firebase-admin/firestore';
 
 // Get all budgets for a user
 export const getAllBudgets = async (req: Request, res: Response): Promise<void> => {
   try {
     if (!req.user || !req.user.uid) {
       throw new AppError('Unauthorized: User ID missing', 401, true);
+    }
+
+    if (!db) {
+      throw new AppError('Database not initialized', 500, true);
     }
 
     const userId = req.user.uid;
@@ -51,6 +56,10 @@ export const getBudgetById = async (req: Request, res: Response): Promise<void> 
       throw new AppError('Unauthorized: User ID missing', 401, true);
     }
 
+    if (!db) {
+      throw new AppError('Database not initialized', 500, true);
+    }
+
     const userId = req.user.uid;
     const budgetId = req.params.id;
     
@@ -62,6 +71,10 @@ export const getBudgetById = async (req: Request, res: Response): Promise<void> 
     }
     
     const budgetData = budgetDoc.data();
+    
+    if (!budgetData) {
+      throw new AppError('Budget data is missing', 404, true);
+    }
     
     // Verify the budget belongs to the requesting user
     if (budgetData.userId !== userId) {
@@ -90,6 +103,10 @@ export const createBudget = async (req: Request, res: Response): Promise<void> =
   try {
     if (!req.user || !req.user.uid) {
       throw new AppError('Unauthorized: User ID missing', 401, true);
+    }
+
+    if (!db) {
+      throw new AppError('Database not initialized', 500, true);
     }
 
     const { name, amount, period, categories, startDate, endDate } = req.body;
@@ -135,6 +152,10 @@ export const updateBudget = async (req: Request, res: Response): Promise<void> =
       throw new AppError('Unauthorized: User ID missing', 401, true);
     }
 
+    if (!db) {
+      throw new AppError('Database not initialized', 500, true);
+    }
+
     const userId = req.user.uid;
     const budgetId = req.params.id;
     
@@ -146,6 +167,10 @@ export const updateBudget = async (req: Request, res: Response): Promise<void> =
     }
     
     const budgetData = budgetDoc.data();
+    
+    if (!budgetData) {
+      throw new AppError('Budget data is missing', 404, true);
+    }
     
     // Verify the budget belongs to the requesting user
     if (budgetData.userId !== userId) {
@@ -195,6 +220,10 @@ export const deleteBudget = async (req: Request, res: Response): Promise<void> =
       throw new AppError('Unauthorized: User ID missing', 401, true);
     }
 
+    if (!db) {
+      throw new AppError('Database not initialized', 500, true);
+    }
+
     const userId = req.user.uid;
     const budgetId = req.params.id;
     
@@ -206,6 +235,10 @@ export const deleteBudget = async (req: Request, res: Response): Promise<void> =
     }
     
     const budgetData = budgetDoc.data();
+    
+    if (!budgetData) {
+      throw new AppError('Budget data is missing', 404, true);
+    }
     
     // Verify the budget belongs to the requesting user
     if (budgetData.userId !== userId) {

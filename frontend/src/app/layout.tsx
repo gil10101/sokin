@@ -1,15 +1,15 @@
 import type React from "react"
 import type { Metadata, Viewport } from "next"
 import "./globals.css"
-import { ThemeProvider } from "@/components/theme-provider"
-import { AuthProvider } from "@/contexts/auth-context"
-import { Toaster } from "@/components/ui/toaster"
-import { TooltipProvider } from "@/components/ui/tooltip"
+import { ThemeProvider } from "../components/theme-provider"
+import { AuthProvider } from "../contexts/auth-context"
+import { Toaster } from "../components/ui/toaster"
+import { TooltipProvider } from "../components/ui/tooltip"
 import { Suspense } from 'react'
-import { LoadingSpinner } from '@/components/ui/loading-spinner'
-import { ReactQueryClientProvider } from "../lib/react-query-provider"
-import { ErrorBoundary } from '@/components/error-boundary'
-import { AppInitializer } from '@/components/app-initializer'
+import { LoadingSpinner } from "../components/ui/loading-spinner"
+import { ReactQueryClientProvider } from "../../../lib/react-query-provider"
+import { ErrorBoundary } from "../components/error-boundary"
+import { AppInitializer } from "../components/app-initializer"
 
 export const viewport: Viewport = {
   width: 'device-width',

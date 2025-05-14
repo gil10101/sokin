@@ -3,8 +3,8 @@
 import type React from "react"
 import { createContext, useContext, useState, useEffect } from "react"
 import { collection, query, where, orderBy, doc, updateDoc, deleteDoc, addDoc, onSnapshot } from "firebase/firestore"
-import { db } from "@/lib/firebase"
-import { useAuth } from "@/contexts/auth-context"
+import { db } from "../../../lib/firebase"
+import { useAuth } from "./auth-context"
 
 export type NotificationType = "info" | "success" | "warning" | "error" | "budget" | "system"
 

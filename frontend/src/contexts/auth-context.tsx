@@ -10,7 +10,7 @@ import {
   updateProfile,
 } from "firebase/auth"
 import { doc, setDoc, getDoc } from "firebase/firestore"
-import { auth, db } from "@/lib/firebase"
+import { auth, db } from "../../../lib/firebase"
 import { useRouter } from "next/navigation"
 // Import the NotificationsProvider
 import { NotificationsProvider } from "./notifications-context"

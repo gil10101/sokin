@@ -1,8 +1,8 @@
 'use client'
 
 import React from 'react'
-import { captureError } from '@/lib/sentry'
-import { Button } from '@/components/ui/button'
+import { captureError } from '../lib/sentry'
+import { Button } from './ui/button'
 import { useRouter } from 'next/navigation'
 
 interface Props {

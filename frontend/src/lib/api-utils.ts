@@ -1,5 +1,5 @@
-import { toast } from '@/components/ui/use-toast';
-import { logMessage } from '@/lib/sentry';
+import { toast } from '../components/ui/use-toast';
+import { logMessage } from './sentry';
 
 /**
  * Check if the backend API is reachable
@@ -7,7 +7,7 @@ import { logMessage } from '@/lib/sentry';
  */
 export async function checkBackendConnectivity(): Promise<boolean> {
   try {
-    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
     const HEALTH_ENDPOINT = `${API_BASE_URL.replace('/api', '')}/health`;
     
     const response = await fetch(HEALTH_ENDPOINT, {

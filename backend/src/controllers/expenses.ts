@@ -10,6 +10,11 @@ export const getAllExpenses = async (req: Request, res: Response): Promise<void>
       return;
     }
 
+    if (!db) {
+      res.status(500).json({ error: 'Database not initialized' });
+      return;
+    }
+
     const expensesRef = db.collection('expenses');
     const expensesSnapshot = await expensesRef.where('userId', '==', req.user.uid).get();
     
@@ -33,6 +38,11 @@ export const getExpenseById = async (req: Request, res: Response): Promise<void>
       return;
     }
 
+    if (!db) {
+      res.status(500).json({ error: 'Database not initialized' });
+      return;
+    }
+
     const expenseId = req.params.id;
     const expenseDoc = await db.collection('expenses').doc(expenseId).get();
 
@@ -42,6 +52,11 @@ export const getExpenseById = async (req: Request, res: Response): Promise<void>
     }
 
     const expenseData = expenseDoc.data();
+    
+    if (!expenseData) {
+      res.status(404).json({ error: 'Expense data is missing' });
+      return;
+    }
     
     // Verify the expense belongs to the requesting user
     if (expenseData.userId !== req.user.uid) {
@@ -66,6 +81,11 @@ export const createExpense = async (req: Request, res: Response): Promise<void> 
   try {
     if (!req.user || !req.user.uid) {
       res.status(401).json({ error: 'Unauthorized: User ID missing' });
+      return;
+    }
+
+    if (!db) {
+      res.status(500).json({ error: 'Database not initialized' });
       return;
     }
 
@@ -110,6 +130,11 @@ export const updateExpense = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
+    if (!db) {
+      res.status(500).json({ error: 'Database not initialized' });
+      return;
+    }
+
     const expenseId = req.params.id;
     const expenseDoc = await db.collection('expenses').doc(expenseId).get();
 
@@ -119,6 +144,11 @@ export const updateExpense = async (req: Request, res: Response): Promise<void> 
     }
 
     const expenseData = expenseDoc.data();
+    
+    if (!expenseData) {
+      res.status(404).json({ error: 'Expense data is missing' });
+      return;
+    }
     
     // Verify the expense belongs to the requesting user
     if (expenseData.userId !== req.user.uid) {
@@ -161,6 +191,11 @@ export const deleteExpense = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
+    if (!db) {
+      res.status(500).json({ error: 'Database not initialized' });
+      return;
+    }
+
     const expenseId = req.params.id;
     const expenseDoc = await db.collection('expenses').doc(expenseId).get();
 
@@ -170,6 +205,11 @@ export const deleteExpense = async (req: Request, res: Response): Promise<void> 
     }
 
     const expenseData = expenseDoc.data();
+    
+    if (!expenseData) {
+      res.status(404).json({ error: 'Expense data is missing' });
+      return;
+    }
     
     // Verify the expense belongs to the requesting user
     if (expenseData.userId !== req.user.uid) {

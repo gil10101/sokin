@@ -1,11 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { checkApplicationConfiguration, setupConnectivityMonitoring } from '@/lib/api-utils'
-import { identifyUser } from '@/lib/sentry'
-import { useAuth } from '@/contexts/auth-context'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
+import { checkApplicationConfiguration, setupConnectivityMonitoring } from '../lib/api-utils'
+import { identifyUser } from '../lib/sentry'
+import { useAuth } from '../contexts/auth-context'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../components/ui/dialog'
+import { Alert, AlertTitle, AlertDescription } from '../components/ui/alert'
 import { AlertTriangle } from 'lucide-react'
 
 /**

@@ -9,6 +9,10 @@ const getAllExpenses = async (req, res) => {
             res.status(401).json({ error: 'Unauthorized: User ID missing' });
             return;
         }
+        if (!firebase_1.db) {
+            res.status(500).json({ error: 'Database not initialized' });
+            return;
+        }
         const expensesRef = firebase_1.db.collection('expenses');
         const expensesSnapshot = await expensesRef.where('userId', '==', req.user.uid).get();
         const expenses = expensesSnapshot.docs.map(doc => ({
@@ -30,6 +34,10 @@ const getExpenseById = async (req, res) => {
             res.status(401).json({ error: 'Unauthorized: User ID missing' });
             return;
         }
+        if (!firebase_1.db) {
+            res.status(500).json({ error: 'Database not initialized' });
+            return;
+        }
         const expenseId = req.params.id;
         const expenseDoc = await firebase_1.db.collection('expenses').doc(expenseId).get();
         if (!expenseDoc.exists) {
@@ -37,6 +45,10 @@ const getExpenseById = async (req, res) => {
             return;
         }
         const expenseData = expenseDoc.data();
+        if (!expenseData) {
+            res.status(404).json({ error: 'Expense data is missing' });
+            return;
+        }
         // Verify the expense belongs to the requesting user
         if (expenseData.userId !== req.user.uid) {
             res.status(403).json({ error: 'Forbidden: You do not have access to this expense' });
@@ -60,6 +72,10 @@ const createExpense = async (req, res) => {
     try {
         if (!req.user || !req.user.uid) {
             res.status(401).json({ error: 'Unauthorized: User ID missing' });
+            return;
+        }
+        if (!firebase_1.db) {
+            res.status(500).json({ error: 'Database not initialized' });
             return;
         }
         const { amount, date, category, description, tags } = req.body;
@@ -99,6 +115,10 @@ const updateExpense = async (req, res) => {
             res.status(401).json({ error: 'Unauthorized: User ID missing' });
             return;
         }
+        if (!firebase_1.db) {
+            res.status(500).json({ error: 'Database not initialized' });
+            return;
+        }
         const expenseId = req.params.id;
         const expenseDoc = await firebase_1.db.collection('expenses').doc(expenseId).get();
         if (!expenseDoc.exists) {
@@ -106,6 +126,10 @@ const updateExpense = async (req, res) => {
             return;
         }
         const expenseData = expenseDoc.data();
+        if (!expenseData) {
+            res.status(404).json({ error: 'Expense data is missing' });
+            return;
+        }
         // Verify the expense belongs to the requesting user
         if (expenseData.userId !== req.user.uid) {
             res.status(403).json({ error: 'Forbidden: You do not have access to this expense' });
@@ -148,6 +172,10 @@ const deleteExpense = async (req, res) => {
             res.status(401).json({ error: 'Unauthorized: User ID missing' });
             return;
         }
+        if (!firebase_1.db) {
+            res.status(500).json({ error: 'Database not initialized' });
+            return;
+        }
         const expenseId = req.params.id;
         const expenseDoc = await firebase_1.db.collection('expenses').doc(expenseId).get();
         if (!expenseDoc.exists) {
@@ -155,6 +183,10 @@ const deleteExpense = async (req, res) => {
             return;
         }
         const expenseData = expenseDoc.data();
+        if (!expenseData) {
+            res.status(404).json({ error: 'Expense data is missing' });
+            return;
+        }
         // Verify the expense belongs to the requesting user
         if (expenseData.userId !== req.user.uid) {
             res.status(403).json({ error: 'Forbidden: You do not have access to this expense' });

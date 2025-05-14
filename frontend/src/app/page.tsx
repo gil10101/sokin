@@ -5,7 +5,7 @@ import Image from "next/image"
 import { useEffect, useState } from "react"
 import { ArrowRight, Menu, X, ArrowDown } from "lucide-react"
 import { motion, useScroll, useTransform } from "framer-motion"
-import { useAuth } from "@/contexts/auth-context"
+import { useAuth } from "../contexts/auth-context"
 
 export default function LandingPage() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)

@@ -14,6 +14,9 @@ const getAllBudgets = async (req, res) => {
         if (!req.user || !req.user.uid) {
             throw new errorHandler_1.AppError('Unauthorized: User ID missing', 401, true);
         }
+        if (!firebase_1.db) {
+            throw new errorHandler_1.AppError('Database not initialized', 500, true);
+        }
         const userId = req.user.uid;
         const cacheKey = `budgets_${userId}`;
         // Try to get from cache first
@@ -49,6 +52,9 @@ const getBudgetById = async (req, res) => {
         if (!req.user || !req.user.uid) {
             throw new errorHandler_1.AppError('Unauthorized: User ID missing', 401, true);
         }
+        if (!firebase_1.db) {
+            throw new errorHandler_1.AppError('Database not initialized', 500, true);
+        }
         const userId = req.user.uid;
         const budgetId = req.params.id;
         // Get budget from database
@@ -57,6 +63,9 @@ const getBudgetById = async (req, res) => {
             throw new errorHandler_1.AppError('Budget not found', 404, true);
         }
         const budgetData = budgetDoc.data();
+        if (!budgetData) {
+            throw new errorHandler_1.AppError('Budget data is missing', 404, true);
+        }
         // Verify the budget belongs to the requesting user
         if (budgetData.userId !== userId) {
             throw new errorHandler_1.AppError('Forbidden: You do not have access to this budget', 403, true);
@@ -84,6 +93,9 @@ const createBudget = async (req, res) => {
     try {
         if (!req.user || !req.user.uid) {
             throw new errorHandler_1.AppError('Unauthorized: User ID missing', 401, true);
+        }
+        if (!firebase_1.db) {
+            throw new errorHandler_1.AppError('Database not initialized', 500, true);
         }
         const { name, amount, period, categories, startDate, endDate } = req.body;
         const budgetData = {
@@ -124,6 +136,9 @@ const updateBudget = async (req, res) => {
         if (!req.user || !req.user.uid) {
             throw new errorHandler_1.AppError('Unauthorized: User ID missing', 401, true);
         }
+        if (!firebase_1.db) {
+            throw new errorHandler_1.AppError('Database not initialized', 500, true);
+        }
         const userId = req.user.uid;
         const budgetId = req.params.id;
         // Get budget document
@@ -132,6 +147,9 @@ const updateBudget = async (req, res) => {
             throw new errorHandler_1.AppError('Budget not found', 404, true);
         }
         const budgetData = budgetDoc.data();
+        if (!budgetData) {
+            throw new errorHandler_1.AppError('Budget data is missing', 404, true);
+        }
         // Verify the budget belongs to the requesting user
         if (budgetData.userId !== userId) {
             throw new errorHandler_1.AppError('Forbidden: You do not have access to this budget', 403, true);
@@ -181,6 +199,9 @@ const deleteBudget = async (req, res) => {
         if (!req.user || !req.user.uid) {
             throw new errorHandler_1.AppError('Unauthorized: User ID missing', 401, true);
         }
+        if (!firebase_1.db) {
+            throw new errorHandler_1.AppError('Database not initialized', 500, true);
+        }
         const userId = req.user.uid;
         const budgetId = req.params.id;
         // Get budget document
@@ -189,6 +210,9 @@ const deleteBudget = async (req, res) => {
             throw new errorHandler_1.AppError('Budget not found', 404, true);
         }
         const budgetData = budgetDoc.data();
+        if (!budgetData) {
+            throw new errorHandler_1.AppError('Budget data is missing', 404, true);
+        }
         // Verify the budget belongs to the requesting user
         if (budgetData.userId !== userId) {
             throw new errorHandler_1.AppError('Forbidden: You do not have access to this budget', 403, true);
