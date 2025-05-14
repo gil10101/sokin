@@ -43,7 +43,7 @@ export function DashboardSidebar({ collapsed, setCollapsed }: DashboardSidebarPr
     return (
       <aside
         className="h-screen bg-dark border-r border-cream/10 flex flex-col"
-        style={{ width: collapsed ? "80px" : "240px" }}
+        style={{ width: collapsed ? "100px" : "200px" }}
       />
     )
   }
@@ -51,7 +51,7 @@ export function DashboardSidebar({ collapsed, setCollapsed }: DashboardSidebarPr
   return (
     <aside
       className="h-screen bg-dark border-r border-cream/10 flex flex-col transition-all duration-300 ease-in-out"
-      style={{ width: collapsed ? "80px" : "240px" }}
+      style={{ width: collapsed ? "100px" : "200px" }}
     >
       <div className="p-4 flex items-center justify-between border-b border-cream/10 h-[73px]">
         <Link href="/" className={`flex items-center font-outfit font-medium text-xl transition-opacity duration-200 ${collapsed ? "opacity-0 hidden" : "opacity-100 block"} hover:opacity-80 transition-opacity`}>
