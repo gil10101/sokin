@@ -5,20 +5,20 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { doc, getDoc, updateDoc } from "firebase/firestore"
-import { db } from "@/lib/firebase"
-import { useAuth } from "@/contexts/auth-context"
+import { db } from "../../../../../lib/firebase"
+import { useAuth } from "../../../../../contexts/auth-context"
 import { format, parseISO } from "date-fns"
 import { CalendarIcon, Check, ChevronsUpDown } from "lucide-react"
-import { DashboardSidebar } from "@/components/dashboard/sidebar"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
-import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
-import { useToast } from "@/hooks/use-toast"
-import { LoadingSpinner } from "@/components/ui/loading-spinner"
-import { useNotifications } from "@/contexts/notifications-context"
+import { DashboardSidebar } from "../../../../../components/dashboard/sidebar"
+import { Input } from "../../../../../components/ui/input"
+import { Button } from "../../../../../components/ui/button"
+import { Textarea } from "../../../../../components/ui/textarea"
+import { Calendar } from "../../../../../components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "../../../../../components/ui/popover"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "../../../../../components/ui/command"
+import { useToast } from "../../../../../hooks/use-toast"
+import { LoadingSpinner } from "../../../../../components/ui/loading-spinner"
+import { useNotifications } from "../../../../../contexts/notifications-context"
 
 // Default categories if we can't fetch from Firestore
 const DEFAULT_CATEGORIES = [
@@ -41,7 +41,7 @@ export default function EditExpensePage() {
   const params = useParams()
   const { toast } = useToast()
   const { addNotification } = useNotifications()
-  const expenseId = params.id as string
+  const expenseId = params?.id as string
 
   const [name, setName] = useState("")
   const [amount, setAmount] = useState("")

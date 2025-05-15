@@ -124,7 +124,7 @@ export default function DashboardPage() {
               <div>
                 <h1 className="text-2xl md:text-3xl font-medium font-outfit">Dashboard</h1>
                 <p className="text-cream/60 text-sm mt-1 font-outfit">
-                  Welcome back, {user?.displayName?.split(" ")[0] || "User"}. Here's your financial overview.
+                  Welcome back, {user?.displayName?.split(" ")[0] || "User"}.
                 </p>
               </div>
             </div>
