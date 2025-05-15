@@ -775,17 +775,17 @@ export default function SubscriptionsPage() {
               <div className="flex flex-col gap-2">
                 <h3 className="text-lg font-medium">Overview</h3>
                 <div className="flex">
-                  <div className="pr-6 border-r border-cream/10">
+                  <div className="flex flex-col items-left text-left w-28 pr-6 border-r border-cream/10">
                     <p className="text-sm text-cream/60">Monthly Cost</p>
-                    <p className="text-xl font-medium">${monthlyTotal.toFixed(2)}</p>
+                    <p className="text-xl font-medium mt-1">${monthlyTotal.toFixed(2)}</p>
                   </div>
-                  <div className="px-6 border-r border-cream/10">
+                  <div className="flex flex-col items-center text-left w-28 border-r border-cream/10">
                     <p className="text-sm text-cream/60">Annual Cost</p>
-                    <p className="text-xl font-medium">${annualTotal.toFixed(2)}</p>
+                    <p className="text-xl font-medium mt-1">${annualTotal.toFixed(2)}</p>
                   </div>
-                  <div className="pl-6">
-                    <p className="text-sm text-cream/60">Active Subscriptions</p>
-                    <p className="text-xl font-medium">{filteredSubscriptions.length}</p>
+                  <div className="flex flex-col items-left text-left w-28 pl-6">
+                    <p className="text-sm text-cream/60">Subscriptions</p>
+                    <p className="text-xl font-medium mt-1">{filteredSubscriptions.length}</p>
                   </div>
                 </div>
               </div>
