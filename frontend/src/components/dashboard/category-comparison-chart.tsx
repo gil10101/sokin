@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell, LabelList } from "recharts"
+import { useEffect, useState, useRef } from "react"
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell, LabelList, RectangleProps } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "../../components/ui/chart"
 import { motion } from "framer-motion"
 
@@ -13,6 +13,7 @@ export function CategoryComparisonChart({ data }: CategoryComparisonChartProps) 
   // Limit to top 5 categories for better visualization
   const topCategories = data.slice(0, 5)
   const [animatedData, setAnimatedData] = useState<any[]>([])
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null)
 
   useEffect(() => {
     // Start with zero values for animation
@@ -31,6 +32,21 @@ export function CategoryComparisonChart({ data }: CategoryComparisonChartProps) 
     return () => clearTimeout(timer)
   }, [data])
 
+  const CustomCursor = (props: any) => {
+    const { x, y, width, height, stroke } = props;
+    
+    return (
+      <rect
+        x={x}
+        y={y - 5}
+        width="100%"
+        height={height + 10}
+        fill="#353535"
+        fillOpacity={0.9}
+      />
+    );
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -48,7 +64,12 @@ export function CategoryComparisonChart({ data }: CategoryComparisonChartProps) 
         className="h-[300px]"
       >
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={animatedData} layout="vertical" margin={{ top: 10, right: 10, left: 80, bottom: 20 }}>
+          <BarChart 
+            data={animatedData} 
+            layout="vertical" 
+            margin={{ top: 10, right: 10, left: 80, bottom: 20 }}
+            onMouseLeave={() => setHoverIndex(null)}
+          >
             <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="rgba(245, 245, 240, 0.1)" />
             <XAxis
               type="number"
@@ -65,11 +86,23 @@ export function CategoryComparisonChart({ data }: CategoryComparisonChartProps) 
               tick={{ fill: "rgba(245, 245, 240, 0.6)", fontSize: 12 }}
               width={80}
             />
-            <ChartTooltip content={<ChartTooltipContent />} />
-            <Bar dataKey="amount" radius={[0, 4, 4, 0]} animationDuration={1500} animationEasing="ease-out">
+            <ChartTooltip content={<ChartTooltipContent />} cursor={<CustomCursor />} />
+            <Bar 
+              dataKey="amount" 
+              radius={[0, 4, 4, 0]} 
+              animationDuration={1500} 
+              animationEasing="ease-out"
+            >
               {animatedData.map((entry, index) => {
-                const opacity = 1 - index * 0.15
-                return <Cell key={`cell-${index}`} fill={`rgba(245, 245, 240, ${opacity})`} />
+                const opacity = 1 - index * 0.15;
+                
+                return (
+                  <Cell 
+                    key={`cell-${index}`} 
+                    fill={`rgba(245, 245, 240, ${opacity})`}
+                    onMouseEnter={() => setHoverIndex(index)}
+                  />
+                )
               })}
               <LabelList
                 dataKey="amount"

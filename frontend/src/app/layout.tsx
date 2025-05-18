@@ -19,8 +19,8 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: "Sokin",
-  description: "Personal finance, redefined.",
-  generator: 'v0.dev',
+  description: "Personal finance",
+  generator: 'sokin',
   manifest: '/manifest.json',
   icons: {
     icon: '/sokin-icon.png',
