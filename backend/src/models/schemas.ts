@@ -2,6 +2,7 @@ import Joi from 'joi';
 
 // Expense schemas
 export const createExpenseSchema = Joi.object({
+  name: Joi.string().required().trim(),
   amount: Joi.number().required().positive(),
   date: Joi.string().isoDate().required(),
   category: Joi.string().required().trim(),
@@ -10,6 +11,7 @@ export const createExpenseSchema = Joi.object({
 });
 
 export const updateExpenseSchema = Joi.object({
+  name: Joi.string().trim(),
   amount: Joi.number().positive(),
   date: Joi.string().isoDate(),
   category: Joi.string().trim(),
