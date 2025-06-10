@@ -195,10 +195,40 @@ const MOCK_SUBSCRIPTIONS: Omit<Subscription, "id" | "userId">[] = [
   },
 ]
 
+// Helper function to safely parse dates
+const safeParseDate = (dateValue: any): Date => {
+  if (!dateValue) return new Date()
+  
+  try {
+    // If it's already a Date object
+    if (dateValue instanceof Date) {
+      return dateValue
+    }
+    // If it's a Firebase Timestamp object
+    else if (dateValue && typeof dateValue === 'object' && 'toDate' in dateValue) {
+      return dateValue.toDate()
+    }
+    // If it's a numeric timestamp (milliseconds)
+    else if (typeof dateValue === 'number') {
+      return new Date(dateValue)
+    }
+    // If it's a string
+    else if (typeof dateValue === 'string') {
+      const parsedDate = new Date(dateValue)
+      return isNaN(parsedDate.getTime()) ? new Date() : parsedDate
+    }
+    
+    return new Date()
+  } catch (error) {
+    console.error("Error parsing date:", error, "Input:", dateValue)
+    return new Date()
+  }
+}
+
 // Generate mock payment history
 const generateMockPaymentHistory = (subscription: Subscription): PaymentHistory[] => {
   const history: PaymentHistory[] = []
-  const startDate = new Date(subscription.startDate)
+  const startDate = safeParseDate(subscription.startDate)
   const now = new Date()
   let currentDate = new Date(startDate)
 
@@ -258,7 +288,7 @@ const calculateNextPaymentDate = (
   customIntervalUnit?: string,
 ): Date => {
   const now = new Date()
-  let nextDate = new Date(startDate)
+  let nextDate = new Date(safeParseDate(startDate))
 
   // Find the next payment date after today
   while (nextDate <= now) {
@@ -434,8 +464,8 @@ export default function SubscriptionsPage() {
           valueB = b.amount
           break
         case "nextPaymentDate":
-          valueA = new Date(a.nextPaymentDate).getTime()
-          valueB = new Date(b.nextPaymentDate).getTime()
+          valueA = safeParseDate(a.nextPaymentDate).getTime()
+          valueB = safeParseDate(b.nextPaymentDate).getTime()
           break
         case "billingCycle":
           valueA = a.billingCycle
@@ -917,7 +947,7 @@ export default function SubscriptionsPage() {
                         </div>
                         
                         <div className="hidden md:flex justify-center items-center col-span-3 border-l border-cream/10 h-full">
-                          <span>{format(new Date(subscription.nextPaymentDate), "MMM d, yyyy")}</span>
+                          <span>{format(safeParseDate(subscription.nextPaymentDate), "MMM d, yyyy")}</span>
                         </div>
                         
                         <div className="hidden md:flex justify-center items-center col-span-2 border-l border-cream/10 h-full">
@@ -961,7 +991,7 @@ export default function SubscriptionsPage() {
                             </CollapsibleTrigger>
                           </div>
                           <p className="text-xs text-cream/60">
-                            Next: {format(new Date(subscription.nextPaymentDate), "MMM d")}
+                            Next: {format(safeParseDate(subscription.nextPaymentDate), "MMM d")}
                           </p>
                         </div>
                       </div>
@@ -975,12 +1005,12 @@ export default function SubscriptionsPage() {
                             <div className="space-y-3">
                               <div className="flex justify-between">
                                 <p className="text-sm text-cream/60">Start Date</p>
-                                <p className="text-sm">{format(new Date(subscription.startDate), "MMMM d, yyyy")}</p>
+                                <p className="text-sm">{format(safeParseDate(subscription.startDate), "MMMM d, yyyy")}</p>
                               </div>
                               <div className="flex justify-between">
                                 <p className="text-sm text-cream/60">Next Payment</p>
                                 <p className="text-sm">
-                                  {format(new Date(subscription.nextPaymentDate), "MMMM d, yyyy")}
+                                  {format(safeParseDate(subscription.nextPaymentDate), "MMMM d, yyyy")}
                                 </p>
                               </div>
                               <div className="flex justify-between">
@@ -1055,11 +1085,11 @@ export default function SubscriptionsPage() {
                                   </TableHeader>
                                   <TableBody>
                                     {paymentHistories[subscription.id]
-                                      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                                      .sort((a, b) => safeParseDate(b.date).getTime() - safeParseDate(a.date).getTime())
                                       .slice(0, 5)
                                       .map((payment) => (
                                         <TableRow key={payment.id} className="border-cream/10">
-                                          <TableCell>{format(new Date(payment.date), "MMM d, yyyy")}</TableCell>
+                                          <TableCell>{format(safeParseDate(payment.date), "MMM d, yyyy")}</TableCell>
                                           <TableCell>${payment.amount.toFixed(2)}</TableCell>
                                           <TableCell>
                                             <span

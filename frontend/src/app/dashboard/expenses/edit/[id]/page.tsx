@@ -101,13 +101,43 @@ export default function EditExpensePage() {
       setDescription(expenseData.description || "")
       setCategory(expenseData.category || "")
 
-      // Parse date
+      // Parse date with robust handling
       if (expenseData.date) {
         try {
-          const parsedDate = parseISO(expenseData.date)
-          setDate(parsedDate)
+          let parsedDate: Date | null = null
+          
+          // Handle different date formats
+          if (expenseData.date instanceof Date) {
+            parsedDate = expenseData.date
+          }
+          // If it's a Firebase Timestamp object
+          else if (expenseData.date && typeof expenseData.date === 'object' && 'toDate' in expenseData.date) {
+            parsedDate = expenseData.date.toDate()
+          }
+          // If it's a numeric timestamp (milliseconds)
+          else if (typeof expenseData.date === 'number') {
+            parsedDate = new Date(expenseData.date)
+          }
+          // If it's a string
+          else if (typeof expenseData.date === 'string') {
+            // Try parsing as ISO string first
+            parsedDate = parseISO(expenseData.date)
+            
+            // If parseISO fails, try native Date constructor
+            if (!parsedDate || isNaN(parsedDate.getTime())) {
+              parsedDate = new Date(expenseData.date)
+            }
+          }
+          
+          // Validate and set the date
+          if (parsedDate && !isNaN(parsedDate.getTime())) {
+            setDate(parsedDate)
+          } else {
+            console.error("Invalid date value:", expenseData.date)
+            setDate(new Date())
+          }
         } catch (error) {
-          console.error("Error parsing date:", error)
+          console.error("Error parsing date:", error, "Input:", expenseData.date)
           setDate(new Date())
         }
       }

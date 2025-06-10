@@ -187,13 +187,43 @@ export default function BudgetsPage() {
   }
 
   const openEditDialog = (budget: Budget) => {
+    // Helper function to safely parse dates
+    const safeParseDate = (dateValue: any): Date => {
+      if (!dateValue) return new Date()
+      
+      try {
+        // If it's already a Date object
+        if (dateValue instanceof Date) {
+          return dateValue
+        }
+        // If it's a Firebase Timestamp object
+        else if (dateValue && typeof dateValue === 'object' && 'toDate' in dateValue) {
+          return dateValue.toDate()
+        }
+        // If it's a numeric timestamp (milliseconds)
+        else if (typeof dateValue === 'number') {
+          return new Date(dateValue)
+        }
+        // If it's a string
+        else if (typeof dateValue === 'string') {
+          const parsedDate = new Date(dateValue)
+          return isNaN(parsedDate.getTime()) ? new Date() : parsedDate
+        }
+        
+        return new Date()
+      } catch (error) {
+        console.error("Error parsing date:", error, "Input:", dateValue)
+        return new Date()
+      }
+    }
+
     setEditingBudget(budget)
     setFormData({
       amount: budget.amount.toString(),
       category: budget.category,
       period: budget.period,
-      startDate: new Date(budget.startDate),
-      endDate: budget.endDate ? new Date(budget.endDate) : null,
+      startDate: safeParseDate(budget.startDate),
+      endDate: budget.endDate ? safeParseDate(budget.endDate) : null,
       notes: budget.notes || "",
     })
     setOpenDialog(true)
@@ -596,9 +626,38 @@ function BudgetCard({ budget, onEdit, onDelete }: BudgetCardProps) {
   const progress = Math.floor(Math.random() * 100)
   const isOverBudget = progress > 100
 
-  // Safely parse dates with validation
-  const startDate = budget.startDate ? new Date(budget.startDate) : null
-  const endDate = budget.endDate ? new Date(budget.endDate) : null
+  // Safely parse dates with robust handling
+  const parseDate = (dateValue: any): Date | null => {
+    if (!dateValue) return null
+    
+    try {
+      // If it's already a Date object
+      if (dateValue instanceof Date) {
+        return dateValue
+      }
+      // If it's a Firebase Timestamp object
+      else if (dateValue && typeof dateValue === 'object' && 'toDate' in dateValue) {
+        return dateValue.toDate()
+      }
+      // If it's a numeric timestamp (milliseconds)
+      else if (typeof dateValue === 'number') {
+        return new Date(dateValue)
+      }
+      // If it's a string
+      else if (typeof dateValue === 'string') {
+        const parsedDate = new Date(dateValue)
+        return isNaN(parsedDate.getTime()) ? null : parsedDate
+      }
+      
+      return null
+    } catch (error) {
+      console.error("Error parsing date:", error, "Input:", dateValue)
+      return null
+    }
+  }
+
+  const startDate = parseDate(budget.startDate)
+  const endDate = parseDate(budget.endDate)
 
   // Validate dates
   const isValidStartDate = startDate && !isNaN(startDate.getTime())
