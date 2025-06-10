@@ -116,85 +116,6 @@ const SERVICE_LOGOS: Record<string, string> = {
   Hulu: "/placeholder.svg?height=40&width=40&text=H",
 }
 
-// Mock data for subscriptions
-const MOCK_SUBSCRIPTIONS: Omit<Subscription, "id" | "userId">[] = [
-  {
-    name: "Netflix",
-    logo: SERVICE_LOGOS["Netflix"],
-    amount: 15.99,
-    billingCycle: "monthly",
-    startDate: new Date(2023, 1, 15).toISOString(),
-    nextPaymentDate: new Date(2023, 5, 15).toISOString(),
-    paymentMethod: "Credit Card",
-    website: "https://netflix.com",
-    notes: "Standard HD plan",
-    autoRenew: true,
-    category: "Entertainment",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    name: "Spotify",
-    logo: SERVICE_LOGOS["Spotify"],
-    amount: 9.99,
-    billingCycle: "monthly",
-    startDate: new Date(2022, 8, 10).toISOString(),
-    nextPaymentDate: new Date(2023, 5, 10).toISOString(),
-    paymentMethod: "PayPal",
-    website: "https://spotify.com",
-    notes: "Individual premium plan",
-    autoRenew: true,
-    category: "Music",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    name: "Adobe Creative Cloud",
-    logo: SERVICE_LOGOS["Adobe Creative Cloud"],
-    amount: 52.99,
-    billingCycle: "monthly",
-    startDate: new Date(2022, 3, 5).toISOString(),
-    nextPaymentDate: new Date(2023, 5, 5).toISOString(),
-    paymentMethod: "Credit Card",
-    website: "https://adobe.com",
-    notes: "All apps plan",
-    autoRenew: true,
-    category: "Software",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    name: "Amazon Prime",
-    logo: SERVICE_LOGOS["Amazon Prime"],
-    amount: 139,
-    billingCycle: "annually",
-    startDate: new Date(2022, 6, 20).toISOString(),
-    nextPaymentDate: new Date(2023, 6, 20).toISOString(),
-    paymentMethod: "Credit Card",
-    website: "https://amazon.com",
-    notes: "Includes Prime Video, Prime Music, and free shipping",
-    autoRenew: true,
-    category: "Shopping",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    name: "Microsoft 365",
-    logo: SERVICE_LOGOS["Microsoft 365"],
-    amount: 99.99,
-    billingCycle: "annually",
-    startDate: new Date(2022, 9, 12).toISOString(),
-    nextPaymentDate: new Date(2023, 9, 12).toISOString(),
-    paymentMethod: "Credit Card",
-    website: "https://microsoft.com",
-    notes: "Family plan with 6 users",
-    autoRenew: true,
-    category: "Software",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-]
-
 // Helper function to safely parse dates
 const safeParseDate = (dateValue: any): Date => {
   if (!dateValue) return new Date()
@@ -225,8 +146,8 @@ const safeParseDate = (dateValue: any): Date => {
   }
 }
 
-// Generate mock payment history
-const generateMockPaymentHistory = (subscription: Subscription): PaymentHistory[] => {
+// Generate payment history from subscription data
+const generatePaymentHistory = (subscription: Subscription): PaymentHistory[] => {
   const history: PaymentHistory[] = []
   const startDate = safeParseDate(subscription.startDate)
   const now = new Date()
@@ -496,54 +417,23 @@ export default function SubscriptionsPage() {
 
     setLoading(true)
     try {
-      // Check if collection exists
       const subscriptionsRef = collection(db, "subscriptions")
       const q = query(subscriptionsRef, where("userId", "==", user.uid), orderBy("nextPaymentDate", "asc"))
 
       const querySnapshot = await getDocs(q)
+      const subscriptionsData = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Subscription[]
 
-      // If no subscriptions found, create mock data
-      if (querySnapshot.empty) {
-        // For demo purposes, create mock subscriptions
-        const mockSubscriptionsWithIds = await Promise.all(
-          MOCK_SUBSCRIPTIONS.map(async (subscription) => {
-            const newSubscription = {
-              ...subscription,
-              userId: user.uid,
-            }
+      setSubscriptions(subscriptionsData)
 
-            const docRef = await addDoc(collection(db, "subscriptions"), newSubscription)
-            return {
-              id: docRef.id,
-              ...newSubscription,
-            }
-          }),
-        )
-
-        setSubscriptions(mockSubscriptionsWithIds as Subscription[])
-
-        // Generate mock payment histories
-        const histories: Record<string, PaymentHistory[]> = {}
-        mockSubscriptionsWithIds.forEach((subscription) => {
-          histories[subscription.id] = generateMockPaymentHistory(subscription as Subscription)
-        })
-        setPaymentHistories(histories)
-      } else {
-        // Use real data from Firestore
-        const subscriptionsData = querySnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as Subscription[]
-
-        setSubscriptions(subscriptionsData)
-
-        // Generate payment histories for each subscription
-        const histories: Record<string, PaymentHistory[]> = {}
-        subscriptionsData.forEach((subscription) => {
-          histories[subscription.id] = generateMockPaymentHistory(subscription)
-        })
-        setPaymentHistories(histories)
-      }
+      // Generate payment histories for each subscription
+      const histories: Record<string, PaymentHistory[]> = {}
+      subscriptionsData.forEach((subscription) => {
+        histories[subscription.id] = generatePaymentHistory(subscription)
+      })
+      setPaymentHistories(histories)
     } catch (error: any) {
       toast({
         title: "Error loading subscriptions",
@@ -685,7 +575,7 @@ export default function SubscriptionsPage() {
       setSubscriptions((prev) => [...prev, newSubscription])
 
       // Generate payment history
-      const history = generateMockPaymentHistory(newSubscription)
+      const history = generatePaymentHistory(newSubscription)
       setPaymentHistories((prev) => ({
         ...prev,
         [newSubscription.id]: history,

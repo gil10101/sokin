@@ -16,7 +16,29 @@ import { MotionContainer } from "../../components/ui/motion-container"
 import { LoadingSpinner } from "../../components/ui/loading-spinner"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../../components/ui/dropdown-menu"
 import { NotificationsDropdown } from "../../components/notifications/notifications-dropdown"
+import { collection, query, where, orderBy, limit, getDocs } from "firebase/firestore"
+import { db } from "../../lib/firebase"
 import Link from "next/link"
+
+interface Expense {
+  id: string
+  name: string
+  amount: number
+  date: string
+  category: string
+  description?: string
+  userId: string
+}
+
+interface Notification {
+  id: string
+  title: string
+  message: string
+  time: string
+  read: boolean
+  userId: string
+  createdAt: string
+}
 
 export default function DashboardPage() {
   const [collapsed, setCollapsed] = useState(false)
@@ -24,26 +46,23 @@ export default function DashboardPage() {
   const router = useRouter()
   const [mounted, setMounted] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
-  const [searchResults, setSearchResults] = useState<any[]>([])
+  const [searchResults, setSearchResults] = useState<Expense[]>([])
   const [showSearchResults, setShowSearchResults] = useState(false)
   const [timeframe, setTimeframe] = useState("30days")
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      title: "Budget Alert",
-      message: "You've reached 80% of your Dining budget",
-      time: "2 hours ago",
-      read: false,
-    },
-    { id: 2, title: "New Feature", message: "Try our new budget planning tool", time: "1 day ago", read: false },
-    { id: 3, title: "Tip", message: "Set up recurring expenses to track bills", time: "3 days ago", read: true },
-  ])
-  const [hasUnreadNotifications, setHasUnreadNotifications] = useState(true)
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false)
 
   // Fix hydration issues by only rendering after mount
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  // Fetch notifications when user is available
+  useEffect(() => {
+    if (user && mounted) {
+      fetchNotifications()
+    }
+  }, [user, mounted])
 
   // Check for unread notifications
   useEffect(() => {
@@ -51,36 +70,105 @@ export default function DashboardPage() {
     setHasUnreadNotifications(unreadExists)
   }, [notifications])
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!searchQuery.trim()) {
+  const fetchNotifications = async () => {
+    if (!user) return
+
+    try {
+      const notificationsRef = collection(db, "notifications")
+      const q = query(
+        notificationsRef, 
+        where("userId", "==", user.uid), 
+        orderBy("createdAt", "desc"),
+        limit(10)
+      )
+
+      const querySnapshot = await getDocs(q)
+      const notificationsData = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Notification[]
+
+      setNotifications(notificationsData)
+    } catch (error) {
+      console.error("Error fetching notifications:", error)
+      // Fallback to empty notifications if there's an error
+      setNotifications([])
+    }
+  }
+
+  const searchExpenses = async (searchTerm: string) => {
+    if (!user || !searchTerm.trim()) {
+      setSearchResults([])
       setShowSearchResults(false)
       return
     }
 
-    // Mock search results - in a real app, this would query your database
-    const mockResults = [
-      { id: 1, name: "Starbucks Coffee", date: "Today", amount: 5.75, category: "Dining" },
-      { id: 2, name: "Amazon Purchase", date: "Yesterday", amount: 34.99, category: "Shopping" },
-      { id: 3, name: "Uber Ride", date: "Mar 20", amount: 12.5, category: "Transport" },
-    ].filter(
-      (item) =>
-        item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.category.toLowerCase().includes(searchQuery.toLowerCase()),
-    )
+    try {
+      const expensesRef = collection(db, "expenses")
+      const q = query(
+        expensesRef,
+        where("userId", "==", user.uid),
+        orderBy("date", "desc"),
+        limit(10)
+      )
 
-    setSearchResults(mockResults)
-    setShowSearchResults(true)
+      const querySnapshot = await getDocs(q)
+      const allExpenses = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Expense[]
+
+      // Filter expenses by search term (client-side filtering)
+      const filteredExpenses = allExpenses.filter(
+        (expense) =>
+          expense.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          expense.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          expense.description?.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+
+      setSearchResults(filteredExpenses)
+      setShowSearchResults(true)
+    } catch (error) {
+      console.error("Error searching expenses:", error)
+      setSearchResults([])
+      setShowSearchResults(false)
+    }
   }
 
-  const markAllAsRead = () => {
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    searchExpenses(searchQuery)
+  }
+
+  const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    setSearchQuery(value)
+    
+    if (!value.trim()) {
+      setShowSearchResults(false)
+      setSearchResults([])
+    } else {
+      // Debounce search
+      const timeoutId = setTimeout(() => {
+        searchExpenses(value)
+      }, 300)
+      
+      return () => clearTimeout(timeoutId)
+    }
+  }
+
+  const markAllAsRead = async () => {
+    // This would update notifications in Firebase
+    // For now, just update local state
     setNotifications(notifications.map((notification) => ({ ...notification, read: true })))
     setHasUnreadNotifications(false)
   }
 
-  const markAsRead = (id: number) => {
+  const markAsRead = async (id: string) => {
+    // This would update specific notification in Firebase
+    // For now, just update local state
     setNotifications(
-      notifications.map((notification) => (notification.id === id ? { ...notification, read: true } : notification)),
+      notifications.map((notification) => (notification.id === id ? { ...notification, read: true } : notification))
     )
   }
 
@@ -134,10 +222,7 @@ export default function DashboardPage() {
                 <Input
                   placeholder="Search transactions..."
                   value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value)
-                    if (!e.target.value) setShowSearchResults(false)
-                  }}
+                  onChange={handleSearchInputChange}
                   className="pl-10 bg-cream/5 border-cream/10 text-cream placeholder:text-cream/40 focus-visible:ring-cream/20"
                 />
                 {showSearchResults && searchResults.length > 0 && (
@@ -157,7 +242,7 @@ export default function DashboardPage() {
                         <div
                           key={result.id}
                           className="p-2 hover:bg-cream/5 cursor-pointer"
-                          onClick={() => router.push(`/dashboard/expenses?search=${encodeURIComponent(result.name)}`)}
+                          onClick={() => router.push(`/dashboard/expenses?search=${encodeURIComponent(result.name || '')}`)}
                         >
                           <div className="flex justify-between">
                             <span className="font-medium">{result.name}</span>
@@ -165,7 +250,7 @@ export default function DashboardPage() {
                           </div>
                           <div className="flex justify-between text-xs text-cream/60">
                             <span>{result.category}</span>
-                            <span>{result.date}</span>
+                            <span>{new Date(result.date).toLocaleDateString()}</span>
                           </div>
                         </div>
                       ))}

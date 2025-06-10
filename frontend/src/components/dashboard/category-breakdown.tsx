@@ -4,56 +4,65 @@ import { useEffect, useState, useMemo } from "react"
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts"
 import { ChevronRight, X, Calendar, Filter, ShoppingBag, Coffee, Home, Car, Utensils, ArrowDown, LucideIcon } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { collection, query, where, orderBy, limit, getDocs } from "firebase/firestore"
+import { db } from "../../lib/firebase"
+import { useAuth } from "../../contexts/auth-context"
+import { format, subDays, isAfter } from "date-fns"
 
-// Define data outside of component to prevent recreation on render
-const categoryData = [
-  { name: "Dining", value: 840, color: "rgba(245, 245, 240, 0.9)" },
-  { name: "Shopping", value: 620, color: "rgba(245, 245, 240, 0.7)" },
-  { name: "Transport", value: 480, color: "rgba(245, 245, 240, 0.5)" },
-  { name: "Utilities", value: 350, color: "rgba(245, 245, 240, 0.3)" },
-  { name: "Other", value: 280, color: "rgba(245, 245, 240, 0.1)" },
-]
+// Helper function to safely parse dates including Firebase Timestamps
+const safeParseDate = (dateValue: any): Date => {
+  if (!dateValue) return new Date()
+  
+  try {
+    // If it's already a Date object
+    if (dateValue instanceof Date) {
+      return dateValue
+    }
+    // If it's a Firebase Timestamp object
+    else if (dateValue && typeof dateValue === 'object' && 'toDate' in dateValue) {
+      return dateValue.toDate()
+    }
+    // If it's a numeric timestamp (milliseconds)
+    else if (typeof dateValue === 'number') {
+      return new Date(dateValue)
+    }
+    // If it's a string
+    else if (typeof dateValue === 'string') {
+      const parsedDate = new Date(dateValue)
+      return isNaN(parsedDate.getTime()) ? new Date() : parsedDate
+    }
+    
+    return new Date()
+  } catch (error) {
+    console.error("Error parsing date:", error, "Input:", dateValue)
+    return new Date()
+  }
+}
 
 // Define transaction type
 interface Transaction {
+  id: string
   name: string
   date: string
   amount: number
-  icon: LucideIcon
+  category: string
+  description?: string
+  userId: string
 }
 
-// Define the transactions by category type
-type CategoryTransactions = {
+interface CategoryTransactions {
   [key: string]: Transaction[]
 }
 
-// Sample transactions data
-const transactionsByCategory: CategoryTransactions = {
-  "Dining": [
-    { name: "Starbucks Coffee", date: "Apr 15, 10:30 AM", amount: 5.75, icon: Coffee },
-    { name: "Restaurant Dinner", date: "Apr 12, 7:30 PM", amount: 62.80, icon: Utensils },
-    { name: "Lunch Cafe", date: "Apr 10, 1:15 PM", amount: 18.25, icon: Coffee },
-    { name: "Pizza Delivery", date: "Apr 8, 6:45 PM", amount: 24.99, icon: Utensils },
-    { name: "Breakfast Bagel", date: "Apr 5, 8:20 AM", amount: 7.50, icon: Coffee },
-  ],
-  "Shopping": [
-    { name: "Amazon Purchase", date: "Apr 14, 2:15 PM", amount: 34.99, icon: ShoppingBag },
-    { name: "Clothing Store", date: "Apr 11, 3:30 PM", amount: 89.95, icon: ShoppingBag },
-    { name: "Bookstore", date: "Apr 7, 5:45 PM", amount: 42.50, icon: ShoppingBag },
-  ],
-  "Transport": [
-    { name: "Uber Ride", date: "Apr 13, 8:45 AM", amount: 12.50, icon: Car },
-    { name: "Gas Station", date: "Apr 9, 4:30 PM", amount: 45.75, icon: Car },
-    { name: "Train Ticket", date: "Apr 6, 9:15 AM", amount: 22.00, icon: Car },
-  ],
-  "Utilities": [
-    { name: "Electricity Bill", date: "Apr 12, 12:00 PM", amount: 85.20, icon: Home },
-    { name: "Internet Bill", date: "Apr 5, 10:30 AM", amount: 65.99, icon: Home },
-  ],
-  "Other": [
-    { name: "Gym Membership", date: "Apr 10, 9:00 AM", amount: 45.00, icon: Home },
-    { name: "Mobile App Subscription", date: "Apr 7, 11:20 AM", amount: 9.99, icon: Home },
-  ]
+// Define expense type
+interface Expense {
+  id: string
+  name: string
+  amount: number
+  date: string
+  category: string
+  description?: string
+  userId: string
 }
 
 // Date range options
@@ -73,36 +82,168 @@ interface CategoryWithPercentage {
   percentage: number
 }
 
+// Default category colors
+const getCategoryColor = (index: number) => {
+  const opacities = [0.9, 0.7, 0.5, 0.3, 0.1]
+  return `rgba(245, 245, 240, ${opacities[index % opacities.length]})`
+}
+
+// Get icon for category
+const getCategoryIcon = (category: string): LucideIcon => {
+  const categoryIcons: Record<string, LucideIcon> = {
+    dining: Utensils,
+    food: Coffee,
+    shopping: ShoppingBag,
+    transport: Car,
+    utilities: Home,
+    housing: Home,
+    entertainment: Coffee,
+    health: Home,
+    travel: Car,
+    other: Home,
+  }
+  
+  return categoryIcons[category.toLowerCase()] || Home
+}
+
 export function CategoryBreakdown() {
+  const { user } = useAuth()
   const [mounted, setMounted] = useState(false)
   const [activeIndex, setActiveIndex] = useState<number | null>(null)
   const [expanded, setExpanded] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [dateRange, setDateRange] = useState("30days")
   const [showDateFilter, setShowDateFilter] = useState(false)
+  const [categoryData, setCategoryData] = useState<CategoryWithPercentage[]>([])
+  const [transactionsByCategory, setTransactionsByCategory] = useState<CategoryTransactions>({})
+  const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState<'distribution' | 'comparison'>('distribution')
   const router = useRouter()
-  
-  // Memoize total calculation to prevent recalculation on each render
-  const total = useMemo(() => categoryData.reduce((sum, item) => sum + item.value, 0), [])
-  
-  // Memoize formatCurrency function
-  const formatCurrency = useMemo(() => (value: number) => `$${value.toLocaleString()}`, [])
-  
-  // Calculate percentages for each category
-  const categoriesWithPercentages = useMemo<CategoryWithPercentage[]>(() => 
-    categoryData.map(category => ({
-      ...category,
-      percentage: Math.round((category.value / total) * 100)
-    })), 
-    [total]
-  )
 
   useEffect(() => {
     setMounted(true)
   }, [])
 
+  useEffect(() => {
+    if (user && mounted) {
+      fetchCategoryData()
+    }
+  }, [user, mounted, dateRange])
+
+  const fetchCategoryData = async () => {
+    if (!user) return
+
+    setLoading(true)
+    try {
+      // Calculate date range
+      const endDate = new Date()
+      let startDate = new Date()
+
+      switch (dateRange) {
+        case "7days":
+          startDate = subDays(endDate, 7)
+          break
+        case "30days":
+          startDate = subDays(endDate, 30)
+          break
+        case "3months":
+          startDate = subDays(endDate, 90)
+          break
+        case "6months":
+          startDate = subDays(endDate, 180)
+          break
+        case "ytd":
+          startDate = new Date(endDate.getFullYear(), 0, 1)
+          break
+        default:
+          startDate = subDays(endDate, 30)
+      }
+
+      // Fetch expenses
+      const expensesRef = collection(db, "expenses")
+      const q = query(
+        expensesRef,
+        where("userId", "==", user.uid),
+        orderBy("date", "desc")
+      )
+
+      const querySnapshot = await getDocs(q)
+      const allExpenses = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Expense[]
+
+      // Filter expenses by date range
+      const filteredExpenses = allExpenses.filter((expense) => {
+        const expenseDate = safeParseDate(expense.date)
+        return isAfter(expenseDate, startDate) || expenseDate.getTime() === startDate.getTime()
+      })
+
+      // Group by category
+      const categoryTotals: Record<string, number> = {}
+      const transactionsByCategory: CategoryTransactions = {}
+
+      filteredExpenses.forEach((expense) => {
+        const category = expense.category || "Other"
+        categoryTotals[category] = (categoryTotals[category] || 0) + expense.amount
+        
+        if (!transactionsByCategory[category]) {
+          transactionsByCategory[category] = []
+        }
+        transactionsByCategory[category].push(expense)
+      })
+
+      // Convert to array and calculate percentages
+      const total = Object.values(categoryTotals).reduce((sum, amount) => sum + amount, 0)
+      
+      const categoryArray = Object.entries(categoryTotals)
+        .map(([name, value], index) => ({
+          name,
+          value,
+          color: getCategoryColor(index),
+          percentage: total > 0 ? Math.round((value / total) * 100) : 0,
+        }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 5) // Show top 5 categories
+
+      setCategoryData(categoryArray)
+      setTransactionsByCategory(transactionsByCategory)
+    } catch (error) {
+      console.error("Error fetching category data:", error)
+      setCategoryData([])
+      setTransactionsByCategory({})
+    } finally {
+      setLoading(false)
+    }
+  }
+  
+  // Memoize total calculation to prevent recalculation on each render
+  const total = useMemo(() => categoryData.reduce((sum, item) => sum + item.value, 0), [categoryData])
+  
+  // Memoize formatCurrency function
+  const formatCurrency = useMemo(() => (value: number) => `$${value.toLocaleString()}`, [])
+
   if (!mounted) {
     return <div className="h-[300px] bg-cream/5 animate-pulse rounded-md" />
+  }
+
+  if (loading) {
+    return (
+      <div className="h-[300px] flex items-center justify-center">
+        <div className="text-cream/60">Loading category data...</div>
+      </div>
+    )
+  }
+
+  if (categoryData.length === 0) {
+    return (
+      <div className="h-[300px] flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-cream/60 mb-2">No expense data available</div>
+          <div className="text-sm text-cream/40">Add some expenses to see category breakdown</div>
+        </div>
+      </div>
+    )
   }
 
   const onPieEnter = (_: any, index: number) => {
@@ -125,217 +266,232 @@ export function CategoryBreakdown() {
   }
 
   if (expanded) {
-    // Render expanded view as a separate full-screen component
     return (
-      <div className="fixed inset-0 z-50 bg-[#1A1A1A] overflow-hidden">
-        <div className="h-full flex flex-col">
-          {/* Header */}
-          <div className="flex justify-between items-center p-4 border-b border-cream/10">
-            <h3 className="text-lg font-medium text-cream">Spending by Category</h3>
-            <button
-              onClick={toggleExpanded}
-              className="text-cream/60 hover:text-cream flex items-center transition-colors duration-200"
-            >
-              <X className="h-4 w-4 mr-1" />
-              <span className="text-sm">Close</span>
-            </button>
-          </div>
-          
-          {/* Content */}
-          <div className="flex-1 p-4 overflow-hidden flex flex-col">
-            {/* Date filter */}
-            <div className="mb-4">
-              <div className="relative inline-block">
-                <button 
-                  onClick={() => setShowDateFilter(!showDateFilter)}
-                  className="flex items-center bg-cream/5 rounded-lg px-3 py-2 text-sm hover:bg-cream/10 transition-colors duration-200"
-                >
-                  <Calendar className="h-4 w-4 mr-2" />
-                  {dateRangeOptions.find(option => option.value === dateRange)?.label}
-                  <ArrowDown className="h-3 w-3 ml-2" />
-                </button>
-                
-                {showDateFilter && (
-                  <div className="absolute top-full left-0 mt-1 bg-[#1E1E1E] border border-cream/10 rounded-lg shadow-lg py-1 z-10 w-full">
-                    {dateRangeOptions.map((option) => (
-                      <button
-                        key={option.value}
-                        className={`w-full text-left px-3 py-2 text-sm hover:bg-cream/5 transition-colors duration-200 ${
-                          dateRange === option.value ? 'text-cream font-medium' : 'text-cream/70'
-                        }`}
-                        onClick={() => {
-                          setDateRange(option.value)
-                          setShowDateFilter(false)
-                        }}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-            
-            {/* Main content */}
-            <div className="flex-1 flex gap-4 overflow-hidden">
-              {/* Left side: Charts */}
-              <div className="w-3/5 flex flex-col">
-                {/* Pie Chart */}
-                <div className="h-[45%] mb-4">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={categoryData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={70}
-                        outerRadius={100}
-                        paddingAngle={2}
-                        dataKey="value"
-                        onMouseEnter={onPieEnter}
-                        onMouseLeave={onPieLeave}
-                        isAnimationActive={mounted}
-                        animationBegin={0}
-                        animationDuration={1000}
-                        animationEasing="ease-out"
-                      >
-                        {categoryData.map((entry, index) => (
-                          <Cell
-                            key={`cell-${index}`}
-                            fill={entry.color}
-                            stroke={activeIndex === index || selectedCategory === entry.name ? "#FFFFFF" : "transparent"}
-                            strokeWidth={2}
-                            onClick={() => selectCategory(entry.name)}
-                            style={{ cursor: 'pointer' }}
-                          />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        formatter={(value: number) => formatCurrency(value)}
-                        contentStyle={{
-                          backgroundColor: "#FFFFFF",
-                          border: "1px solid #000000",
-                          borderRadius: "8px",
-                          color: "#000000",
-                          padding: "8px",
-                          fontWeight: "bold",
-                          boxShadow: "0 4px 8px rgba(0,0,0,0.5)"
-                        }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+        <div className="w-full max-w-7xl max-h-[95vh] bg-dark rounded-xl border border-cream/10 overflow-hidden shadow-2xl my-4">
+          <div className="p-4 md:p-8 h-full flex flex-col max-h-[95vh]">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 lg:mb-8 gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                  <h3 className="text-base lg:text-lg font-medium font-outfit">Category Breakdown</h3>
+                <div className="relative">
+                                      <button
+                      onClick={() => setShowDateFilter(!showDateFilter)}
+                      className="flex items-center gap-2 px-2 lg:px-3 py-2 rounded-lg bg-cream/10 text-cream/80 hover:bg-cream/15 transition-colors text-xs lg:text-sm whitespace-nowrap"
+                    >
+                      <Calendar className="h-3 lg:h-4 w-3 lg:w-4" />
+                      <span className="hidden sm:inline">{dateRangeOptions.find(option => option.value === dateRange)?.label}</span>
+                      <span className="sm:hidden">Filter</span>
+                      <ArrowDown className="h-3 lg:h-4 w-3 lg:w-4" />
+                    </button>
+                  
+                  {showDateFilter && (
+                    <div className="absolute top-full left-0 mt-2 bg-dark border border-cream/10 rounded-lg shadow-lg z-10 min-w-[150px]">
+                      {dateRangeOptions.map((option) => (
+                        <button
+                          key={option.value}
+                          onClick={() => {
+                            setDateRange(option.value)
+                            setShowDateFilter(false)
+                          }}
+                          className={`w-full text-left px-3 py-2 text-sm hover:bg-cream/10 transition-colors ${
+                            dateRange === option.value ? 'bg-cream/10 text-cream' : 'text-cream/80'
+                          }`}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                
-                {/* Bar Chart */}
-                <div className="h-[45%]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={categoriesWithPercentages}>
-                      <CartesianGrid 
-                        strokeDasharray="3 3" 
-                        vertical={false} 
-                        stroke="rgba(245, 245, 240, 0.1)" 
-                        horizontal={true}
-                      />
-                      <XAxis 
-                        dataKey="name" 
-                        tick={{ fill: 'rgba(245, 245, 240, 0.7)', fontSize: 12 }} 
-                        axisLine={{ stroke: 'rgba(245, 245, 240, 0.1)' }}
-                        tickLine={false}
-                      />
-                      <YAxis 
-                        tick={{ fill: 'rgba(245, 245, 240, 0.7)', fontSize: 12 }} 
-                        axisLine={{ stroke: 'rgba(245, 245, 240, 0.1)' }}
-                        tickLine={false}
-                        tickFormatter={(value) => `$${value}`}
-                      />
-                      <Tooltip
-                        formatter={(value: number) => [`$${value}`, "Amount"]}
-                        contentStyle={{
-                          backgroundColor: "#FFFFFF",
-                          border: "1px solid #000000",
-                          borderRadius: "8px",
-                          color: "#000000",
-                          padding: "8px",
-                          fontWeight: "bold",
-                          boxShadow: "0 4px 8px rgba(0,0,0,0.5)"
-                        }}
-                        labelStyle={{ color: "#000000", fontWeight: "bold" }}
-                        cursor={{ fill: "#252525" }}
-                      />
-                      <Bar 
-                        dataKey="value" 
-                        radius={[4, 4, 0, 0]}
-                        maxBarSize={40}
-                        animationDuration={1000}
-                        animationEasing="ease-out"
-                        onMouseEnter={(data, index) => {
-                          const bars = document.querySelectorAll('.recharts-bar-rectangle');
-                          bars.forEach((bar, i) => {
-                            if (i !== index) {
-                              (bar as HTMLElement).style.opacity = '0.5';
+              </div>
+              <button
+                onClick={toggleExpanded}
+                className="flex items-center justify-center h-8 w-8 rounded-full bg-cream/10 text-cream/60 hover:text-cream hover:bg-cream/15 transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="flex flex-col lg:flex-row gap-4 lg:gap-8 flex-1 overflow-hidden">
+              {/* Left side: Charts */}
+              <div className="w-full lg:w-3/5 bg-cream/5 rounded-lg p-4 lg:p-6 flex flex-col min-h-0">
+                {/* Tab Navigation */}
+                <div className="flex flex-col sm:flex-row mb-4 lg:mb-6 gap-2">
+                  <button
+                    onClick={() => setActiveTab('distribution')}
+                    className={`px-3 lg:px-4 py-2 rounded-lg text-xs lg:text-sm font-medium transition-colors ${
+                      activeTab === 'distribution'
+                        ? 'bg-cream/20 text-cream border border-cream/30'
+                        : 'bg-cream/5 text-cream/70 hover:bg-cream/10 hover:text-cream'
+                    }`}
+                  >
+                    Category Distribution
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('comparison')}
+                    className={`px-3 lg:px-4 py-2 rounded-lg text-xs lg:text-sm font-medium transition-colors ${
+                      activeTab === 'comparison'
+                        ? 'bg-cream/20 text-cream border border-cream/30'
+                        : 'bg-cream/5 text-cream/70 hover:bg-cream/10 hover:text-cream'
+                    }`}
+                  >
+                    Spending Comparison
+                  </button>
+                </div>
+
+                {/* Chart Container */}
+                <div className="flex-1">
+                  {activeTab === 'distribution' && (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={categoryData}
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="value"
+                          onMouseEnter={onPieEnter}
+                          onMouseLeave={onPieLeave}
+                        >
+                          {categoryData.map((entry, index) => (
+                            <Cell 
+                              key={`cell-${index}`} 
+                              fill={entry.color}
+                              stroke={activeIndex === index ? "#F5F5F0" : "none"}
+                              strokeWidth={2}
+                            />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          content={({ active, payload }) => {
+                            if (active && payload && payload.length) {
+                              const data = payload[0].payload
+                              return (
+                                <div className="bg-dark border border-cream/10 p-2 rounded-md shadow-md">
+                                  <p className="text-cream font-medium">{data.name}</p>
+                                  <p className="text-cream/80 text-sm">${data.value.toFixed(2)}</p>
+                                  <p className="text-cream/60 text-xs">{data.percentage}% of total</p>
+                                </div>
+                              )
                             }
-                          });
-                        }}
-                        onMouseLeave={() => {
-                          const bars = document.querySelectorAll('.recharts-bar-rectangle');
-                          bars.forEach(bar => {
-                            (bar as HTMLElement).style.opacity = '1';
-                          });
-                        }}
-                      >
-                        {categoryData.map((entry, index) => (
-                          <Cell 
-                            key={`cell-${index}`} 
-                            fill={selectedCategory === entry.name ? "rgba(245, 245, 240, 0.4)" : "rgba(245, 245, 240, 0.2)"}
-                            cursor="pointer"
-                            onClick={() => selectCategory(entry.name)}
-                            style={{
-                              transition: 'all 0.3s ease-in-out',
-                              transform: selectedCategory === entry.name ? 'scale(1.05)' : 'scale(1)',
-                              transformOrigin: 'bottom',
-                            }}
-                          />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
+                            return null
+                          }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  )}
+
+                  {activeTab === 'comparison' && (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={categoryData}>
+                        <CartesianGrid 
+                          strokeDasharray="3 3" 
+                          vertical={false} 
+                          stroke="rgba(245, 245, 240, 0.1)" 
+                          horizontal={true}
+                        />
+                        <XAxis 
+                          dataKey="name" 
+                          tick={{ fill: 'rgba(245, 245, 240, 0.7)', fontSize: 12 }} 
+                          axisLine={{ stroke: 'rgba(245, 245, 240, 0.1)' }}
+                          tickLine={false}
+                        />
+                        <YAxis 
+                          tick={{ fill: 'rgba(245, 245, 240, 0.7)', fontSize: 12 }} 
+                          axisLine={{ stroke: 'rgba(245, 245, 240, 0.1)' }}
+                          tickLine={false}
+                          tickFormatter={(value) => `$${value}`}
+                        />
+                        <Tooltip
+                          formatter={(value: number) => [`$${value.toFixed(2)}`, "Amount"]}
+                          contentStyle={{
+                            backgroundColor: "#FFFFFF",
+                            border: "1px solid #000000",
+                            borderRadius: "8px",
+                            color: "#000000",
+                            padding: "8px",
+                            fontWeight: "bold",
+                            boxShadow: "0 4px 8px rgba(0,0,0,0.5)"
+                          }}
+                          labelStyle={{ color: "#000000", fontWeight: "bold" }}
+                          cursor={{ fill: "#252525" }}
+                        />
+                        <Bar 
+                          dataKey="value" 
+                          radius={[4, 4, 0, 0]}
+                          maxBarSize={35}
+                          animationDuration={1000}
+                          animationEasing="ease-out"
+                          onMouseEnter={(data, index) => {
+                            const bars = document.querySelectorAll('.recharts-bar-rectangle');
+                            bars.forEach((bar, i) => {
+                              if (i !== index) {
+                                (bar as HTMLElement).style.opacity = '0.5';
+                              }
+                            });
+                          }}
+                          onMouseLeave={() => {
+                            const bars = document.querySelectorAll('.recharts-bar-rectangle');
+                            bars.forEach(bar => {
+                              (bar as HTMLElement).style.opacity = '1';
+                            });
+                          }}
+                        >
+                          {categoryData.map((entry, index) => (
+                            <Cell 
+                              key={`cell-${index}`} 
+                              fill={selectedCategory === entry.name ? "rgba(245, 245, 240, 0.4)" : "rgba(245, 245, 240, 0.2)"}
+                              cursor="pointer"
+                              onClick={() => selectCategory(entry.name)}
+                              style={{
+                                transition: 'all 0.3s ease-in-out',
+                                transform: selectedCategory === entry.name ? 'scale(1.05)' : 'scale(1)',
+                                transformOrigin: 'bottom',
+                              }}
+                            />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
                 </div>
               </div>
               
               {/* Right side: Category details */}
-              <div className="w-2/5 overflow-hidden">
-                <h4 className="text-base font-medium mb-3 text-cream">
-                  Category Breakdown
+              <div className="w-full lg:w-2/5 flex flex-col min-h-0">
+                <h4 className="text-lg font-medium mb-4 lg:mb-6 text-cream">
+                  Category Details
                 </h4>
                 
-                <div className="space-y-3 overflow-y-auto h-[calc(100%-32px)] pr-2">
-                  {categoriesWithPercentages.map((category, index) => (
-                    <div 
-                      key={index} 
-                      className={`bg-cream/5 rounded-lg p-3 cursor-pointer transition-all duration-300 ${
-                        selectedCategory === category.name ? 'border border-cream/40' : 'hover:bg-cream/10'
-                      }`}
-                      onClick={() => selectCategory(category.name)}
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center">
-                          <div className="h-3 w-3 rounded-full mr-2" style={{ backgroundColor: category.color }} />
-                          <span className="text-sm font-medium text-cream">{category.name}</span>
+                <div className="space-y-4 overflow-y-auto flex-1 pr-3 min-h-0">
+                  {categoryData.map((category, index) => (
+                                          <div 
+                        key={index} 
+                        className={`bg-cream/5 rounded-lg p-4 cursor-pointer transition-all duration-300 ${
+                          selectedCategory === category.name ? 'border border-cream/40' : 'hover:bg-cream/10'
+                        }`}
+                        onClick={() => selectCategory(category.name)}
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center">
+                            <div className="h-4 w-4 rounded-full mr-3" style={{ backgroundColor: category.color }} />
+                            <span className="text-sm font-medium text-cream">{category.name}</span>
+                          </div>
+                          <span className="text-sm font-medium text-cream">${category.value.toFixed(2)}</span>
                         </div>
-                        <span className="text-sm font-medium text-cream">${category.value}</span>
-                      </div>
-                      
-                      <div className="w-full bg-cream/5 rounded-full h-2 mb-2">
-                        <div 
-                          className="h-2 rounded-full transition-all duration-300" 
-                          style={{ 
-                            backgroundColor: category.color, 
-                            width: `${category.percentage}%` 
-                          }}
-                        />
-                      </div>
-                      
-                      <div className="flex justify-between items-center">
+                        
+                        <div className="w-full bg-cream/5 rounded-full h-2 mb-3">
+                          <div 
+                            className="h-2 rounded-full transition-all duration-300" 
+                            style={{ 
+                              backgroundColor: category.color, 
+                              width: `${category.percentage}%` 
+                            }}
+                          />
+                        </div>
+                        
+                        <div className="flex justify-between items-center">
                         <span className="text-xs text-cream/60">{category.percentage}% of total</span>
                         <span className="text-xs text-cream/60">
                           {transactionsByCategory[category.name]?.length || 0} transactions
@@ -347,47 +503,52 @@ export function CategoryBreakdown() {
                           selectedCategory === category.name ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'
                         }`}
                       >
-                        <div className="mt-3 pt-3 border-t border-cream/10 space-y-3">
+                        <div className="mt-4 pt-4 border-t border-cream/10 space-y-4">
                           <div className="grid grid-cols-2 gap-3">
-                            <div className="bg-cream/5 rounded-lg p-2 transform transition-all duration-300 delay-100">
-                              <div className="text-xs text-cream/60">Total Spent</div>
-                              <div className="text-lg font-medium text-cream">${category.value}</div>
+                            <div className="bg-cream/5 rounded-lg p-3 transform transition-all duration-300 delay-100">
+                              <div className="text-xs text-cream/60 mb-1">Total Spent</div>
+                              <div className="text-lg font-medium text-cream">${category.value.toFixed(2)}</div>
                             </div>
-                            <div className="bg-cream/5 rounded-lg p-2 transform transition-all duration-300 delay-150">
-                              <div className="text-xs text-cream/60">% of Budget</div>
+                            <div className="bg-cream/5 rounded-lg p-3 transform transition-all duration-300 delay-150">
+                              <div className="text-xs text-cream/60 mb-1">% of Total</div>
                               <div className="text-lg font-medium text-cream">{category.percentage}%</div>
                             </div>
                           </div>
                           
-                          <h5 className="text-sm font-medium text-cream transform transition-all duration-300 delay-200">Recent Transactions</h5>
-                          <div className="space-y-2 max-h-[180px] overflow-y-auto">
-                            {transactionsByCategory[category.name]?.map((transaction: Transaction, idx: number) => (
-                              <div 
-                                key={idx} 
-                                className="bg-cream/5 rounded-lg p-2 flex items-center justify-between hover:bg-cream/10 transition-colors duration-200 transform transition-all duration-300"
-                                style={{ transitionDelay: `${200 + idx * 50}ms` }}
-                              >
-                                <div className="flex items-center">
-                                  <div className="h-8 w-8 rounded-full bg-cream/10 flex items-center justify-center mr-2">
-                                    <transaction.icon className="h-4 w-4 text-cream/60" />
+                          <h5 className="text-sm font-medium text-cream transform transition-all duration-300 delay-200 mb-3">Recent Transactions</h5>
+                          <div className="space-y-3 max-h-[200px] overflow-y-auto">
+                            {transactionsByCategory[category.name]?.slice(0, 5).map((transaction, idx) => {
+                              const IconComponent = getCategoryIcon(transaction.category)
+                              return (
+                                <div 
+                                  key={transaction.id} 
+                                  className="bg-cream/5 rounded-lg p-3 flex items-center justify-between hover:bg-cream/10 transition-colors duration-200 transform transition-all duration-300"
+                                  style={{ transitionDelay: `${200 + idx * 50}ms` }}
+                                >
+                                  <div className="flex items-center">
+                                    <div className="h-10 w-10 rounded-full bg-cream/10 flex items-center justify-center mr-3">
+                                      <IconComponent className="h-5 w-5 text-cream/60" />
+                                    </div>
+                                    <div>
+                                      <p className="text-sm font-medium text-cream mb-1">{transaction.name}</p>
+                                      <p className="text-xs text-cream/60">
+                                        {format(safeParseDate(transaction.date), "MMM d, h:mm a")}
+                                      </p>
+                                    </div>
                                   </div>
-                                  <div>
-                                    <p className="text-sm font-medium text-cream">{transaction.name}</p>
-                                    <p className="text-xs text-cream/60">{transaction.date}</p>
-                                  </div>
+                                  <p className="text-sm font-medium text-cream">${transaction.amount.toFixed(2)}</p>
                                 </div>
-                                <p className="text-sm font-medium text-cream">${transaction.amount.toFixed(2)}</p>
-                              </div>
-                            ))}
+                              )
+                            })}
                           </div>
                         </div>
                       </div>
                     </div>
                   ))}
                   
-                  <div className="mt-3 pt-3 border-t border-cream/10 flex justify-between items-center">
-                    <span className="text-sm font-medium text-cream">Total</span>
-                    <span className="text-sm font-medium text-cream">${total}</span>
+                  <div className="mt-6 pt-4 border-t border-cream/10 flex justify-between items-center">
+                    <span className="text-base font-medium text-cream">Total</span>
+                    <span className="text-base font-medium text-cream">${total.toFixed(2)}</span>
                   </div>
                 </div>
               </div>
@@ -398,62 +559,47 @@ export function CategoryBreakdown() {
     )
   }
 
-  // Render collapsed view (original)
   return (
-    <div className="bg-transparent">
-      {/* Chart */}
-      <div className="h-[200px]">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie
-              data={categoryData}
-              cx="50%"
-              cy="50%"
-              innerRadius={50}
-              outerRadius={80}
-              paddingAngle={2}
-              dataKey="value"
-              onMouseEnter={onPieEnter}
-              onMouseLeave={onPieLeave}
-              isAnimationActive={mounted}
-              animationBegin={0}
-              animationDuration={1000}
-              animationEasing="ease-out"
-            >
-              {categoryData.map((entry, index) => (
-                <Cell
-                  key={`cell-${index}`}
-                  fill={entry.color}
-                  stroke={activeIndex === index ? "#FFFFFF" : "transparent"}
-                  strokeWidth={2}
-                />
-              ))}
-            </Pie>
-            <Tooltip
-              formatter={(value: number) => formatCurrency(value)}
-              contentStyle={{
-                backgroundColor: "#FFFFFF",
-                border: "1px solid #000000",
-                borderRadius: "8px",
-                color: "#000000",
-                padding: "8px",
-                fontWeight: "bold",
-                boxShadow: "0 4px 8px rgba(0,0,0,0.5)"
-              }}
-            />
-            <Legend
-              layout="vertical"
-              verticalAlign="middle"
-              align="right"
-              formatter={(value) => {
-                return <span className="text-cream/80 text-sm">{value}</span>
-              }}
-            />
-          </PieChart>
-        </ResponsiveContainer>
-      </div>
+    <div className="h-[300px]">
+      <ResponsiveContainer width="100%" height="80%">
+        <PieChart>
+          <Pie
+            data={categoryData}
+            cx="50%"
+            cy="50%"
+            outerRadius={80}
+            fill="#8884d8"
+            dataKey="value"
+            onMouseEnter={onPieEnter}
+            onMouseLeave={onPieLeave}
+          >
+            {categoryData.map((entry, index) => (
+              <Cell 
+                key={`cell-${index}`} 
+                fill={entry.color}
+                stroke={activeIndex === index ? "#F5F5F0" : "none"}
+                strokeWidth={2}
+              />
+            ))}
+          </Pie>
+          <Tooltip
+            content={({ active, payload }) => {
+              if (active && payload && payload.length) {
+                const data = payload[0].payload
+                return (
+                  <div className="bg-dark border border-cream/10 p-2 rounded-md shadow-md">
+                    <p className="text-cream font-medium">{data.name}</p>
+                    <p className="text-cream/80 text-sm">${data.value.toFixed(2)}</p>
+                    <p className="text-cream/60 text-xs">{data.percentage}% of total</p>
+                  </div>
+                )
+              }
+              return null
+            }}
+          />
+        </PieChart>
+      </ResponsiveContainer>
 
-      {/* Categories List */}
       <div className="mt-4">
         <div className="grid grid-cols-2 gap-x-4 gap-y-2 mb-2">
           {categoryData.map((category, index) => (
@@ -462,14 +608,14 @@ export function CategoryBreakdown() {
                 <div className="h-3 w-3 rounded-full mr-2" style={{ backgroundColor: category.color }} />
                 <span className="text-sm text-cream/80">{category.name}</span>
               </div>
-              <span className="text-sm font-medium text-cream">${category.value}</span>
+              <span className="text-sm font-medium text-cream">${category.value.toFixed(2)}</span>
             </div>
           ))}
         </div>
 
         <div className="mt-6 pt-4 border-t border-cream/10 flex justify-between items-center">
           <span className="text-sm font-medium text-cream">Total</span>
-          <span className="text-sm font-medium text-cream">${total}</span>
+          <span className="text-sm font-medium text-cream">${total.toFixed(2)}</span>
         </div>
 
         <button

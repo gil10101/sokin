@@ -5,47 +5,54 @@ import { Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Area, C
 import { ChartContainer } from "../../components/ui/chart"
 import { LoadingSpinner } from "../../components/ui/loading-spinner"
 import { motion } from "framer-motion"
+import { collection, query, where, getDocs } from "firebase/firestore"
+import { db } from "../../lib/firebase"
+import { useAuth } from "../../contexts/auth-context"
+import { format, subDays, subMonths, isAfter, eachDayOfInterval, eachMonthOfInterval, startOfDay, startOfMonth } from "date-fns"
 
-// Generate data based on timeframe
-const generateChartData = (timeframe: string) => {
-  const now = new Date()
-  const data = []
-
-  if (timeframe === "30days") {
-    // Last 30 days data
-    for (let i = 30; i >= 0; i -= 5) {
-      const date = new Date(now)
-      date.setDate(date.getDate() - i)
-      data.push({
-        name: `${date.toLocaleDateString("en-US", { month: "short" })} ${date.getDate()}`,
-        amount: Math.floor(Math.random() * 1000) + 500,
-        average: Math.floor(Math.random() * 800) + 400,
-      })
+// Helper function to safely parse dates including Firebase Timestamps
+const safeParseDate = (dateValue: any): Date => {
+  if (!dateValue) return new Date()
+  
+  try {
+    // If it's already a Date object
+    if (dateValue instanceof Date) {
+      return dateValue
     }
-  } else if (timeframe === "90days") {
-    // Last 90 days data
-    for (let i = 90; i >= 0; i -= 15) {
-      const date = new Date(now)
-      date.setDate(date.getDate() - i)
-      data.push({
-        name: `${date.toLocaleDateString("en-US", { month: "short" })} ${date.getDate()}`,
-        amount: Math.floor(Math.random() * 1500) + 300,
-        average: Math.floor(Math.random() * 1200) + 250,
-      })
+    // If it's a Firebase Timestamp object
+    else if (dateValue && typeof dateValue === 'object' && 'toDate' in dateValue) {
+      return dateValue.toDate()
     }
-  } else {
-    // Yearly data
-    for (let i = 0; i < 12; i++) {
-      const date = new Date(now.getFullYear(), i, 1)
-      data.push({
-        name: date.toLocaleDateString("en-US", { month: "short" }),
-        amount: Math.floor(Math.random() * 2000) + 800,
-        average: Math.floor(Math.random() * 1800) + 700,
-      })
+    // If it's a numeric timestamp (milliseconds)
+    else if (typeof dateValue === 'number') {
+      return new Date(dateValue)
     }
+    // If it's a string
+    else if (typeof dateValue === 'string') {
+      const parsedDate = new Date(dateValue)
+      return isNaN(parsedDate.getTime()) ? new Date() : parsedDate
+    }
+    
+    return new Date()
+  } catch (error) {
+    console.error("Error parsing date:", error, "Input:", dateValue)
+    return new Date()
   }
+}
 
-  return data
+interface Expense {
+  id: string
+  name: string
+  amount: number
+  date: string
+  category: string
+  userId: string
+}
+
+interface ChartDataPoint {
+  name: string
+  amount: number
+  average: number
 }
 
 interface ExpenseChartProps {
@@ -53,26 +60,108 @@ interface ExpenseChartProps {
 }
 
 export function ExpenseChart({ timeframe = "30days" }: ExpenseChartProps) {
+  const { user } = useAuth()
   const [mounted, setMounted] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [chartData, setChartData] = useState<ChartDataPoint[]>([])
   const chartRef = useRef<HTMLDivElement>(null)
-  
-  // Use useMemo to cache the chart data based on timeframe
-  const chartData = useMemo(() => generateChartData(timeframe), [timeframe])
-  
-  // No more separate animatedData state that triggers re-renders
 
   useEffect(() => {
     setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (user && mounted) {
+      fetchExpenseData()
+    }
+  }, [user, mounted, timeframe])
+
+  const fetchExpenseData = async () => {
+    if (!user) return
+
     setLoading(true)
+    try {
+      // Calculate date range based on timeframe
+      const endDate = new Date()
+      let startDate: Date
 
-    // Simulate loading delay
-    const timer = setTimeout(() => {
+      switch (timeframe) {
+        case "30days":
+          startDate = subDays(endDate, 30)
+          break
+        case "90days":
+          startDate = subDays(endDate, 90)
+          break
+        case "year":
+          startDate = subMonths(endDate, 12)
+          break
+        default:
+          startDate = subDays(endDate, 30)
+      }
+
+      // Fetch expenses from Firebase
+      const expensesRef = collection(db, "expenses")
+      const q = query(expensesRef, where("userId", "==", user.uid))
+
+      const querySnapshot = await getDocs(q)
+      const allExpenses = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Expense[]
+
+      // Filter expenses by date range
+      const filteredExpenses = allExpenses.filter((expense) => {
+        const expenseDate = safeParseDate(expense.date)
+        return isAfter(expenseDate, startDate) || expenseDate.getTime() === startDate.getTime()
+      })
+
+      // Generate chart data based on timeframe
+      let intervals: Date[]
+      let formatString: string
+
+      if (timeframe === "year") {
+        intervals = eachMonthOfInterval({ start: startDate, end: endDate })
+        formatString = "MMM"
+      } else {
+        const intervalDays = timeframe === "90days" ? 7 : 5
+        intervals = []
+        let currentDate = startDate
+        while (currentDate <= endDate) {
+          intervals.push(currentDate)
+          currentDate = subDays(currentDate, -intervalDays)
+        }
+        formatString = timeframe === "90days" ? "MMM d" : "MMM d"
+      }
+
+      // Group expenses by intervals
+      const groupedData = intervals.map((interval) => {
+        const intervalStart = timeframe === "year" ? startOfMonth(interval) : startOfDay(interval)
+        const intervalEnd = timeframe === "year" 
+          ? startOfDay(subDays(subMonths(intervalStart, -1), 0))
+          : subDays(intervalStart, -(timeframe === "90days" ? 7 : 5))
+
+        const intervalExpenses = filteredExpenses.filter((expense) => {
+          const expenseDate = safeParseDate(expense.date)
+          return expenseDate >= intervalStart && expenseDate <= intervalEnd
+        })
+
+        const totalAmount = intervalExpenses.reduce((sum, expense) => sum + expense.amount, 0)
+
+        return {
+          name: format(interval, formatString),
+          amount: totalAmount,
+          average: totalAmount * 0.8, // Simple average calculation
+        }
+      })
+
+      setChartData(groupedData)
+    } catch (error) {
+      console.error("Error fetching expense data:", error)
+      setChartData([])
+    } finally {
       setLoading(false)
-    }, 500)
-
-    return () => clearTimeout(timer)
-  }, [timeframe])
+    }
+  }
 
   // Only handle resize without setting state
   useEffect(() => {
@@ -102,6 +191,17 @@ export function ExpenseChart({ timeframe = "30days" }: ExpenseChartProps) {
         >
           <LoadingSpinner size="md" />
         </motion.div>
+      </div>
+    )
+  }
+
+  if (chartData.length === 0) {
+    return (
+      <div className="h-[400px] flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-cream/60 mb-2">No expense data available</div>
+          <div className="text-sm text-cream/40">Add some expenses to see spending trends</div>
+        </div>
       </div>
     )
   }
@@ -161,12 +261,12 @@ export function ExpenseChart({ timeframe = "30days" }: ExpenseChartProps) {
                       <p className="text-cream font-medium">{payload[0].payload.name}</p>
                       <div className="flex items-center mt-1">
                         <div className="h-2 w-2 rounded-full bg-cream/80 mr-1"></div>
-                        <p className="text-cream text-sm">Amount: ${payload[0].value}</p>
+                        <p className="text-cream text-sm">Amount: ${Number(payload[0].value).toFixed(2)}</p>
                       </div>
                       {payload[1] && (
                         <div className="flex items-center mt-1">
                           <div className="h-2 w-2 rounded-full bg-cream/50 mr-1"></div>
-                          <p className="text-cream/80 text-sm">Average: ${payload[1].value}</p>
+                          <p className="text-cream/80 text-sm">Average: ${Number(payload[1].value).toFixed(2)}</p>
                         </div>
                       )}
                     </div>

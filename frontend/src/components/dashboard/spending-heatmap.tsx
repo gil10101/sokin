@@ -1,31 +1,91 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { format, startOfWeek, addDays, addWeeks, subWeeks } from "date-fns"
+import { collection, query, where, getDocs } from "firebase/firestore"
+import { db } from "../../lib/firebase"
+import { useAuth } from "../../contexts/auth-context"
 
-// Mock data for the heatmap
-const generateMockData = () => {
-  const today = new Date()
-  const startDate = startOfWeek(subWeeks(today, 11))
-  const data: Record<string, number> = {}
-
-  // Generate 12 weeks of data
-  for (let week = 0; week < 12; week++) {
-    for (let day = 0; day < 7; day++) {
-      const date = addDays(addWeeks(startDate, week), day)
-      const dateKey = format(date, "yyyy-MM-dd")
-      // Random value between 0 and 100
-      data[dateKey] = Math.floor(Math.random() * 100)
+// Helper function to safely parse dates including Firebase Timestamps
+const safeParseDate = (dateValue: any): Date => {
+  if (!dateValue) return new Date()
+  
+  try {
+    // If it's already a Date object
+    if (dateValue instanceof Date) {
+      return dateValue
     }
+    // If it's a Firebase Timestamp object
+    else if (dateValue && typeof dateValue === 'object' && 'toDate' in dateValue) {
+      return dateValue.toDate()
+    }
+    // If it's a numeric timestamp (milliseconds)
+    else if (typeof dateValue === 'number') {
+      return new Date(dateValue)
+    }
+    // If it's a string
+    else if (typeof dateValue === 'string') {
+      const parsedDate = new Date(dateValue)
+      return isNaN(parsedDate.getTime()) ? new Date() : parsedDate
+    }
+    
+    return new Date()
+  } catch (error) {
+    console.error("Error parsing date:", error, "Input:", dateValue)
+    return new Date()
   }
+}
 
-  return data
+interface Expense {
+  id: string
+  amount: number
+  date: string
+  userId: string
 }
 
 export function SpendingHeatmap() {
-  const [data] = useState(generateMockData())
+  const { user } = useAuth()
+  const [data, setData] = useState<Record<string, number>>({})
+  const [loading, setLoading] = useState(true)
   const today = new Date()
   const startDate = startOfWeek(subWeeks(today, 11))
+
+  useEffect(() => {
+    if (user) {
+      fetchExpenseData()
+    }
+  }, [user])
+
+  const fetchExpenseData = async () => {
+    if (!user) return
+
+    setLoading(true)
+    try {
+      const expensesRef = collection(db, "expenses")
+      const q = query(expensesRef, where("userId", "==", user.uid))
+      
+      const querySnapshot = await getDocs(q)
+      const expenses = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Expense[]
+
+      // Group expenses by date
+      const expensesByDate: Record<string, number> = {}
+      
+      expenses.forEach((expense) => {
+        const dateKey = format(safeParseDate(expense.date), "yyyy-MM-dd")
+        expensesByDate[dateKey] = (expensesByDate[dateKey] || 0) + expense.amount
+      })
+
+      setData(expensesByDate)
+    } catch (error) {
+      console.error("Error fetching expense data for heatmap:", error)
+      setData({})
+    } finally {
+      setLoading(false)
+    }
+  }
 
   // Generate weeks array
   const weeks = []
@@ -43,17 +103,31 @@ export function SpendingHeatmap() {
     weeks.push(weekDays)
   }
 
-  // Get color based on value
+  // Get color based on value (dynamic based on actual data)
   const getColor = (value: number) => {
     if (value === 0) return "bg-cream/5"
-    if (value < 25) return "bg-cream/10"
-    if (value < 50) return "bg-cream/20"
-    if (value < 75) return "bg-cream/30"
+    
+    // Find max value for scaling
+    const maxValue = Math.max(...Object.values(data))
+    if (maxValue === 0) return "bg-cream/5"
+    
+    const intensity = value / maxValue
+    if (intensity < 0.25) return "bg-cream/10"
+    if (intensity < 0.5) return "bg-cream/20"
+    if (intensity < 0.75) return "bg-cream/30"
     return "bg-cream/40"
   }
 
   // Day labels
   const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+
+  if (loading) {
+    return (
+      <div className="h-[300px] flex items-center justify-center">
+        <div className="text-cream/60">Loading spending data...</div>
+      </div>
+    )
+  }
 
   return (
     <div className="h-[300px] overflow-auto">
