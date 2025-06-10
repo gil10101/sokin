@@ -43,16 +43,46 @@ interface Expense {
 }
 
 // Helper function to safely format dates
-const safeFormatDate = (dateString: string, formatStr: string): string => {
+const safeFormatDate = (dateValue: any, formatStr: string): string => {
   try {
-    // First check if it's a valid ISO string
-    const date = parseISO(dateString)
-    if (!isValid(date)) {
+    let date: Date | null = null
+    
+    // Handle different date formats
+    if (!dateValue) {
       return "Invalid date"
     }
+    
+    // If it's already a Date object
+    if (dateValue instanceof Date) {
+      date = dateValue
+    }
+    // If it's a Firebase Timestamp object
+    else if (dateValue && typeof dateValue === 'object' && 'toDate' in dateValue) {
+      date = dateValue.toDate()
+    }
+    // If it's a numeric timestamp (milliseconds)
+    else if (typeof dateValue === 'number') {
+      date = new Date(dateValue)
+    }
+    // If it's a string
+    else if (typeof dateValue === 'string') {
+      // Try parsing as ISO string first
+      date = parseISO(dateValue)
+      
+      // If parseISO fails, try native Date constructor
+      if (!isValid(date)) {
+        date = new Date(dateValue)
+      }
+    }
+    
+    // Final validation
+    if (!date || !isValid(date)) {
+      return "Invalid date"
+    }
+    
     return format(date, formatStr)
   } catch (error) {
-    console.error("Error formatting date:", error)
+    console.error("Error formatting date:", error, "Input:", dateValue)
     return "Invalid date"
   }
 }
@@ -146,9 +176,28 @@ export default function ExpensesPage() {
       case "date-asc":
         result.sort((a, b) => {
           try {
-            // Safely parse dates
-            const dateA = a.date ? new Date(a.date).getTime() : 0
-            const dateB = b.date ? new Date(b.date).getTime() : 0
+            // Safely parse dates using the same logic as safeFormatDate
+            const parseDate = (dateValue: any): number => {
+              if (!dateValue) return 0
+              
+              if (dateValue instanceof Date) {
+                return dateValue.getTime()
+              }
+              if (dateValue && typeof dateValue === 'object' && 'toDate' in dateValue) {
+                return dateValue.toDate().getTime()
+              }
+              if (typeof dateValue === 'number') {
+                return dateValue
+              }
+              if (typeof dateValue === 'string') {
+                const parsedDate = new Date(dateValue)
+                return isValid(parsedDate) ? parsedDate.getTime() : 0
+              }
+              return 0
+            }
+            
+            const dateA = parseDate(a.date)
+            const dateB = parseDate(b.date)
             return dateA - dateB
           } catch (error) {
             return 0
@@ -159,9 +208,28 @@ export default function ExpensesPage() {
       default:
         result.sort((a, b) => {
           try {
-            // Safely parse dates
-            const dateA = a.date ? new Date(a.date).getTime() : 0
-            const dateB = b.date ? new Date(b.date).getTime() : 0
+            // Safely parse dates using the same logic as safeFormatDate
+            const parseDate = (dateValue: any): number => {
+              if (!dateValue) return 0
+              
+              if (dateValue instanceof Date) {
+                return dateValue.getTime()
+              }
+              if (dateValue && typeof dateValue === 'object' && 'toDate' in dateValue) {
+                return dateValue.toDate().getTime()
+              }
+              if (typeof dateValue === 'number') {
+                return dateValue
+              }
+              if (typeof dateValue === 'string') {
+                const parsedDate = new Date(dateValue)
+                return isValid(parsedDate) ? parsedDate.getTime() : 0
+              }
+              return 0
+            }
+            
+            const dateA = parseDate(a.date)
+            const dateB = parseDate(b.date)
             return dateB - dateA
           } catch (error) {
             return 0
