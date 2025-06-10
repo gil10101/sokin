@@ -17,8 +17,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "../../components/ui/avatar"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../../components/ui/tooltip"
 import { useAuth } from "../../contexts/auth-context"
 import { usePathname } from "next/navigation"
-// Import the NotificationsDropdown
-import { NotificationsDropdown } from "../../components/notifications/notifications-dropdown"
 
 interface DashboardSidebarProps {
   collapsed: boolean
@@ -138,7 +136,6 @@ export function DashboardSidebar({ collapsed, setCollapsed }: DashboardSidebarPr
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <NotificationsDropdown />
               <button
                 className="h-8 w-8 rounded-full flex items-center justify-center text-cream/60 hover:text-cream hover:bg-cream/5 transition-colors"
                 onClick={handleSignOut}
