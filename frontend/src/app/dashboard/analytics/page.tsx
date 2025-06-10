@@ -1,10 +1,10 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { collection, query, where, getDocs } from "firebase/firestore"
+import { collection, query, where, getDocs, Timestamp } from "firebase/firestore"
 import { auth, db } from "../../../lib/firebase"
 import { useAuthState } from "react-firebase-hooks/auth"
-import { format, subMonths } from "date-fns"
+import { format, subMonths, parse } from "date-fns"
 import { motion } from "framer-motion"
 import { DashboardSidebar } from "../../../components/dashboard/sidebar"
 import { MonthlyTrendsChart } from "../../../components/dashboard/monthly-trends-chart"
@@ -14,6 +14,36 @@ import { BudgetProgressChart } from "../../../components/dashboard/budget-progre
 import { Tabs, TabsList, TabsTrigger } from "../../../components/ui/tabs"
 import { useToast } from "../../../hooks/use-toast"
 import { LoadingSpinner } from "../../../components/ui/loading-spinner"
+
+// Helper function to safely parse dates
+const safeParseDate = (dateValue: any): Date => {
+  if (!dateValue) return new Date()
+  
+  try {
+    // If it's already a Date object
+    if (dateValue instanceof Date) {
+      return dateValue
+    }
+    // If it's a Firebase Timestamp object
+    else if (dateValue && typeof dateValue === 'object' && 'toDate' in dateValue) {
+      return dateValue.toDate()
+    }
+    // If it's a numeric timestamp (milliseconds)
+    else if (typeof dateValue === 'number') {
+      return new Date(dateValue)
+    }
+    // If it's a string
+    else if (typeof dateValue === 'string') {
+      const parsedDate = new Date(dateValue)
+      return isNaN(parsedDate.getTime()) ? new Date() : parsedDate
+    }
+    
+    return new Date()
+  } catch (error) {
+    console.error("Error parsing date:", error, "Input:", dateValue)
+    return new Date()
+  }
+}
 
 export default function AnalyticsPage() {
   const [collapsed, setCollapsed] = useState(false)
@@ -47,13 +77,17 @@ export default function AnalyticsPage() {
             break
         }
 
+        // Convert to Firestore Timestamp objects for proper comparison
+        const startTimestamp = Timestamp.fromDate(startDate)
+        const endTimestamp = Timestamp.fromDate(endDate)
+
         // Query expenses within date range
         const expensesRef = collection(db, "expenses")
         const q = query(
           expensesRef,
           where("userId", "==", user.uid),
-          where("date", ">=", startDate.toISOString()),
-          where("date", "<=", endDate.toISOString()),
+          where("date", ">=", startTimestamp),
+          where("date", "<=", endTimestamp),
         )
 
         const querySnapshot = await getDocs(q)
@@ -62,12 +96,14 @@ export default function AnalyticsPage() {
           ...doc.data(),
         }))
 
+        console.log("Fetched expenses:", expenses.length)
+
         // Process data for monthly trends
         const monthlyTrends: any = {}
         const categoryTotals: any = {}
 
         expenses.forEach((expense: any) => {
-          const date = new Date(expense.date)
+          const date = safeParseDate(expense.date)
           const monthYear = format(date, "MMM yyyy")
 
           // Aggregate monthly data
@@ -94,17 +130,28 @@ export default function AnalyticsPage() {
           amount,
         }))
 
-        // Sort monthly data chronologically
+        // Sort monthly data chronologically by parsing the month string back to date
         monthlyDataArray.sort((a, b) => {
-          return new Date(a.month).getTime() - new Date(b.month).getTime()
+          try {
+            const dateA = parse(a.month, "MMM yyyy", new Date())
+            const dateB = parse(b.month, "MMM yyyy", new Date())
+            return dateA.getTime() - dateB.getTime()
+          } catch (error) {
+            console.error("Error sorting monthly data:", error)
+            return 0
+          }
         })
 
         // Sort category data by amount (descending)
         categoryDataArray.sort((a, b) => (b.amount as number) - (a.amount as number))
 
+        console.log("Processed monthly data:", monthlyDataArray)
+        console.log("Processed category data:", categoryDataArray)
+
         setMonthlyData(monthlyDataArray)
         setCategoryData(categoryDataArray)
       } catch (error: any) {
+        console.error("Analytics fetch error:", error)
         toast({
           title: "Error loading analytics",
           description: error.message || "There was an error loading your analytics data",

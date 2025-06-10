@@ -68,6 +68,19 @@ interface Budget {
   userId: string
 }
 
+interface Expense {
+  id: string
+  userId: string
+  name: string
+  amount: number
+  date: string
+  category: string
+  description?: string
+  tags?: string[]
+  createdAt: string
+  updatedAt?: string
+}
+
 interface BudgetFormData {
   amount: string
   category: string
@@ -77,6 +90,66 @@ interface BudgetFormData {
   notes: string
 }
 
+// Helper function to safely parse dates
+const safeParseDateToTimestamp = (dateValue: any): number => {
+  try {
+    if (!dateValue) return 0
+    
+    // If it's already a Date object
+    if (dateValue instanceof Date) {
+      return dateValue.getTime()
+    }
+    // If it's a Firebase Timestamp object
+    else if (dateValue && typeof dateValue === 'object' && 'toDate' in dateValue) {
+      return dateValue.toDate().getTime()
+    }
+    // If it's a numeric timestamp (milliseconds)
+    else if (typeof dateValue === 'number') {
+      return dateValue
+    }
+    // If it's a string
+    else if (typeof dateValue === 'string') {
+      const parsedDate = new Date(dateValue)
+      return isNaN(parsedDate.getTime()) ? 0 : parsedDate.getTime()
+    }
+    
+    return 0
+  } catch (error) {
+    console.error("Error parsing date:", error, "Input:", dateValue)
+    return 0
+  }
+}
+
+// Helper function to safely parse dates to Date objects
+const safeParseDate = (dateValue: any): Date | null => {
+  try {
+    if (!dateValue) return null
+    
+    // If it's already a Date object
+    if (dateValue instanceof Date) {
+      return dateValue
+    }
+    // If it's a Firebase Timestamp object
+    else if (dateValue && typeof dateValue === 'object' && 'toDate' in dateValue) {
+      return dateValue.toDate()
+    }
+    // If it's a numeric timestamp (milliseconds)
+    else if (typeof dateValue === 'number') {
+      return new Date(dateValue)
+    }
+    // If it's a string
+    else if (typeof dateValue === 'string') {
+      const parsedDate = new Date(dateValue)
+      return isNaN(parsedDate.getTime()) ? null : parsedDate
+    }
+    
+    return null
+  } catch (error) {
+    console.error("Error parsing date:", error, "Input:", dateValue)
+    return null
+  }
+}
+
 export default function BudgetsPage() {
   const [collapsed, setCollapsed] = useState(false)
   const { user } = useAuth()
@@ -84,6 +157,7 @@ export default function BudgetsPage() {
   const { toast } = useToast()
 
   const [budgets, setBudgets] = useState<Budget[]>([])
+  const [expenses, setExpenses] = useState<Expense[]>([])
   const [categories, setCategories] = useState<string[]>(DEFAULT_CATEGORIES)
   const [loading, setLoading] = useState(true)
   const [openDialog, setOpenDialog] = useState(false)
@@ -103,6 +177,7 @@ export default function BudgetsPage() {
 
   useEffect(() => {
     fetchBudgets()
+    fetchExpenses()
     fetchCategories()
   }, [user])
 
@@ -129,6 +204,26 @@ export default function BudgetsPage() {
       })
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchExpenses = async () => {
+    if (!user) return
+
+    try {
+      const expensesRef = collection(db, "expenses")
+      const q = query(expensesRef, where("userId", "==", user.uid), orderBy("date", "desc"))
+
+      const querySnapshot = await getDocs(q)
+      const expensesData = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Expense[]
+
+      setExpenses(expensesData)
+    } catch (error: any) {
+      console.error("Error loading expenses:", error)
+      // Don't show toast for expenses error since it's secondary data
     }
   }
 
@@ -187,46 +282,98 @@ export default function BudgetsPage() {
   }
 
   const openEditDialog = (budget: Budget) => {
-    // Helper function to safely parse dates
-    const safeParseDate = (dateValue: any): Date => {
-      if (!dateValue) return new Date()
-      
-      try {
-        // If it's already a Date object
-        if (dateValue instanceof Date) {
-          return dateValue
-        }
-        // If it's a Firebase Timestamp object
-        else if (dateValue && typeof dateValue === 'object' && 'toDate' in dateValue) {
-          return dateValue.toDate()
-        }
-        // If it's a numeric timestamp (milliseconds)
-        else if (typeof dateValue === 'number') {
-          return new Date(dateValue)
-        }
-        // If it's a string
-        else if (typeof dateValue === 'string') {
-          const parsedDate = new Date(dateValue)
-          return isNaN(parsedDate.getTime()) ? new Date() : parsedDate
-        }
-        
-        return new Date()
-      } catch (error) {
-        console.error("Error parsing date:", error, "Input:", dateValue)
-        return new Date()
-      }
-    }
-
     setEditingBudget(budget)
     setFormData({
       amount: budget.amount.toString(),
       category: budget.category,
       period: budget.period,
-      startDate: safeParseDate(budget.startDate),
+      startDate: safeParseDate(budget.startDate) || new Date(),
       endDate: budget.endDate ? safeParseDate(budget.endDate) : null,
       notes: budget.notes || "",
     })
     setOpenDialog(true)
+  }
+
+  const calculateBudgetProgress = (budget: Budget): { spent: number; progress: number } => {
+    if (!expenses.length) {
+      console.log(`No expenses found for budget ${budget.category}`)
+      return { spent: 0, progress: 0 }
+    }
+
+    // Parse budget dates safely
+    const budgetStartDate = safeParseDate(budget.startDate)
+    const budgetEndDate = budget.endDate ? safeParseDate(budget.endDate) : null
+
+    if (!budgetStartDate) {
+      console.log(`Invalid budget start date for ${budget.category}:`, budget.startDate)
+      return { spent: 0, progress: 0 }
+    }
+
+    console.log(`Calculating progress for budget: ${budget.category}`)
+    console.log(`Budget start date: ${budgetStartDate}`)
+    console.log(`Budget end date: ${budgetEndDate}`)
+    console.log(`Budget period: ${budget.period}`)
+    console.log(`Total expenses available: ${expenses.length}`)
+
+    // Calculate the effective end date based on period
+    let effectiveEndDate = budgetEndDate
+    if (!effectiveEndDate) {
+      const startDate = new Date(budgetStartDate)
+      switch (budget.period) {
+        case "monthly":
+          effectiveEndDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, startDate.getDate())
+          break
+        case "yearly":
+          effectiveEndDate = new Date(startDate.getFullYear() + 1, startDate.getMonth(), startDate.getDate())
+          break
+        case "weekly":
+          effectiveEndDate = new Date(startDate)
+          effectiveEndDate.setDate(startDate.getDate() + 7)
+          break
+        case "daily":
+          effectiveEndDate = new Date(startDate)
+          effectiveEndDate.setDate(startDate.getDate() + 1)
+          break
+        default:
+          // For custom periods, use current date if no end date
+          effectiveEndDate = new Date()
+          break
+      }
+    }
+
+    console.log(`Effective end date: ${effectiveEndDate}`)
+
+    // Filter expenses that match this budget's category and date range
+    const relevantExpenses = expenses.filter((expense) => {
+      const expenseDate = safeParseDate(expense.date)
+      
+      if (!expenseDate) {
+        console.log(`Invalid expense date for ${expense.name}:`, expense.date)
+        return false
+      }
+      
+      const matchesCategory = expense.category === budget.category
+      const isInDateRange = expenseDate >= budgetStartDate && expenseDate <= effectiveEndDate
+      
+      console.log(`Checking expense: ${expense.name}`)
+      console.log(`  - Category: ${expense.category} (matches: ${matchesCategory})`)
+      console.log(`  - Date: ${expenseDate} (in range: ${isInDateRange})`)
+      console.log(`  - Amount: ${expense.amount}`)
+      
+      return matchesCategory && isInDateRange
+    })
+
+    console.log(`Found ${relevantExpenses.length} relevant expenses for ${budget.category}`)
+
+    // Calculate total spent
+    const totalSpent = relevantExpenses.reduce((total, expense) => total + expense.amount, 0)
+    
+    // Calculate progress percentage
+    const progress = budget.amount > 0 ? Math.round((totalSpent / budget.amount) * 100) : 0
+
+    console.log(`Total spent: ${totalSpent}, Progress: ${progress}%`)
+
+    return { spent: totalSpent, progress }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -291,6 +438,7 @@ export default function BudgetsPage() {
       resetForm()
       setOpenDialog(false)
       fetchBudgets()
+      fetchExpenses() // Refresh expenses to recalculate progress
     } catch (error: any) {
       toast({
         title: editingBudget ? "Error updating budget" : "Error adding budget",
@@ -406,6 +554,7 @@ export default function BudgetsPage() {
                         budget={budget}
                         onEdit={() => openEditDialog(budget)}
                         onDelete={() => setBudgetToDelete(budget.id)}
+                        calculateProgress={calculateBudgetProgress}
                       />
                     ))}
                   </div>
@@ -619,11 +768,12 @@ interface BudgetCardProps {
   budget: Budget
   onEdit: () => void
   onDelete: () => void
+  calculateProgress: (budget: Budget) => { spent: number; progress: number }
 }
 
-function BudgetCard({ budget, onEdit, onDelete }: BudgetCardProps) {
-  // Calculate progress (mock data for now)
-  const progress = Math.floor(Math.random() * 100)
+function BudgetCard({ budget, onEdit, onDelete, calculateProgress }: BudgetCardProps) {
+  // Calculate actual progress using real expense data
+  const { spent, progress } = calculateProgress(budget)
   const isOverBudget = progress > 100
 
   // Safely parse dates with robust handling
@@ -724,7 +874,7 @@ function BudgetCard({ budget, onEdit, onDelete }: BudgetCardProps) {
         <div className="flex justify-between items-baseline">
           <div className="text-2xl font-medium">${budget.amount.toFixed(2)}</div>
           <div className={isOverBudget ? "text-red-400" : "text-cream/60"}>
-            ${Math.floor((budget.amount * progress) / 100)} spent
+            ${spent.toFixed(2)} spent
           </div>
         </div>
 
@@ -741,6 +891,11 @@ function BudgetCard({ budget, onEdit, onDelete }: BudgetCardProps) {
               style={{ width: `${Math.min(progress, 100)}%` }}
             />
           </div>
+          {isOverBudget && (
+            <p className="text-xs text-red-400 mt-1">
+              Over budget by ${(spent - budget.amount).toFixed(2)}
+            </p>
+          )}
         </div>
 
         {budget.notes && (
