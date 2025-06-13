@@ -14,7 +14,7 @@ if (SENTRY_DSN) {
     // Dynamic import to avoid bundling Sentry when not used
     import('@sentry/nextjs').then((Sentry) => {
       // Initialize Sentry only if not already initialized
-      if (!Sentry.getCurrentHub().getClient()) {
+      if (!Sentry.getClient()) {
         Sentry.init({
           dsn: SENTRY_DSN,
           tracesSampleRate: 0.2,

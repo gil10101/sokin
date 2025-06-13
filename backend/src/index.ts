@@ -37,10 +37,18 @@ app.use(rateLimiter(100, 15 * 60 * 1000)); // 100 requests per 15 minutes
 import expenseRoutes from './routes/expenses';
 import userRoutes from './routes/users';
 import budgetRoutes from './routes/budgets';
+import receiptRoutes from './routes/receiptRoutes';
+import notificationRoutes from './routes/notificationRoutes';
+import goalsRoutes from './routes/goalsRoutes';
+import billRemindersRoutes from './routes/billRemindersRoutes';
 
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/budgets', budgetRoutes);
+app.use('/api/receipts', receiptRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/goals', goalsRoutes);
+app.use('/api/bill-reminders', billRemindersRoutes);
 
 // Health check route
 app.get('/health', (req: Request, res: Response) => {

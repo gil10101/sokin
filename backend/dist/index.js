@@ -34,9 +34,17 @@ app.use((0, rateLimiter_1.rateLimiter)(100, 15 * 60 * 1000)); // 100 requests pe
 const expenses_1 = __importDefault(require("./routes/expenses"));
 const users_1 = __importDefault(require("./routes/users"));
 const budgets_1 = __importDefault(require("./routes/budgets"));
+const receiptRoutes_1 = __importDefault(require("./routes/receiptRoutes"));
+const notificationRoutes_1 = __importDefault(require("./routes/notificationRoutes"));
+const goalsRoutes_1 = __importDefault(require("./routes/goalsRoutes"));
+const billRemindersRoutes_1 = __importDefault(require("./routes/billRemindersRoutes"));
 app.use('/api/expenses', expenses_1.default);
 app.use('/api/users', users_1.default);
 app.use('/api/budgets', budgets_1.default);
+app.use('/api/receipts', receiptRoutes_1.default);
+app.use('/api/notifications', notificationRoutes_1.default);
+app.use('/api/goals', goalsRoutes_1.default);
+app.use('/api/bill-reminders', billRemindersRoutes_1.default);
 // Health check route
 app.get('/health', (req, res) => {
     res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });

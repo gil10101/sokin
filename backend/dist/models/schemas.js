@@ -7,6 +7,7 @@ exports.updateUserSchema = exports.updateBudgetSchema = exports.createBudgetSche
 const joi_1 = __importDefault(require("joi"));
 // Expense schemas
 exports.createExpenseSchema = joi_1.default.object({
+    name: joi_1.default.string().required().trim(),
     amount: joi_1.default.number().required().positive(),
     date: joi_1.default.string().isoDate().required(),
     category: joi_1.default.string().required().trim(),
@@ -14,6 +15,7 @@ exports.createExpenseSchema = joi_1.default.object({
     tags: joi_1.default.array().items(joi_1.default.string())
 });
 exports.updateExpenseSchema = joi_1.default.object({
+    name: joi_1.default.string().trim(),
     amount: joi_1.default.number().positive(),
     date: joi_1.default.string().isoDate(),
     category: joi_1.default.string().trim(),
