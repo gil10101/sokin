@@ -90,7 +90,9 @@ sokin/
 │   │   │   ├── auth-context.tsx         # Authentication context
 │   │   │   └── notifications.tsx        # Notifications context
 │   │   ├── hooks/                 # Custom React hooks
-│   │   │   └── useApi.ts          # Hook for API requests
+│   │   │   ├── useApi.ts          # Hook for API requests
+│   │   │   ├── use-mobile.tsx     # Hook for mobile device detection
+│   │   │   └── use-toast.ts       # Hook for toast notifications
 │   │   ├── lib/                   # Utility functions and libraries
 │   │   │   ├── api.ts             # API client
 │   │   │   ├── api-utils.ts       # API utilities
@@ -125,10 +127,16 @@ sokin/
 │   │   ├── middleware/            # Express middleware
 │   │   │   └── auth.ts            # Authentication middleware
 │   │   ├── models/                # Data models
+│   │   │   ├── schemas.js         # Data validation schemas
+│   │   │   └── types.js           # Data model type definitions
 │   │   ├── routes/                # API routes
-│   │   │   ├── expenses.ts        # Expense routes
-│   │   │   ├── users.ts           # User routes
-│   │   │   └── budgets.ts         # Budget routes
+│   │   │   ├── expenses.js            # Expense routes
+│   │   │   ├── users.js               # User routes
+│   │   │   ├── budgets.js             # Budget routes
+│   │   │   ├── billRemindersRoutes.js       # Bill reminders routes
+│   │   │   ├── goalsRoutes.js               # Goals routes
+│   │   │   ├── notificationRoutes.js        # Notification routes
+│   │   │   └── receipt.js             # Receipt routes
 │   │   ├── types/                 # Type definitions
 │   │   │   └── express/           # Express-specific types
 │   │   ├── utils/                 # Utility functions
