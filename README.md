@@ -87,14 +87,20 @@ sokin/
 │   │   │   ├── protected-route.tsx # Authentication protection
 │   │   │   └── theme-provider.tsx  # Theme provider
 │   │   ├── contexts/              # React contexts
+│   │   │   ├── auth-context.tsx         # Authentication context
+│   │   │   └── notifications.tsx        # Notifications context
 │   │   ├── hooks/                 # Custom React hooks
 │   │   │   └── useApi.ts          # Hook for API requests
 │   │   ├── lib/                   # Utility functions and libraries
 │   │   │   ├── api.ts             # API client
 │   │   │   ├── api-utils.ts       # API utilities
 │   │   │   ├── firebase.ts        # Firebase configuration
+│   │   │   ├── firebase-messenger.ts # Firebase messaging utilities
 │   │   │   ├── sentry.ts          # Error tracking
-│   │   │   └── types.ts           # TypeScript types
+│   │   │   ├── types.ts           # TypeScript types
+│   │   │   └── utils.ts           # General utility functions
+│   │   ├── pages/                 # Page for debuging
+│   │   ├── contexts/              # React contexts
 │   │   └── styles/                # Additional styles
 │   ├── public/                    # Static assets
 │   ├── .env.local                 # Frontend environment variables
@@ -109,9 +115,13 @@ sokin/
 │   │   ├── config/                # Configuration files
 │   │   │   └── firebase.ts        # Firebase Admin configuration
 │   │   ├── controllers/           # Route controllers
-│   │   │   ├── expenses.ts        # Expense controllers
-│   │   │   ├── users.ts           # User controllers
-│   │   │   └── budgets.ts         # Budget controllers
+│   │   │   ├── billReminder.js            # Bill reminder controller
+│   │   │   ├── budgets.js                 # Budget controllers
+│   │   │   ├── expenses.js                # Expense controllers
+│   │   │   ├── goalsController.js         # Goals controller
+│   │   │   ├── notificationController.js  # Notification controller
+│   │   │   ├── recepitController.js       # Receipt controller
+│   │   │   └── users.js                   # User controller
 │   │   ├── middleware/            # Express middleware
 │   │   │   └── auth.ts            # Authentication middleware
 │   │   ├── models/                # Data models
@@ -119,31 +129,46 @@ sokin/
 │   │   │   ├── expenses.ts        # Expense routes
 │   │   │   ├── users.ts           # User routes
 │   │   │   └── budgets.ts         # Budget routes
+│   │   ├── types/                 # Type definitions
+│   │   │   └── express/           # Express-specific types
 │   │   ├── utils/                 # Utility functions
 │   │   └── index.ts               # Entry point
 │   ├── .env                       # Backend environment variables
 │   ├── package.json               # Backend dependencies
 │   └── tsconfig.json              # TypeScript configuration
+├── functions/                     # Cloud Functions or serverless functions
+├── lib/                           # Shared libraries and utilities
 ├── package.json                   # Root package.json with workspace setup
-└── migrate.sh                     # Migration script
+├── .firebaserc                    # Firebase project configuration
+├── firebase.json                  # Firebase service and hosting configuration
+├── firestore.indexes.json         # Firestore indexes configuration
+└── firestore.rules                # Firestore security rules
 ```
 
 ## Features and Improvements
 
 ### Frontend
-- **API Client**: Robust API client with authentication and error handling
-- **Error Tracking**: Sentry integration for real-time error tracking
+- **API Client**: Robust API client with automatic authentication and error handling
+- **Error Tracking**: Sentry integration for real-time error tracking with user identification
 - **Error Boundaries**: React error boundaries to prevent app crashes
-- **Backend Connectivity Monitoring**: Automatic monitoring and alerts for backend connectivity issues
-- **Configuration Validation**: Checks for required environment variables at startup
+- **Backend Connectivity Monitoring**: Automatic health checks with toast notifications for connection issues
+- **Configuration Validation**: Environment variable validation utilities
 - **TypeScript Types**: Comprehensive TypeScript type definitions for API data
+- **Firebase Messaging**: Push notification support with FCM token management
+- **Custom Hooks**: API interaction hooks and mobile-responsive utilities
+- **Protected Routes**: Authentication-based route protection
+- **Theme Support**: Dark/light theme provider integration
 
 ### Backend
-- **Secure Authentication**: Firebase Admin authentication with token verification
-- **Controller Architecture**: Well-structured MVC pattern with separate controllers
-- **Input Validation**: Request validation before processing
-- **Error Handling**: Comprehensive error handling and standardized responses
-- **Security Headers**: Helmet integration for secure HTTP headers
+- **Secure Authentication**: Firebase Admin authentication with token verification middleware
+- **Controller Architecture**: Well-structured MVC pattern with dedicated controllers for expenses, budgets, users, notifications, goals, receipts, and bill reminders
+- **Rate Limiting**: Request rate limiting middleware to prevent abuse
+- **Input Validation**: Request validation middleware with error handling
+- **Error Handling**: Comprehensive error handling middleware with structured logging
+- **Security Headers**: Helmet integration for secure HTTP headers and CORS configuration
+- **Health Monitoring**: Health check endpoint for connectivity monitoring
+- **Logging**: Structured logging utility for debugging and monitoring
+- **Caching**: Caching utilities for improved performance
 
 ## Troubleshooting
 
