@@ -78,14 +78,15 @@ const createExpense = async (req, res) => {
             res.status(500).json({ error: 'Database not initialized' });
             return;
         }
-        const { amount, date, category, description, tags } = req.body;
+        const { name, amount, date, category, description, tags } = req.body;
         // Basic validation
-        if (!amount || !date || !category) {
-            res.status(400).json({ error: 'Missing required fields: amount, date, and category are required' });
+        if (!name || !amount || !date || !category) {
+            res.status(400).json({ error: 'Missing required fields: name, amount, date, and category are required' });
             return;
         }
         const expenseData = {
             userId: req.user.uid,
+            name,
             amount: Number(amount),
             date,
             category,
@@ -135,9 +136,11 @@ const updateExpense = async (req, res) => {
             res.status(403).json({ error: 'Forbidden: You do not have access to this expense' });
             return;
         }
-        const { amount, date, category, description, tags } = req.body;
+        const { name, amount, date, category, description, tags } = req.body;
         // Build update object with only provided fields
         const updateData = {};
+        if (name)
+            updateData.name = name;
         if (amount !== undefined)
             updateData.amount = Number(amount);
         if (date)
