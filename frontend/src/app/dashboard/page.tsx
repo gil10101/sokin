@@ -202,22 +202,30 @@ export default function DashboardPage() {
     <div className="flex h-screen bg-dark text-cream overflow-hidden">
       <DashboardSidebar collapsed={collapsed} setCollapsed={setCollapsed} />
 
-      <main className="flex-1 overflow-auto p-6 md:p-8 lg:p-10">
+      <main className="flex-1 overflow-auto p-4 sm:p-6 md:p-8 lg:p-10">
         <div className="max-w-7xl mx-auto">
-          <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-            <div className="flex items-center">
-              <Link href="/" className="flex items-center hover:opacity-80 transition-opacity">
-                <img src="/sokin-icon.png" alt="Sokin" className="h-10 w-10 mr-3" />
-              </Link>
-              <div>
-                <h1 className="text-2xl md:text-3xl font-medium font-outfit">Dashboard</h1>
-                <p className="text-cream/60 text-sm mt-1 font-outfit">
-                  Welcome back, {user?.displayName?.split(" ")[0] || "User"}.
-                </p>
+                      <header className="flex flex-col gap-4 mb-6 sm:mb-8">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center ml-12 md:ml-0">
+                <Link href="/" className="hidden md:flex items-center hover:opacity-80 transition-opacity mr-3">
+                  <img src="/sokin-icon.png" alt="Sokin" className="h-10 w-10" />
+                </Link>
+                <div>
+                  <h1 className="text-xl sm:text-2xl md:text-3xl font-medium font-outfit">Dashboard</h1>
+                  <p className="text-cream/60 text-sm mt-1 font-outfit">
+                    Welcome back, {user?.displayName?.split(" ")[0] || "User"}.
+                  </p>
+                </div>
               </div>
+              <button
+                onClick={() => router.push("/dashboard/add-expense")}
+                className="md:hidden flex items-center justify-center h-10 w-10 rounded-full bg-cream text-dark font-medium text-sm transition-all hover:bg-cream/90"
+              >
+                <PlusCircle className="h-5 w-5" />
+              </button>
             </div>
-            <div className="flex items-center gap-4">
-              <form onSubmit={handleSearch} className="relative w-full md:w-64">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
+              <form onSubmit={handleSearch} className="relative flex-1 sm:w-64 sm:flex-initial">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-cream/40" />
                 <Input
                   placeholder="Search transactions..."
@@ -259,19 +267,20 @@ export default function DashboardPage() {
                 )}
               </form>
 
-              <NotificationsDropdown />
-
-              <button
-                onClick={() => router.push("/dashboard/add-expense")}
-                className="hidden md:flex items-center justify-center h-10 px-4 rounded-full bg-cream text-dark font-medium text-sm transition-all hover:bg-cream/90 group"
-              >
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Add Expense
-              </button>
+              <div className="flex items-center gap-3">
+                <NotificationsDropdown />
+                <button
+                  onClick={() => router.push("/dashboard/add-expense")}
+                  className="hidden md:flex items-center justify-center h-10 px-4 rounded-full bg-cream text-dark font-medium text-sm transition-all hover:bg-cream/90 group"
+                >
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Add Expense
+                </button>
+              </div>
             </div>
           </header>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 sm:mb-8">
             <MotionContainer delay={0.1}>
               <MetricCard
                 title="Total Expenses"
@@ -310,8 +319,8 @@ export default function DashboardPage() {
             </MotionContainer>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-            <MotionContainer className="lg:col-span-2 bg-cream/5 rounded-xl border border-cream/10 p-6" delay={0.5}>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+            <MotionContainer className="lg:col-span-2 bg-cream/5 rounded-xl border border-cream/10 p-4 sm:p-6" delay={0.5}>
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-medium font-outfit">Spending Trends</h2>
                 <DropdownMenu>
@@ -343,7 +352,7 @@ export default function DashboardPage() {
               </div>
               <ExpenseChart timeframe={timeframe} />
             </MotionContainer>
-            <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-6" delay={0.6}>
+            <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-4 sm:p-6 min-h-[30rem]" delay={0.6}>
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-medium font-outfit">Spending by Category</h2>
                 <button 
@@ -358,7 +367,7 @@ export default function DashboardPage() {
             </MotionContainer>
           </div>
 
-          <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-6" delay={0.7}>
+          <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-4 sm:p-6" delay={0.7}>
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-medium font-outfit">Recent Transactions</h2>
               <button

@@ -1,12 +1,13 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell, ResponsiveContainer, LabelList } from "recharts"
 import { motion } from "framer-motion"
 import { collection, query, where, getDocs } from "firebase/firestore"
 import { db } from "../../lib/firebase"
 import { useAuth } from "../../contexts/auth-context"
 import { startOfMonth, endOfMonth, isWithinInterval } from "date-fns"
+import { useViewport } from "../../hooks/use-mobile"
 
 // Helper function to safely parse dates including Firebase Timestamps
 const safeParseDate = (dateValue: any): Date => {
@@ -66,9 +67,39 @@ interface BudgetProgressData {
 
 export function BudgetProgressChart() {
   const { user } = useAuth()
+  const { isMobile, isTablet } = useViewport()
   const [data, setData] = useState<BudgetProgressData[]>([])
   const [animatedData, setAnimatedData] = useState<BudgetProgressData[]>([])
   const [loading, setLoading] = useState(true)
+
+  // Responsive chart configuration
+  const chartConfig = useMemo(() => {
+    if (isMobile) {
+      return {
+        height: 250,
+        margin: { top: 20, right: 30, left: 60, bottom: 5 },
+        tickFontSize: 10,
+        yAxisWidth: 60,
+        showLabels: false,
+      }
+    } else if (isTablet) {
+      return {
+        height: 280,
+        margin: { top: 20, right: 40, left: 70, bottom: 5 },
+        tickFontSize: 11,
+        yAxisWidth: 70,
+        showLabels: true,
+      }
+    } else {
+      return {
+        height: 300,
+        margin: { top: 20, right: 50, left: 80, bottom: 5 },
+        tickFontSize: 12,
+        yAxisWidth: 80,
+        showLabels: true,
+      }
+    }
+  }, [isMobile, isTablet])
 
   useEffect(() => {
     if (user) {
@@ -200,7 +231,7 @@ export function BudgetProgressChart() {
 
   if (loading) {
     return (
-      <div className="h-[300px] flex items-center justify-center">
+      <div style={{ height: chartConfig.height }} className="flex items-center justify-center">
         <div className="text-cream/60">Loading budget data...</div>
       </div>
     )
@@ -208,7 +239,7 @@ export function BudgetProgressChart() {
 
   if (data.length === 0) {
     return (
-      <div className="h-[300px] flex items-center justify-center">
+      <div style={{ height: chartConfig.height }} className="flex items-center justify-center">
         <div className="text-center">
           <div className="text-cream/60 mb-2">No budget data available</div>
           <div className="text-sm text-cream/40">Create some budgets to see progress here</div>
@@ -219,19 +250,24 @@ export function BudgetProgressChart() {
 
   return (
     <motion.div
-      className="h-[300px]"
+      className="w-full"
+      style={{ height: chartConfig.height }}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5, delay: 0.2 }}
     >
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={animatedData} layout="vertical" margin={{ top: 20, right: 50, left: 80, bottom: 5 }}>
+        <BarChart 
+          data={animatedData} 
+          layout="vertical" 
+          margin={chartConfig.margin}
+        >
           <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="rgba(245, 245, 240, 0.1)" />
           <XAxis
             type="number"
             axisLine={false}
             tickLine={false}
-            tick={{ fill: "rgba(245, 245, 240, 0.6)", fontSize: 12 }}
+            tick={{ fill: "rgba(245, 245, 240, 0.6)", fontSize: chartConfig.tickFontSize }}
             domain={[0, 120]}
             tickFormatter={(value) => `${value}%`}
           />
@@ -240,8 +276,9 @@ export function BudgetProgressChart() {
             dataKey="category"
             axisLine={false}
             tickLine={false}
-            tick={{ fill: "rgba(245, 245, 240, 0.6)", fontSize: 12 }}
-            width={80}
+            tick={{ fill: "rgba(245, 245, 240, 0.6)", fontSize: chartConfig.tickFontSize }}
+            width={chartConfig.yAxisWidth}
+            tickFormatter={(value) => isMobile && value.length > 8 ? `${value.substring(0, 8)}...` : value}
           />
           <Bar
             dataKey="percentage"
@@ -253,12 +290,14 @@ export function BudgetProgressChart() {
             {animatedData.map((entry, index) => (
               <Cell key={`cell-${index}`} fill={getColor(entry.percentage)} />
             ))}
-            <LabelList
-              dataKey="percentage"
-              position="right"
-              formatter={(value: number) => `${value}%`}
-              style={{ fill: "rgba(245, 245, 240, 0.8)", fontSize: 12 }}
-            />
+            {chartConfig.showLabels && (
+              <LabelList
+                dataKey="percentage"
+                position="right"
+                formatter={(value: number) => `${value}%`}
+                style={{ fill: "rgba(245, 245, 240, 0.7)", fontSize: 11 }}
+              />
+            )}
           </Bar>
         </BarChart>
       </ResponsiveContainer>

@@ -351,23 +351,23 @@ export function AdvancedAnalytics({ expenses, budgets, timeframe }: AdvancedAnal
               <CardTitle>Spending Heatmap</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-7 gap-1 text-xs">
-                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                  <div key={day} className="text-center font-medium p-2">{day}</div>
+              <div className={`grid grid-cols-7 gap-1 ${isMobile ? 'text-xs' : 'text-sm'}`}>
+                {(isMobile ? ['S', 'M', 'T', 'W', 'T', 'F', 'S'] : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']).map((day, index) => (
+                  <div key={index} className={`text-center font-medium ${isMobile ? 'p-1' : 'p-2'}`}>{day}</div>
                 ))}
-                {spendingHeatmapData.slice(-49).map((day, index) => {
+                {spendingHeatmapData.slice(isMobile ? -35 : -49).map((day, index) => {
                   const intensity = Math.min(day.amount / 100, 1) // Normalize intensity
                   return (
                     <div
                       key={index}
-                      className={`aspect-square rounded-sm flex items-center justify-center text-xs cursor-pointer hover:scale-110 transition-transform`}
+                      className={`aspect-square rounded-sm flex items-center justify-center ${isMobile ? 'text-xs' : 'text-sm'} cursor-pointer hover:scale-110 transition-transform`}
                       style={{
                         backgroundColor: `rgba(59, 130, 246, ${intensity})`,
                         color: intensity > 0.5 ? 'white' : 'black'
                       }}
                       title={`${day.date}: $${day.amount.toFixed(2)}`}
                     >
-                      {day.day}
+                      {isMobile ? day.day.slice(-1) : day.day}
                     </div>
                   )
                 })}

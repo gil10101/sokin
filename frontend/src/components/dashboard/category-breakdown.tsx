@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation"
 import { collection, query, where, orderBy, limit, getDocs } from "firebase/firestore"
 import { db } from "../../lib/firebase"
 import { useAuth } from "../../contexts/auth-context"
+import { useViewport } from "../../hooks/use-mobile"
 import { format, subDays, isAfter } from "date-fns"
 
 // Helper function to safely parse dates including Firebase Timestamps

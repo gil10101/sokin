@@ -48,7 +48,7 @@ export function DashboardSidebar({ collapsed, setCollapsed }: DashboardSidebarPr
 
   return (
     <aside
-      className="h-screen bg-dark border-r border-cream/10 flex flex-col transition-all duration-300 ease-in-out"
+      className="hidden md:flex h-screen bg-dark border-r border-cream/10 flex-col transition-all duration-300 ease-in-out"
       style={{ width: collapsed ? "100px" : "200px" }}
     >
       <div className="p-4 flex items-center justify-between border-b border-cream/10 h-[73px]">

@@ -76,7 +76,7 @@ export default function LandingPage() {
   return (
     <div className="flex min-h-screen flex-col bg-dark text-cream relative overflow-hidden">
       <header className="fixed top-0 z-50 w-full bg-dark/80 backdrop-blur-sm">
-        <div className="container mx-auto px-6 md:px-12 lg:px-16 flex h-24 items-center justify-between">
+        <div className="container mx-auto px-4 sm:px-6 md:px-12 lg:px-16 flex h-20 sm:h-24 items-center justify-between">
           <div className="flex-1 flex justify-start">
             <span className="text-xl font-medium font-outfit tracking-tight">
               Sokin<span className="text-xs align-super">™</span>
@@ -142,7 +142,7 @@ export default function LandingPage() {
         </div>
         {isMenuOpen && (
           <motion.div
-            className="md:hidden px-6 py-4 bg-dark/90 backdrop-blur-md"
+            className="md:hidden px-4 sm:px-6 py-4 bg-dark/95 backdrop-blur-md border-t border-cream/10"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
@@ -190,14 +190,14 @@ export default function LandingPage() {
         )}
       </header>
       <main className="flex-1 relative z-10">
-        <section id="hero" className="h-screen flex items-center justify-center relative pt-24">
+        <section id="hero" className="min-h-screen flex items-center justify-center relative pt-20 sm:pt-24 pb-8">
           <motion.div
-            className="container mx-auto px-6 md:px-12 lg:px-16 relative z-10 text-center"
+            className="container mx-auto px-4 sm:px-6 md:px-12 lg:px-16 relative z-10 text-center"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 1.5, ease: "easeOut" }}
           >
-            <h1 className="text-5xl md:text-7xl lg:text-8xl font-medium tracking-tight font-outfit mb-6">Sokin</h1>
+            <h1 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-medium tracking-tight font-outfit mb-6">Sokin</h1>
             <p className="text-lg md:text-xl text-cream/70 font-outfit mb-24 max-w-md mx-auto">
               Personal finance, redefined.
             </p>

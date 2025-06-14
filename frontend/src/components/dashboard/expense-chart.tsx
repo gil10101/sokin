@@ -8,6 +8,7 @@ import { motion } from "framer-motion"
 import { collection, query, where, getDocs } from "firebase/firestore"
 import { db } from "../../lib/firebase"
 import { useAuth } from "../../contexts/auth-context"
+import { useViewport } from "../../hooks/use-mobile"
 import { format, subDays, subMonths, isAfter, eachDayOfInterval, eachMonthOfInterval, startOfDay, startOfMonth } from "date-fns"
 
 // Helper function to safely parse dates including Firebase Timestamps
@@ -61,6 +62,7 @@ interface ExpenseChartProps {
 
 export function ExpenseChart({ timeframe = "30days" }: ExpenseChartProps) {
   const { user } = useAuth()
+  const { isMobile } = useViewport()
   const [mounted, setMounted] = useState(false)
   const [loading, setLoading] = useState(true)
   const [chartData, setChartData] = useState<ChartDataPoint[]>([])
@@ -183,7 +185,7 @@ export function ExpenseChart({ timeframe = "30days" }: ExpenseChartProps) {
 
   if (!mounted || loading) {
     return (
-      <div className="h-[400px] flex items-center justify-center">
+      <div className={`${isMobile ? 'h-[280px]' : 'h-[400px]'} flex items-center justify-center`}>
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -197,7 +199,7 @@ export function ExpenseChart({ timeframe = "30days" }: ExpenseChartProps) {
 
   if (chartData.length === 0) {
     return (
-      <div className="h-[400px] flex items-center justify-center">
+      <div className={`${isMobile ? 'h-[280px]' : 'h-[400px]'} flex items-center justify-center`}>
         <div className="text-center">
           <div className="text-cream/60 mb-2">No expense data available</div>
           <div className="text-sm text-cream/40">Add some expenses to see spending trends</div>
@@ -209,7 +211,7 @@ export function ExpenseChart({ timeframe = "30days" }: ExpenseChartProps) {
   return (
     <motion.div
       ref={chartRef}
-      className="h-[400px]"
+      className={`${isMobile ? 'h-[280px]' : 'h-[400px]'} w-full min-w-0 overflow-hidden`}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
@@ -225,10 +227,10 @@ export function ExpenseChart({ timeframe = "30days" }: ExpenseChartProps) {
             color: "hsl(var(--chart-2))",
           },
         }}
-        className="h-[400px]"
+        className={`${isMobile ? 'h-[280px]' : 'h-[400px]'} w-full`}
       >
         <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
+          <ComposedChart data={chartData} margin={isMobile ? { top: 5, right: 0, left: -15, bottom: 15 } : { top: 10, right: 10, left: 0, bottom: 20 }}>
             <defs>
               <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="rgba(245, 245, 240, 0.8)" stopOpacity={0.8} />
@@ -244,14 +246,19 @@ export function ExpenseChart({ timeframe = "30days" }: ExpenseChartProps) {
               dataKey="name"
               axisLine={false}
               tickLine={false}
-              tick={{ fill: "rgba(245, 245, 240, 0.6)", fontSize: 12 }}
+              tick={{ fill: "rgba(245, 245, 240, 0.6)", fontSize: isMobile ? 9 : 12 }}
               dy={10}
+              angle={isMobile ? -45 : 0}
+              textAnchor={isMobile ? "end" : "middle"}
+              height={isMobile ? 50 : 30}
+              interval={isMobile ? 1 : 0}
             />
             <YAxis
               axisLine={false}
               tickLine={false}
-              tick={{ fill: "rgba(245, 245, 240, 0.6)", fontSize: 12 }}
-              tickFormatter={(value) => `$${value}`}
+              tick={{ fill: "rgba(245, 245, 240, 0.6)", fontSize: isMobile ? 9 : 12 }}
+              tickFormatter={(value) => isMobile ? `$${(value/1000).toFixed(0)}k` : `$${value}`}
+              width={isMobile ? 30 : 60}
             />
             <Tooltip
               content={({ active, payload }) => {
@@ -290,7 +297,7 @@ export function ExpenseChart({ timeframe = "30days" }: ExpenseChartProps) {
               dataKey="amount"
               fill="url(#colorAmount)"
               radius={[4, 4, 0, 0]}
-              barSize={timeframe === "year" ? 20 : 30}
+              barSize={isMobile ? (timeframe === "year" ? 12 : 16) : (timeframe === "year" ? 20 : 30)}
               animationDuration={1500}
               animationEasing="ease-out"
               isAnimationActive={!loading}

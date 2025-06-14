@@ -294,14 +294,22 @@ export default function ExpensesPage() {
     <div className="flex h-screen bg-dark text-cream overflow-hidden">
       <DashboardSidebar collapsed={collapsed} setCollapsed={setCollapsed} />
 
-      <main className="flex-1 overflow-auto p-6 md:p-8 lg:p-10">
+      <main className="flex-1 overflow-auto p-4 sm:p-6 md:p-8 lg:p-10">
         <div className="max-w-7xl mx-auto">
-          <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-            <div>
-              <h1 className="text-2xl md:text-3xl font-medium font-outfit">Expenses</h1>
-              <p className="text-cream/60 text-sm mt-1 font-outfit">Manage and track all your expenses</p>
+          <header className="flex flex-col gap-4 mb-6 sm:mb-8">
+            <div className="flex items-center justify-between">
+              <div className="ml-12 md:ml-0">
+                <h1 className="text-xl sm:text-2xl md:text-3xl font-medium font-outfit">Expenses</h1>
+                <p className="text-cream/60 text-sm mt-1 font-outfit">Manage and track all your expenses</p>
+              </div>
+              <Button
+                onClick={() => router.push("/dashboard/add-expense")}
+                className="md:hidden bg-cream text-dark hover:bg-cream/90 font-medium h-10 w-10 p-0"
+              >
+                <PlusCircle className="h-5 w-5" />
+              </Button>
             </div>
-            <div>
+            <div className="hidden md:flex justify-end">
               <Button
                 onClick={() => router.push("/dashboard/add-expense")}
                 className="bg-cream text-dark hover:bg-cream/90 font-medium"
@@ -312,9 +320,9 @@ export default function ExpensesPage() {
             </div>
           </header>
 
-          <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-6 mb-8">
-            <div className="flex flex-col md:flex-row gap-4 mb-6">
-              <div className="relative flex-1">
+          <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-4 sm:p-6 mb-6 sm:mb-8">
+            <div className="flex flex-col gap-4 mb-6">
+              <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-cream/40" />
                 <Input
                   placeholder="Search expenses..."
@@ -323,9 +331,9 @@ export default function ExpensesPage() {
                   className="pl-10 bg-cream/5 border-cream/10 text-cream placeholder:text-cream/40 focus-visible:ring-cream/20"
                 />
               </div>
-              <div className="flex gap-4">
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                 <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                  <SelectTrigger className="w-[180px] bg-cream/5 border-cream/10 text-cream focus:ring-cream/20">
+                  <SelectTrigger className="bg-cream/5 border-cream/10 text-cream focus:ring-cream/20">
                     <SelectValue placeholder="All Categories" />
                   </SelectTrigger>
                   <SelectContent className="bg-dark border-cream/10">
@@ -340,7 +348,7 @@ export default function ExpensesPage() {
                   </SelectContent>
                 </Select>
                 <Select value={sortBy} onValueChange={setSortBy}>
-                  <SelectTrigger className="w-[180px] bg-cream/5 border-cream/10 text-cream focus:ring-cream/20">
+                  <SelectTrigger className="bg-cream/5 border-cream/10 text-cream focus:ring-cream/20">
                     <SelectValue placeholder="Sort by" />
                   </SelectTrigger>
                   <SelectContent className="bg-dark border-cream/10">
@@ -383,18 +391,86 @@ export default function ExpensesPage() {
                 )}
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-cream/10 hover:bg-transparent">
-                      <TableHead className="w-8"></TableHead>
-                      <TableHead className="text-cream/60">Name</TableHead>
-                      <TableHead className="text-cream/60">Category</TableHead>
-                      <TableHead className="text-cream/60">Date</TableHead>
-                      <TableHead className="text-cream/60 text-right">Amount</TableHead>
-                      <TableHead className="text-cream/60 text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
+              <>
+                {/* Mobile Card Layout */}
+                <div className="md:hidden space-y-3">
+                  {filteredExpenses.map((expense) => (
+                    <div key={expense.id} className="bg-cream/5 rounded-lg border border-cream/10 p-4">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <h3 className="font-medium text-cream mb-1">{expense.name}</h3>
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="px-2 py-1 rounded-full bg-cream/10 text-xs">{expense.category}</span>
+                            <span className="text-xs text-cream/60">
+                              {expense.date ? safeFormatDate(expense.date, "MMM d, yyyy") : "N/A"}
+                            </span>
+                          </div>
+                          {expense.description && (
+                            <p className="text-sm text-cream/70 mt-2">{expense.description}</p>
+                          )}
+                        </div>
+                        <div className="text-right ml-4">
+                          <div className="text-lg font-semibold text-cream">${expense.amount.toFixed(2)}</div>
+                          <div className="flex gap-1 mt-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => router.push(`/dashboard/expenses/edit/${expense.id}`)}
+                              className="h-8 w-8 text-cream/60 hover:text-cream hover:bg-cream/10"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => setExpenseToDelete(expense.id)}
+                                  className="h-8 w-8 text-cream/60 hover:text-red-400 hover:bg-cream/10"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent className="bg-dark border-cream/10 text-cream">
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Expense</AlertDialogTitle>
+                                  <AlertDialogDescription className="text-cream/60">
+                                    Are you sure you want to delete this expense? This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel className="bg-transparent border-cream/10 text-cream hover:bg-cream/10 hover:text-cream">
+                                    Cancel
+                                  </AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={handleDeleteExpense}
+                                    className="bg-red-500 text-white hover:bg-red-600"
+                                  >
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Desktop Table Layout */}
+                <div className="hidden md:block overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-cream/10 hover:bg-transparent">
+                        <TableHead className="w-8"></TableHead>
+                        <TableHead className="text-cream/60">Name</TableHead>
+                        <TableHead className="text-cream/60">Category</TableHead>
+                        <TableHead className="text-cream/60">Date</TableHead>
+                        <TableHead className="text-cream/60 text-right">Amount</TableHead>
+                        <TableHead className="text-cream/60 text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
                   <TableBody>
                     {filteredExpenses.map((expense) => (
                       <React.Fragment key={expense.id}>
@@ -496,8 +572,9 @@ export default function ExpensesPage() {
                       </React.Fragment>
                     ))}
                   </TableBody>
-                </Table>
-              </div>
+                  </Table>
+                </div>
+              </>
             )}
           </MotionContainer>
         </div>

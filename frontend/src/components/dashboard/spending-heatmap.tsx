@@ -1,10 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { format, startOfWeek, addDays, addWeeks, subWeeks } from "date-fns"
 import { collection, query, where, getDocs } from "firebase/firestore"
 import { db } from "../../lib/firebase"
 import { useAuth } from "../../contexts/auth-context"
+import { useViewport } from "../../hooks/use-mobile"
 
 // Helper function to safely parse dates including Firebase Timestamps
 const safeParseDate = (dateValue: any): Date => {
@@ -45,10 +46,40 @@ interface Expense {
 
 export function SpendingHeatmap() {
   const { user } = useAuth()
+  const { isMobile, isTablet } = useViewport()
   const [data, setData] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
   const today = new Date()
-  const startDate = startOfWeek(subWeeks(today, 11))
+  const startDate = startOfWeek(subWeeks(today, isMobile ? 7 : 11)) // Show fewer weeks on mobile
+
+  // Responsive configuration
+  const heatmapConfig = useMemo(() => {
+    if (isMobile) {
+      return {
+        height: 180,
+        cellSize: 'h-3 w-3',
+        fontSize: 'text-xs',
+        weekCount: 8,
+        showDayLabels: false,
+      }
+    } else if (isTablet) {
+      return {
+        height: 220,
+        cellSize: 'h-4 w-4',
+        fontSize: 'text-xs',
+        weekCount: 10,
+        showDayLabels: true,
+      }
+    } else {
+      return {
+        height: 300,
+        cellSize: 'h-5 w-5',
+        fontSize: 'text-xs',
+        weekCount: 12,
+        showDayLabels: true,
+      }
+    }
+  }, [isMobile, isTablet])
 
   useEffect(() => {
     if (user) {
@@ -87,9 +118,9 @@ export function SpendingHeatmap() {
     }
   }
 
-  // Generate weeks array
+  // Generate weeks array (responsive count)
   const weeks = []
-  for (let week = 0; week < 12; week++) {
+  for (let week = 0; week < heatmapConfig.weekCount; week++) {
     const weekDays = []
     for (let day = 0; day < 7; day++) {
       const date = addDays(addWeeks(startDate, week), day)
@@ -123,22 +154,24 @@ export function SpendingHeatmap() {
 
   if (loading) {
     return (
-      <div className="h-[300px] flex items-center justify-center">
+      <div className="flex items-center justify-center" style={{ height: heatmapConfig.height }}>
         <div className="text-cream/60">Loading spending data...</div>
       </div>
     )
   }
 
   return (
-    <div className="h-[300px] overflow-auto">
+    <div className="overflow-auto" style={{ height: heatmapConfig.height }}>
       <div className="flex">
-        <div className="w-8 mr-2">
-          {dayLabels.map((day, index) => (
-            <div key={day} className="h-5 text-xs text-cream/40 flex items-center justify-end">
-              {index % 2 === 0 ? day : ""}
-            </div>
-          ))}
-        </div>
+        {heatmapConfig.showDayLabels && (
+          <div className="w-8 mr-2">
+            {dayLabels.map((day, index) => (
+              <div key={day} className={`${heatmapConfig.cellSize.split(' ')[0]} text-xs text-cream/40 flex items-center justify-end`}>
+                {index % 2 === 0 ? day : ""}
+              </div>
+            ))}
+          </div>
+        )}
         <div className="flex-1 overflow-x-auto">
           <div className="flex">
             {weeks.map((week, weekIndex) => (
@@ -146,29 +179,29 @@ export function SpendingHeatmap() {
                 {week.map((day) => (
                   <div
                     key={day.dateKey}
-                    className={`h-5 w-5 rounded-sm ${getColor(day.value)} m-[1px] cursor-pointer hover:ring-1 hover:ring-cream/40`}
+                    className={`${heatmapConfig.cellSize} rounded-sm ${getColor(day.value)} m-[1px] cursor-pointer hover:ring-1 hover:ring-cream/40`}
                     title={`${format(day.date, "MMM d, yyyy")}: $${day.value.toFixed(2)}`}
                   />
                 ))}
               </div>
             ))}
           </div>
-          <div className="flex justify-between mt-2 text-xs text-cream/40">
-            <span>{format(startDate, "MMM d")}</span>
-            <span>{format(today, "MMM d")}</span>
+          <div className={`flex justify-between mt-2 ${heatmapConfig.fontSize} text-cream/40`}>
+            <span>{format(startDate, isMobile ? "MMM" : "MMM d")}</span>
+            <span>{format(today, isMobile ? "MMM" : "MMM d")}</span>
           </div>
         </div>
       </div>
       <div className="flex items-center justify-end mt-4">
-        <div className="text-xs text-cream/60 mr-2">Less</div>
+        <div className={`${heatmapConfig.fontSize} text-cream/60 mr-2`}>Less</div>
         <div className="flex">
-          <div className="h-3 w-3 bg-cream/5 rounded-sm"></div>
-          <div className="h-3 w-3 bg-cream/10 rounded-sm ml-1"></div>
-          <div className="h-3 w-3 bg-cream/20 rounded-sm ml-1"></div>
-          <div className="h-3 w-3 bg-cream/30 rounded-sm ml-1"></div>
-          <div className="h-3 w-3 bg-cream/40 rounded-sm ml-1"></div>
+          <div className={`${heatmapConfig.cellSize.replace('h-', 'h-').replace('w-', 'w-')} bg-cream/5 rounded-sm`}></div>
+          <div className={`${heatmapConfig.cellSize.replace('h-', 'h-').replace('w-', 'w-')} bg-cream/10 rounded-sm ml-1`}></div>
+          <div className={`${heatmapConfig.cellSize.replace('h-', 'h-').replace('w-', 'w-')} bg-cream/20 rounded-sm ml-1`}></div>
+          <div className={`${heatmapConfig.cellSize.replace('h-', 'h-').replace('w-', 'w-')} bg-cream/30 rounded-sm ml-1`}></div>
+          <div className={`${heatmapConfig.cellSize.replace('h-', 'h-').replace('w-', 'w-')} bg-cream/40 rounded-sm ml-1`}></div>
         </div>
-        <div className="text-xs text-cream/60 ml-2">More</div>
+        <div className={`${heatmapConfig.fontSize} text-cream/60 ml-2`}>More</div>
       </div>
     </div>
   )
