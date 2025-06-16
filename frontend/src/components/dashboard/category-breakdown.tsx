@@ -315,7 +315,7 @@ export function CategoryBreakdown() {
 
             <div className="flex flex-col lg:flex-row gap-4 lg:gap-8 flex-1 overflow-hidden">
               {/* Left side: Charts */}
-              <div className="w-full lg:w-3/5 bg-cream/5 rounded-lg p-4 lg:p-6 flex flex-col min-h-0">
+              <div className="w-full lg:w-3/5 bg-cream/5 rounded-lg p-4 lg:p-6 flex flex-col min-h-0 flex-shrink-0">
                 {/* Tab Navigation */}
                 <div className="flex flex-col sm:flex-row mb-4 lg:mb-6 gap-2">
                   <button
@@ -341,50 +341,53 @@ export function CategoryBreakdown() {
                 </div>
 
                 {/* Chart Container */}
-                <div className="flex-1">
+                <div className="h-[180px] lg:flex-1 lg:min-h-0 mb-4 lg:mb-0 flex-shrink-0">
                   {activeTab === 'distribution' && (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={categoryData}
-                          cx="50%"
-                          cy="50%"
-                          outerRadius={80}
-                          fill="#8884d8"
-                          dataKey="value"
-                          onMouseEnter={onPieEnter}
-                          onMouseLeave={onPieLeave}
-                        >
-                          {categoryData.map((entry, index) => (
-                            <Cell 
-                              key={`cell-${index}`} 
-                              fill={entry.color}
-                              stroke={activeIndex === index ? "#F5F5F0" : "none"}
-                              strokeWidth={2}
-                            />
-                          ))}
-                        </Pie>
-                        <Tooltip
-                          content={({ active, payload }) => {
-                            if (active && payload && payload.length) {
-                              const data = payload[0].payload
-                              return (
-                                <div className="bg-dark border border-cream/10 p-2 rounded-md shadow-md">
-                                  <p className="text-cream font-medium">{data.name}</p>
-                                  <p className="text-cream/80 text-sm">${data.value.toFixed(2)}</p>
-                                  <p className="text-cream/60 text-xs">{data.percentage}% of total</p>
-                                </div>
-                              )
-                            }
-                            return null
-                          }}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
+                    <div className="h-[200px] lg:h-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={categoryData}
+                            cx="50%"
+                            cy="50%"
+                            outerRadius={80}
+                            fill="#8884d8"
+                            dataKey="value"
+                            onMouseEnter={onPieEnter}
+                            onMouseLeave={onPieLeave}
+                          >
+                            {categoryData.map((entry, index) => (
+                              <Cell 
+                                key={`cell-${index}`} 
+                                fill={entry.color}
+                                stroke={activeIndex === index ? "#F5F5F0" : "none"}
+                                strokeWidth={2}
+                              />
+                            ))}
+                          </Pie>
+                          <Tooltip
+                            content={({ active, payload }) => {
+                              if (active && payload && payload.length) {
+                                const data = payload[0].payload
+                                return (
+                                  <div className="bg-dark border border-cream/10 p-2 rounded-md shadow-md">
+                                    <p className="text-cream font-medium">{data.name}</p>
+                                    <p className="text-cream/80 text-sm">${data.value.toFixed(2)}</p>
+                                    <p className="text-cream/60 text-xs">{data.percentage}% of total</p>
+                                  </div>
+                                )
+                              }
+                              return null
+                            }}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
                   )}
 
                   {activeTab === 'comparison' && (
-                    <ResponsiveContainer width="100%" height="100%">
+                    <div className="h-[200px] lg:h-full">
+                      <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={categoryData}>
                         <CartesianGrid 
                           strokeDasharray="3 3" 
@@ -455,6 +458,7 @@ export function CategoryBreakdown() {
                         </Bar>
                       </BarChart>
                     </ResponsiveContainer>
+                    </div>
                   )}
                 </div>
               </div>

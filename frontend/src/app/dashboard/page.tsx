@@ -352,7 +352,7 @@ export default function DashboardPage() {
               </div>
               <ExpenseChart timeframe={timeframe} />
             </MotionContainer>
-            <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-4 sm:p-6 min-h-[30rem]" delay={0.6}>
+            <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-4 sm:p-6 min-h-[32rem]" delay={0.6}>
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-medium font-outfit">Spending by Category</h2>
                 <button 
