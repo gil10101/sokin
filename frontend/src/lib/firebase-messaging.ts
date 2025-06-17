@@ -1,12 +1,36 @@
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 import { auth } from './firebase';
+import { notificationsAPI } from './api-services';
 
-// Initialize Firebase messaging
-const messaging = getMessaging();
+// Initialize Firebase messaging only on client side
+let messaging: any = null;
+
+const initializeMessagingInstance = () => {
+  if (typeof window !== 'undefined' && !messaging) {
+    try {
+      messaging = getMessaging();
+    } catch (error) {
+      console.warn('Firebase messaging not supported in this environment:', error);
+    }
+  }
+  return messaging;
+};
 
 // Request notification permission and get FCM token
 export const requestNotificationPermission = async (): Promise<string | null> => {
   try {
+    // Check if we're in a browser environment
+    if (typeof window === 'undefined' || !('Notification' in window)) {
+      console.warn('Notifications not supported in this environment');
+      return null;
+    }
+
+    const messagingInstance = initializeMessagingInstance();
+    if (!messagingInstance) {
+      console.warn('Firebase messaging not available');
+      return null;
+    }
+
     // Request permission
     const permission = await Notification.requestPermission();
     
@@ -14,7 +38,7 @@ export const requestNotificationPermission = async (): Promise<string | null> =>
       console.log('Notification permission granted.');
       
       // Get FCM token
-      const token = await getToken(messaging, {
+      const token = await getToken(messagingInstance, {
         vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY
       });
       
@@ -39,30 +63,29 @@ export const requestNotificationPermission = async (): Promise<string | null> =>
   }
 };
 
-// Register FCM token with backend
+// Register FCM token with backend using enhanced API service
 const registerFCMToken = async (token: string) => {
   try {
     const user = auth.currentUser;
     if (!user) return;
     
-    const idToken = await user.getIdToken();
-    
-    await fetch('/api/notifications/fcm-token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${idToken}`
-      },
-      body: JSON.stringify({ token })
-    });
+    await notificationsAPI.registerFCMToken(token);
+    console.log('FCM token registered successfully');
   } catch (error) {
     console.error('Error registering FCM token:', error);
+    // Retry mechanism is handled by the API service
   }
 };
 
 // Handle foreground messages
 export const setupForegroundMessageListener = (callback: (payload: any) => void) => {
-  return onMessage(messaging, (payload) => {
+  const messagingInstance = initializeMessagingInstance();
+  if (!messagingInstance) {
+    console.warn('Firebase messaging not available for foreground messages');
+    return () => {}; // Return empty cleanup function
+  }
+  
+  return onMessage(messagingInstance, (payload) => {
     console.log('Message received in foreground: ', payload);
     callback(payload);
   });
@@ -83,6 +106,12 @@ export const showForegroundNotification = (payload: any) => {
 
 // Initialize messaging for the app
 export const initializeMessaging = async () => {
+  // Check if we're in a browser environment
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') {
+    console.warn('Not in browser environment, skipping FCM initialization');
+    return;
+  }
+
   if ('serviceWorker' in navigator) {
     try {
       // Register service worker
@@ -98,5 +127,7 @@ export const initializeMessaging = async () => {
     } catch (error) {
       console.error('Service Worker registration failed:', error);
     }
+  } else {
+    console.warn('Service Worker not supported in this browser');
   }
 }; 
