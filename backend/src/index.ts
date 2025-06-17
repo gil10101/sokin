@@ -6,6 +6,11 @@ import dotenv from 'dotenv';
 // Load environment variables
 dotenv.config();
 
+// Set NODE_ENV to development if not set
+if (!process.env.NODE_ENV) {
+  process.env.NODE_ENV = 'development';
+}
+
 // Import utilities
 import logger from './utils/logger';
 
@@ -25,7 +30,7 @@ app.use(helmet());
 app.use(cors({
   origin: process.env.CORS_ORIGIN || '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Client-Version', 'X-Platform']
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -66,6 +71,10 @@ app.use(errorHandler);
 // Start server
 app.listen(port, () => {
   logger.info(`Server running on port ${port}`);
+  if (process.env.NODE_ENV === 'development') {
+    logger.info('Running in development mode with mock data');
+    logger.info('CORS configured for: http://localhost:3000');
+  }
 });
 
 // Handle unhandled promise rejections

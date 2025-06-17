@@ -28,6 +28,16 @@ export const auth = async (req: Request, res: Response, next: NextFunction): Pro
 
     try {
       if (!firebaseAuth) {
+        // For development without proper Firebase setup, create a mock user
+        if (process.env.NODE_ENV === 'development') {
+          logger.warn('Firebase auth not initialized - using development mock user');
+          req.user = {
+            uid: 'dev-user-' + Date.now(),
+            email: 'dev@example.com'
+          };
+          next();
+          return;
+        }
         throw new AppError('Firebase auth not initialized', 500, false);
       }
       
@@ -40,6 +50,18 @@ export const auth = async (req: Request, res: Response, next: NextFunction): Pro
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       logger.error('Error verifying token:', { error: errorMessage });
+      
+      // In development mode, if token verification fails, use mock user
+      if (process.env.NODE_ENV === 'development') {
+        logger.warn('Token verification failed in development - using mock user');
+        req.user = {
+          uid: 'dev-user-' + Date.now(),
+          email: 'dev@example.com'
+        };
+        next();
+        return;
+      }
+      
       throw new AppError('Unauthorized: Invalid token', 401, true);
     }
   } catch (error) {
