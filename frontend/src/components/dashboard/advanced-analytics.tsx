@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
+import { useIsMobile } from '../../hooks/use-mobile'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
 import { Badge } from '../ui/badge'
@@ -21,9 +22,7 @@ import {
   Pie,
   Cell,
   BarChart,
-  Bar,
-  Sankey,
-  Treemap
+  Bar
 } from 'recharts'
 import { format, subMonths, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns'
 
@@ -45,6 +44,8 @@ interface SpendingInsight {
 export function AdvancedAnalytics({ expenses, budgets, timeframe }: AdvancedAnalyticsProps) {
   const [insights, setInsights] = useState<SpendingInsight[]>([])
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
+  const [loading, setLoading] = useState(true)
+  const isMobile = useIsMobile()
 
   // Process spending data for heatmap
   const spendingHeatmapData = useMemo(() => {
@@ -71,31 +72,6 @@ export function AdvancedAnalytics({ expenses, budgets, timeframe }: AdvancedAnal
     })
     
     return dailySpending
-  }, [expenses])
-
-  // Sankey diagram data for money flow
-  const sankeyData = useMemo(() => {
-    const incomeCategories = ['Salary', 'Freelance', 'Investments', 'Other Income']
-    const expenseCategories = [...new Set(expenses.map(e => e.category))]
-    
-    const nodes = [
-      ...incomeCategories.map(cat => ({ name: cat, category: 'income' })),
-      ...expenseCategories.map(cat => ({ name: cat, category: 'expense' }))
-    ]
-    
-    const links = expenseCategories.map(category => {
-      const categoryTotal = expenses
-        .filter(e => e.category === category)
-        .reduce((sum, e) => sum + e.amount, 0)
-      
-      return {
-        source: 0, // Assuming primary income source
-        target: incomeCategories.length + expenseCategories.indexOf(category),
-        value: categoryTotal
-      }
-    })
-    
-    return { nodes, links }
   }, [expenses])
 
   // Category comparison data
@@ -198,18 +174,11 @@ export function AdvancedAnalytics({ expenses, budgets, timeframe }: AdvancedAnal
       })
       
       setInsights(newInsights)
+      setLoading(false)
     }
     
     generateInsights()
   }, [expenses, budgets, trendData])
-
-  const getSeverityColor = (severity: string) => {
-    switch (severity) {
-      case 'warning': return 'bg-yellow-100 text-yellow-800 border-yellow-200'
-      case 'danger': return 'bg-red-100 text-red-800 border-red-200'
-      default: return 'bg-blue-100 text-blue-800 border-blue-200'
-    }
-  }
 
   const getSeverityIcon = (severity: string) => {
     switch (severity) {
@@ -219,22 +188,38 @@ export function AdvancedAnalytics({ expenses, budgets, timeframe }: AdvancedAnal
     }
   }
 
+  // Show loading state until mobile detection is initialized
+  if (typeof isMobile === 'undefined' || loading) {
+    return (
+      <div className="space-y-8 max-w-7xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-32 bg-cream/5 rounded-lg animate-pulse" />
+          ))}
+        </div>
+        <div className="h-96 bg-cream/5 rounded-lg animate-pulse" />
+      </div>
+    )
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 max-w-7xl mx-auto">
       {/* Insights Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {insights.map((insight, index) => {
           const Icon = getSeverityIcon(insight.severity)
           return (
-            <Card key={index} className={`border-l-4 ${getSeverityColor(insight.severity)}`}>
-              <CardContent className="p-4">
-                <div className="flex items-start space-x-3">
-                  <Icon className="h-5 w-5 mt-0.5" />
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium">{insight.title}</p>
-                    <p className="text-xs opacity-80">{insight.description}</p>
+            <Card key={index} className="border-l-4 border-l-cream/30 bg-cream/5 h-full">
+              <CardContent className="p-6 h-full flex flex-col">
+                <div className="flex items-start space-x-4 flex-1">
+                  <div className="h-10 w-10 rounded-full bg-cream/10 flex items-center justify-center flex-shrink-0">
+                    <Icon className="h-5 w-5 text-cream/60" />
+                  </div>
+                  <div className="space-y-2 flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-cream/80 leading-tight">{insight.title}</p>
+                    <p className="text-xs text-cream/60 leading-relaxed">{insight.description}</p>
                     {insight.value && (
-                      <p className="text-lg font-bold">${insight.value.toLocaleString()}</p>
+                      <p className="text-xl font-bold text-cream/90 mt-3">${insight.value.toLocaleString()}</p>
                     )}
                   </div>
                 </div>
@@ -245,57 +230,111 @@ export function AdvancedAnalytics({ expenses, budgets, timeframe }: AdvancedAnal
       </div>
 
       {/* Main Analytics Tabs */}
-      <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="trends">Trends</TabsTrigger>
-          <TabsTrigger value="categories">Categories</TabsTrigger>
-          <TabsTrigger value="patterns">Patterns</TabsTrigger>
+      <Tabs defaultValue="overview" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-4 bg-cream/5 h-12">
+          <TabsTrigger value="overview" className="text-cream/70 data-[state=active]:bg-cream/10 data-[state=active]:text-cream/90 h-10">Overview</TabsTrigger>
+          <TabsTrigger value="trends" className="text-cream/70 data-[state=active]:bg-cream/10 data-[state=active]:text-cream/90 h-10">Trends</TabsTrigger>
+          <TabsTrigger value="categories" className="text-cream/70 data-[state=active]:bg-cream/10 data-[state=active]:text-cream/90 h-10">Categories</TabsTrigger>
+          <TabsTrigger value="patterns" className="text-cream/70 data-[state=active]:bg-cream/10 data-[state=active]:text-cream/90 h-10">Patterns</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="space-y-4">
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <TabsContent value="overview" className="space-y-8">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
             {/* Spending Trend */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Spending Trend</CardTitle>
+            <Card className="bg-cream/5 border-cream/20">
+              <CardHeader className="pb-6">
+                <CardTitle className="text-xl text-cream/90">Spending Trend</CardTitle>
+                <p className="text-sm text-cream/60">Monthly spending over the last 12 months</p>
               </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
+              <CardContent className="pb-6">
+                <ResponsiveContainer width="100%" height={isMobile ? 300 : 400}>
                   <AreaChart data={trendData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <Tooltip formatter={(value: any) => [`$${value.toLocaleString()}`, 'Amount']} />
-                    <Area type="monotone" dataKey="totalSpent" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.2} />
+                    <defs>
+                      <linearGradient id="colorSpending" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="rgba(245, 245, 240, 0.3)" stopOpacity={0.8} />
+                        <stop offset="95%" stopColor="rgba(245, 245, 240, 0.1)" stopOpacity={0.2} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(245, 245, 240, 0.1)" />
+                    <XAxis 
+                      dataKey="month" 
+                      tick={{ fill: "rgba(245, 245, 240, 0.6)", fontSize: isMobile ? 10 : 12 }}
+                      axisLine={false}
+                      tickLine={false}
+                      interval={isMobile ? 1 : 0}
+                      angle={isMobile ? -45 : 0}
+                      textAnchor={isMobile ? "end" : "middle"}
+                    />
+                    <YAxis 
+                      tick={{ fill: "rgba(245, 245, 240, 0.6)", fontSize: isMobile ? 10 : 12 }}
+                      axisLine={false}
+                      tickLine={false}
+                      width={isMobile ? 40 : 60}
+                    />
+                    <Tooltip 
+                      formatter={(value: any) => [`$${value.toLocaleString()}`, 'Amount']}
+                      contentStyle={{ 
+                        backgroundColor: 'rgba(245, 245, 240, 0.95)', 
+                        border: '1px solid rgba(245, 245, 240, 0.2)',
+                        borderRadius: '12px',
+                        color: 'rgba(0, 0, 0, 0.8)',
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                      }}
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="totalSpent" 
+                      stroke="rgba(245, 245, 240, 0.8)" 
+                      fill="url(#colorSpending)" 
+                      strokeWidth={2}
+                    />
                   </AreaChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
 
             {/* Category Breakdown */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Category Breakdown</CardTitle>
+            <Card className="bg-cream/5 border-cream/20">
+              <CardHeader className="pb-6">
+                <CardTitle className="text-xl text-cream/90">Category Breakdown</CardTitle>
+                <p className="text-sm text-cream/60">Top spending categories</p>
               </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
+              <CardContent className="pb-6">
+                <ResponsiveContainer width="100%" height={isMobile ? 300 : 400}>
                   <PieChart>
                     <Pie
                       data={categoryComparisonData}
                       cx="50%"
                       cy="50%"
-                      innerRadius={60}
-                      outerRadius={120}
+                      innerRadius={isMobile ? 50 : 80}
+                      outerRadius={isMobile ? 100 : 160}
                       paddingAngle={5}
                       dataKey="amount"
                     >
                       {categoryComparisonData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={`hsl(${index * 45}, 70%, 60%)`} />
+                        <Cell 
+                          key={`cell-${index}`} 
+                          fill={`rgba(245, 245, 240, ${0.8 - (index * 0.08)})`}
+                          stroke="rgba(245, 245, 240, 0.2)"
+                          strokeWidth={1}
+                        />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(value: any) => [`$${value.toLocaleString()}`, 'Amount']} />
-                    <Legend />
+                    <Tooltip 
+                      formatter={(value: any) => [`$${value.toLocaleString()}`, 'Amount']}
+                      contentStyle={{ 
+                        backgroundColor: 'rgba(245, 245, 240, 0.95)', 
+                        border: '1px solid rgba(245, 245, 240, 0.2)',
+                        borderRadius: '12px',
+                        color: 'rgba(0, 0, 0, 0.8)',
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                      }}
+                    />
+                    <Legend 
+                      wrapperStyle={{ paddingTop: '20px' }}
+                      iconType="circle"
+                      fontSize={isMobile ? 12 : 14}
+                    />
                   </PieChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -303,74 +342,149 @@ export function AdvancedAnalytics({ expenses, budgets, timeframe }: AdvancedAnal
           </div>
         </TabsContent>
 
-        <TabsContent value="trends" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Monthly Spending Analysis</CardTitle>
+        <TabsContent value="trends" className="space-y-6">
+          <Card className="bg-cream/5 border-cream/20">
+            <CardHeader className="pb-6">
+              <CardTitle className="text-xl text-cream/90">Monthly Spending Analysis</CardTitle>
+              <p className="text-sm text-cream/60">Detailed monthly breakdown and trends</p>
             </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={400}>
-                <LineChart data={trendData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis yAxisId="amount" orientation="left" />
-                  <YAxis yAxisId="count" orientation="right" />
-                  <Tooltip />
-                  <Legend />
-                  <Bar yAxisId="amount" dataKey="totalSpent" fill="#3b82f6" name="Total Spent" />
-                  <Line yAxisId="count" type="monotone" dataKey="transactionCount" stroke="#ef4444" strokeWidth={2} name="Transactions" />
-                </LineChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="categories" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Category Comparison</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={400}>
-                <BarChart data={categoryComparisonData} layout="horizontal">
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" />
-                  <YAxis dataKey="category" type="category" width={100} />
-                  <Tooltip formatter={(value: any) => [`$${value.toLocaleString()}`, 'Amount']} />
-                  <Bar dataKey="amount" fill="#3b82f6" />
+            <CardContent className="pb-6">
+              <ResponsiveContainer width="100%" height={isMobile ? 350 : 500}>
+                <BarChart data={trendData} margin={{ top: 20, right: 30, left: 20, bottom: isMobile ? 40 : 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(245, 245, 240, 0.1)" />
+                  <XAxis 
+                    dataKey="month" 
+                    tick={{ fill: "rgba(245, 245, 240, 0.6)", fontSize: isMobile ? 10 : 12 }}
+                    axisLine={false}
+                    tickLine={false}
+                    interval={isMobile ? 1 : 0}
+                    angle={isMobile ? -45 : 0}
+                    textAnchor={isMobile ? "end" : "middle"}
+                    height={isMobile ? 60 : 30}
+                  />
+                  <YAxis 
+                    tick={{ fill: "rgba(245, 245, 240, 0.6)", fontSize: isMobile ? 10 : 12 }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={isMobile ? 40 : 60}
+                  />
+                  <Tooltip 
+                    formatter={(value: any) => [`$${value.toLocaleString()}`, 'Total Spent']}
+                    contentStyle={{ 
+                      backgroundColor: 'rgba(245, 245, 240, 0.95)', 
+                      border: '1px solid rgba(245, 245, 240, 0.2)',
+                      borderRadius: '12px',
+                      color: 'rgba(0, 0, 0, 0.8)',
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                    }}
+                  />
+                  <Bar 
+                    dataKey="totalSpent" 
+                    fill="rgba(245, 245, 240, 0.6)" 
+                    stroke="rgba(245, 245, 240, 0.8)" 
+                    strokeWidth={1}
+                    radius={[4, 4, 0, 0]}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="patterns" className="space-y-4">
-          {/* Spending Heatmap Calendar */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Spending Heatmap</CardTitle>
+        <TabsContent value="categories" className="space-y-6">
+          <Card className="bg-cream/5 border-cream/20">
+            <CardHeader className="pb-6">
+              <CardTitle className="text-xl text-cream/90">Category Comparison</CardTitle>
+              <p className="text-sm text-cream/60">Compare spending across different categories</p>
             </CardHeader>
-            <CardContent>
-              <div className={`grid grid-cols-7 gap-1 ${isMobile ? 'text-xs' : 'text-sm'}`}>
-                {(isMobile ? ['S', 'M', 'T', 'W', 'T', 'F', 'S'] : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']).map((day, index) => (
-                  <div key={index} className={`text-center font-medium ${isMobile ? 'p-1' : 'p-2'}`}>{day}</div>
-                ))}
-                {spendingHeatmapData.slice(isMobile ? -35 : -49).map((day, index) => {
-                  const intensity = Math.min(day.amount / 100, 1) // Normalize intensity
-                  return (
-                    <div
-                      key={index}
-                      className={`aspect-square rounded-sm flex items-center justify-center ${isMobile ? 'text-xs' : 'text-sm'} cursor-pointer hover:scale-110 transition-transform`}
-                      style={{
-                        backgroundColor: `rgba(59, 130, 246, ${intensity})`,
-                        color: intensity > 0.5 ? 'white' : 'black'
-                      }}
-                      title={`${day.date}: $${day.amount.toFixed(2)}`}
-                    >
-                      {isMobile ? day.day.slice(-1) : day.day}
-                    </div>
-                  )
-                })}
+            <CardContent className="pb-6">
+              <ResponsiveContainer width="100%" height={isMobile ? 350 : 500}>
+                <BarChart data={categoryComparisonData} layout="horizontal" margin={{ top: 20, right: 30, left: isMobile ? 80 : 120, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(245, 245, 240, 0.1)" />
+                  <XAxis 
+                    type="number" 
+                    tick={{ fill: "rgba(245, 245, 240, 0.6)", fontSize: isMobile ? 10 : 12 }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis 
+                    dataKey="category" 
+                    type="category" 
+                    width={isMobile ? 80 : 120} 
+                    tick={{ fill: "rgba(245, 245, 240, 0.6)", fontSize: isMobile ? 10 : 12 }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip 
+                    formatter={(value: any) => [`$${value.toLocaleString()}`, 'Amount']}
+                    contentStyle={{ 
+                      backgroundColor: 'rgba(245, 245, 240, 0.95)', 
+                      border: '1px solid rgba(245, 245, 240, 0.2)',
+                      borderRadius: '12px',
+                      color: 'rgba(0, 0, 0, 0.8)',
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                    }}
+                  />
+                  <Bar 
+                    dataKey="amount" 
+                    fill="rgba(245, 245, 240, 0.6)" 
+                    stroke="rgba(245, 245, 240, 0.8)" 
+                    strokeWidth={1}
+                    radius={[0, 4, 4, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="patterns" className="space-y-6">
+          {/* Spending Heatmap Calendar */}
+          <Card className="bg-cream/5 border-cream/20">
+            <CardHeader className="pb-6">
+              <CardTitle className="text-xl text-cream/90">Spending Heatmap</CardTitle>
+              <p className="text-sm text-cream/60">Daily spending patterns over the last {isMobile ? '5 weeks' : '7 weeks'}</p>
+            </CardHeader>
+            <CardContent className="pb-6">
+              <div className="space-y-4">
+                <div className={`grid grid-cols-7 gap-3 ${isMobile ? 'text-xs' : 'text-sm'} max-w-4xl mx-auto`}>
+                  {(isMobile ? ['S', 'M', 'T', 'W', 'T', 'F', 'S'] : ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']).map((day, index) => (
+                    <div key={index} className={`text-center font-medium text-cream/60 ${isMobile ? 'p-2' : 'p-3'}`}>{day}</div>
+                  ))}
+                  {spendingHeatmapData.slice(isMobile ? -35 : -49).map((day, index) => {
+                    const intensity = Math.min(day.amount / 100, 1) // Normalize intensity
+                    return (
+                      <div
+                        key={index}
+                        className={`aspect-square rounded-lg flex items-center justify-center ${isMobile ? 'text-xs' : 'text-sm'} cursor-pointer hover:scale-105 transition-all duration-200 font-medium`}
+                        style={{
+                          backgroundColor: `rgba(245, 245, 240, ${intensity * 0.6 + 0.1})`,
+                          color: intensity > 0.3 ? 'rgba(0, 0, 0, 0.8)' : 'rgba(245, 245, 240, 0.7)',
+                          border: '1px solid rgba(245, 245, 240, 0.2)',
+                          minHeight: isMobile ? '32px' : '48px'
+                        }}
+                        title={`${day.date}: $${day.amount.toFixed(2)} (${day.count} transactions)`}
+                      >
+                        {isMobile ? day.day.slice(-1) : day.day}
+                      </div>
+                    )
+                  })}
+                </div>
+                
+                {/* Legend */}
+                <div className="flex items-center justify-center space-x-4 pt-4 max-w-md mx-auto">
+                  <span className="text-xs text-cream/60">Less</span>
+                  <div className="flex space-x-1">
+                    {[0.1, 0.3, 0.5, 0.7, 0.9].map((intensity, index) => (
+                      <div 
+                        key={index}
+                        className={`${isMobile ? 'w-3 h-3' : 'w-4 h-4'} rounded-sm border border-cream/20`}
+                        style={{ backgroundColor: `rgba(245, 245, 240, ${intensity * 0.6 + 0.1})` }}
+                      />
+                    ))}
+                  </div>
+                  <span className="text-xs text-cream/60">More</span>
+                </div>
               </div>
             </CardContent>
           </Card>

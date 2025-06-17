@@ -19,7 +19,14 @@ import {
   Clock,
   Plus,
   Settings,
-  Trash2
+  Trash2,
+  Zap,
+  Home,
+  Shield,
+  Smartphone,
+  Building,
+  CreditCard,
+  FileText
 } from 'lucide-react'
 import { format, addDays, isWithinInterval, isBefore, isAfter } from 'date-fns'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -74,13 +81,13 @@ export function BillReminders() {
   })
 
   const billCategories = [
-    { value: 'utilities', label: 'Utilities', icon: '⚡' },
-    { value: 'housing', label: 'Housing', icon: '🏠' },
-    { value: 'insurance', label: 'Insurance', icon: '🛡️' },
-    { value: 'subscriptions', label: 'Subscriptions', icon: '📱' },
-    { value: 'loans', label: 'Loans', icon: '🏦' },
-    { value: 'credit-cards', label: 'Credit Cards', icon: '💳' },
-    { value: 'other', label: 'Other', icon: '📋' }
+    { value: 'utilities', label: 'Utilities', icon: Zap },
+    { value: 'housing', label: 'Housing', icon: Home },
+    { value: 'insurance', label: 'Insurance', icon: Shield },
+    { value: 'subscriptions', label: 'Subscriptions', icon: Smartphone },
+    { value: 'loans', label: 'Loans', icon: Building },
+    { value: 'credit-cards', label: 'Credit Cards', icon: CreditCard },
+    { value: 'other', label: 'Other', icon: FileText }
   ]
 
   useEffect(() => {
@@ -94,11 +101,10 @@ export function BillReminders() {
   const fetchBillReminders = async () => {
     setLoading(true)
     try {
-      const response = await fetch('/api/bill-reminders')
-      if (response.ok) {
-        const data = await response.json()
-        setBills(data.bills || [])
-      }
+      // Import the API service
+      const { API } = await import('../../lib/api-services')
+      const bills = await API.billReminders.getBillReminders()
+      setBills(bills)
     } catch (error) {
       console.error('Error fetching bill reminders:', error)
       toast({
@@ -146,36 +152,33 @@ export function BillReminders() {
 
   const createBillReminder = async () => {
     try {
+      const { API } = await import('../../lib/api-services')
       const billData = {
-        ...newBill,
+        name: newBill.name,
         amount: parseFloat(newBill.amount),
-        isPaid: false
+        dueDate: newBill.dueDate.toISOString(),
+        frequency: newBill.frequency,
+        category: newBill.category,
+        notes: newBill.description
       }
 
-      const response = await fetch('/api/bill-reminders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(billData)
+      await API.billReminders.createBillReminder(billData)
+      await fetchBillReminders()
+      setShowCreateBill(false)
+      setNewBill({
+        name: '',
+        amount: '',
+        dueDate: new Date(),
+        frequency: 'monthly',
+        category: 'utilities',
+        description: '',
+        reminderDays: [7, 3, 1],
+        autoPayEnabled: false
       })
-
-      if (response.ok) {
-        await fetchBillReminders()
-        setShowCreateBill(false)
-        setNewBill({
-          name: '',
-          amount: '',
-          dueDate: new Date(),
-          frequency: 'monthly',
-          category: 'utilities',
-          description: '',
-          reminderDays: [7, 3, 1],
-          autoPayEnabled: false
-        })
-        toast({
-          title: "Bill Reminder Created",
-          description: `Reminder for "${billData.name}" has been set up.`
-        })
-      }
+      toast({
+        title: "Bill Reminder Created",
+        description: `Reminder for "${billData.name}" has been set up.`
+      })
     } catch (error) {
       console.error('Error creating bill reminder:', error)
       toast({
@@ -188,19 +191,13 @@ export function BillReminders() {
 
   const markBillAsPaid = async (billId: string) => {
     try {
-      const response = await fetch(`/api/bill-reminders/${billId}/pay`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paidDate: new Date().toISOString() })
+      const { API } = await import('../../lib/api-services')
+      await API.billReminders.markBillPaid(billId, new Date().toISOString())
+      await fetchBillReminders()
+      toast({
+        title: "Bill Marked as Paid",
+        description: "The bill has been marked as paid."
       })
-
-      if (response.ok) {
-        await fetchBillReminders()
-        toast({
-          title: "Bill Marked as Paid",
-          description: "The bill has been marked as paid."
-        })
-      }
     } catch (error) {
       console.error('Error marking bill as paid:', error)
       toast({
@@ -230,18 +227,6 @@ export function BillReminders() {
       default:
         return bills
     }
-  }
-
-  const getBillStatusColor = (bill: BillReminder) => {
-    if (bill.isPaid) return 'bg-green-100 text-green-800'
-    
-    const dueDate = new Date(bill.dueDate)
-    const today = new Date()
-    const daysUntilDue = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
-    
-    if (daysUntilDue < 0) return 'bg-red-100 text-red-800'
-    if (daysUntilDue <= 3) return 'bg-yellow-100 text-yellow-800'
-    return 'bg-blue-100 text-blue-800'
   }
 
   const getBillStatusText = (bill: BillReminder) => {
@@ -293,17 +278,39 @@ export function BillReminders() {
     return dueDate
   }
 
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="h-8 w-48 bg-cream/10 rounded animate-pulse mb-2" />
+            <div className="h-4 w-64 bg-cream/5 rounded animate-pulse" />
+          </div>
+          <div className="flex gap-2">
+            <div className="h-10 w-32 bg-cream/10 rounded animate-pulse" />
+            <div className="h-10 w-24 bg-cream/10 rounded animate-pulse" />
+          </div>
+        </div>
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-20 bg-cream/5 rounded-lg animate-pulse" />
+          ))}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-semibold">Bill Reminders</h2>
-          <p className="text-muted-foreground">Never miss a payment again</p>
+          <h2 className="text-2xl font-semibold text-cream/90">Bill Reminders</h2>
+          <p className="text-cream/60">Never miss a payment again</p>
         </div>
         <div className="flex gap-2">
           <Select value={filterStatus} onValueChange={(value: any) => setFilterStatus(value)}>
-            <SelectTrigger className="w-32">
+            <SelectTrigger className="w-32 border-cream/20 text-cream/70">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -316,7 +323,7 @@ export function BillReminders() {
           
           <Dialog open={showCreateBill} onOpenChange={setShowCreateBill}>
             <DialogTrigger asChild>
-              <Button>
+              <Button className="bg-cream/10 hover:bg-cream/20 text-cream/80 border-cream/20">
                 <Plus className="mr-2 h-4 w-4" />
                 Add Bill
               </Button>
@@ -361,7 +368,10 @@ export function BillReminders() {
                       <SelectContent>
                         {billCategories.map((cat) => (
                           <SelectItem key={cat.value} value={cat.value}>
-                            {cat.icon} {cat.label}
+                            <div className="flex items-center gap-2">
+                              <cat.icon className="h-4 w-4" />
+                              {cat.label}
+                            </div>
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -402,22 +412,22 @@ export function BillReminders() {
 
       {/* Upcoming Reminders Alert */}
       {upcomingReminders.length > 0 && (
-        <Card className="border-l-4 border-l-orange-500 bg-orange-50">
+        <Card className="border-l-4 border-l-cream/40 bg-cream/5">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <Bell className="h-5 w-5 text-orange-600" />
+              <Bell className="h-5 w-5 text-cream/60" />
               <div>
-                <h3 className="font-medium text-orange-900">
+                <h3 className="font-medium text-cream/80">
                   {upcomingReminders.length} Bill{upcomingReminders.length > 1 ? 's' : ''} Need Attention
                 </h3>
                 <div className="flex flex-wrap gap-2 mt-2">
                   {upcomingReminders.slice(0, 3).map((reminder) => (
-                    <Badge key={reminder.billId} variant="outline" className="text-orange-800">
+                    <Badge key={reminder.billId} variant="outline" className="border-cream/20 text-cream/70">
                       {reminder.billName} - {reminder.daysUntilDue <= 0 ? 'Overdue' : `${reminder.daysUntilDue} days`}
                     </Badge>
                   ))}
                   {upcomingReminders.length > 3 && (
-                    <Badge variant="outline" className="text-orange-800">
+                    <Badge variant="outline" className="border-cream/20 text-cream/70">
                       +{upcomingReminders.length - 3} more
                     </Badge>
                   )}
@@ -434,6 +444,7 @@ export function BillReminders() {
           {getFilteredBills().map((bill) => {
             const categoryInfo = billCategories.find(c => c.value === bill.category)
             const nextDueDate = getNextDueDate(bill)
+            const IconComponent = categoryInfo?.icon || FileText
 
             return (
               <motion.div
@@ -444,14 +455,16 @@ export function BillReminders() {
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.2 }}
               >
-                <Card>
+                <Card className="bg-cream/5 border-cream/20 hover:bg-cream/10 transition-colors">
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        <div className="text-2xl">{categoryInfo?.icon}</div>
+                        <div className="h-10 w-10 rounded-full bg-cream/10 flex items-center justify-center">
+                          <IconComponent className="h-5 w-5 text-cream/60" />
+                        </div>
                         <div>
-                          <h3 className="font-medium">{bill.name}</h3>
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <h3 className="font-medium text-cream/90">{bill.name}</h3>
+                          <div className="flex items-center gap-2 text-sm text-cream/60">
                             <CalendarIcon className="h-3 w-3" />
                             <span>Due {format(nextDueDate, 'MMM dd, yyyy')}</span>
                             <span>•</span>
@@ -462,8 +475,8 @@ export function BillReminders() {
 
                       <div className="flex items-center gap-4">
                         <div className="text-right">
-                          <div className="font-semibold">${bill.amount.toFixed(2)}</div>
-                          <Badge className={getBillStatusColor(bill)}>
+                          <div className="font-semibold text-cream/90">${bill.amount.toFixed(2)}</div>
+                          <Badge variant="outline" className="border-cream/20 text-cream/60">
                             {getBillStatusText(bill)}
                           </Badge>
                         </div>
@@ -472,7 +485,7 @@ export function BillReminders() {
                           <Button
                             size="sm"
                             onClick={() => markBillAsPaid(bill.id!)}
-                            className="flex items-center gap-1"
+                            className="flex items-center gap-1 bg-cream/10 hover:bg-cream/20 text-cream/80 border-cream/20"
                           >
                             <CheckCircle className="h-3 w-3" />
                             Mark Paid
@@ -491,16 +504,19 @@ export function BillReminders() {
       {/* Empty State */}
       {getFilteredBills().length === 0 && !loading && (
         <div className="text-center py-12">
-          <Bell className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-medium mb-2">No bills found</h3>
-          <p className="text-muted-foreground mb-4">
+          <Bell className="h-12 w-12 text-cream/40 mx-auto mb-4" />
+          <h3 className="text-lg font-medium mb-2 text-cream/70">No bills found</h3>
+          <p className="text-cream/50 mb-4">
             {filterStatus === 'all' 
               ? "Add your first bill reminder to get started"
               : `No ${filterStatus} bills at the moment`
             }
           </p>
           {filterStatus === 'all' && (
-            <Button onClick={() => setShowCreateBill(true)}>
+            <Button 
+              onClick={() => setShowCreateBill(true)}
+              className="bg-cream/10 hover:bg-cream/20 text-cream/80 border-cream/20"
+            >
               <Plus className="mr-2 h-4 w-4" />
               Add Your First Bill
             </Button>

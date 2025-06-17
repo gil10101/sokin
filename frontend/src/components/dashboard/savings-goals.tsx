@@ -12,7 +12,21 @@ import { Badge } from '../ui/badge'
 import { Textarea } from '../ui/textarea'
 import { Calendar } from '../ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
-import { Plus, Target, Calendar as CalendarIcon, TrendingUp, Trophy, DollarSign } from 'lucide-react'
+import { 
+  Plus, 
+  Target, 
+  Calendar as CalendarIcon, 
+  TrendingUp, 
+  Trophy, 
+  DollarSign,
+  Shield,
+  MapPin,
+  Home,
+  Car,
+  GraduationCap,
+  User,
+  Bookmark
+} from 'lucide-react'
 import { format } from 'date-fns'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useToast } from '../../hooks/use-toast'
@@ -69,13 +83,13 @@ export function SavingsGoals() {
   })
 
   const categories = [
-    { value: 'emergency', label: 'Emergency Fund', icon: '🛡️' },
-    { value: 'vacation', label: 'Vacation', icon: '🏖️' },
-    { value: 'home', label: 'Home/Property', icon: '🏠' },
-    { value: 'car', label: 'Vehicle', icon: '🚗' },
-    { value: 'education', label: 'Education', icon: '🎓' },
-    { value: 'retirement', label: 'Retirement', icon: '👴' },
-    { value: 'other', label: 'Other', icon: '🎯' }
+    { value: 'emergency', label: 'Emergency Fund', icon: Shield },
+    { value: 'vacation', label: 'Vacation', icon: MapPin },
+    { value: 'home', label: 'Home/Property', icon: Home },
+    { value: 'car', label: 'Vehicle', icon: Car },
+    { value: 'education', label: 'Education', icon: GraduationCap },
+    { value: 'retirement', label: 'Retirement', icon: User },
+    { value: 'other', label: 'Other', icon: Bookmark }
   ]
 
   const priorityColors = {
@@ -91,12 +105,9 @@ export function SavingsGoals() {
   const fetchSavingsGoals = async () => {
     setLoading(true)
     try {
-      // Fetch goals from API
-      const response = await fetch('/api/goals')
-      if (response.ok) {
-        const data = await response.json()
-        setGoals(data.goals || [])
-      }
+      const { API } = await import('../../lib/api-services')
+      const goals = await API.goals.getGoals()
+      setGoals(goals)
     } catch (error) {
       console.error('Error fetching goals:', error)
       toast({
@@ -111,41 +122,30 @@ export function SavingsGoals() {
 
   const createGoal = async () => {
     try {
+      const { API } = await import('../../lib/api-services')
       const goalData = {
-        ...newGoal,
+        name: newGoal.name,
         targetAmount: parseFloat(newGoal.targetAmount),
         currentAmount: 0,
-        isCompleted: false,
-        milestones: [
-          { percentage: 25, amount: parseFloat(newGoal.targetAmount) * 0.25 },
-          { percentage: 50, amount: parseFloat(newGoal.targetAmount) * 0.5 },
-          { percentage: 75, amount: parseFloat(newGoal.targetAmount) * 0.75 },
-          { percentage: 100, amount: parseFloat(newGoal.targetAmount) }
-        ]
+        deadline: newGoal.targetDate.toISOString(),
+        category: newGoal.category
       }
 
-      const response = await fetch('/api/goals', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(goalData)
+      await API.goals.createGoal(goalData)
+      await fetchSavingsGoals()
+      setShowCreateGoal(false)
+      setNewGoal({
+        name: '',
+        description: '',
+        targetAmount: '',
+        targetDate: new Date(),
+        category: 'emergency',
+        priority: 'medium'
       })
-
-      if (response.ok) {
-        await fetchSavingsGoals()
-        setShowCreateGoal(false)
-        setNewGoal({
-          name: '',
-          description: '',
-          targetAmount: '',
-          targetDate: new Date(),
-          category: 'emergency',
-          priority: 'medium'
-        })
-        toast({
-          title: "Goal Created!",
-          description: `Your goal "${goalData.name}" has been created successfully.`
-        })
-      }
+      toast({
+        title: "Goal Created",
+        description: `Your goal "${goalData.name}" has been created successfully.`
+      })
     } catch (error) {
       console.error('Error creating goal:', error)
       toast({
@@ -158,32 +158,13 @@ export function SavingsGoals() {
 
   const addContribution = async (goalId: string, amount: number) => {
     try {
-      const response = await fetch(`/api/goals/${goalId}/contribute`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          amount,
-          method: 'manual',
-          date: new Date().toISOString()
-        })
+      toast({
+        title: "Feature Coming Soon",
+        description: "Goal contributions will be available in a future update.",
+        variant: "default"
       })
-
-      if (response.ok) {
-        await fetchSavingsGoals()
-        setContributionAmount('')
-        setSelectedGoal(null)
-        
-        // Check for milestone achievements
-        const updatedGoal = goals.find(g => g.id === goalId)
-        if (updatedGoal) {
-          checkMilestoneAchievements(updatedGoal, amount)
-        }
-
-        toast({
-          title: "Contribution Added!",
-          description: `$${amount.toFixed(2)} added to your goal.`
-        })
-      }
+      setContributionAmount('')
+      setSelectedGoal(null)
     } catch (error) {
       console.error('Error adding contribution:', error)
       toast({
@@ -201,7 +182,7 @@ export function SavingsGoals() {
     goal.milestones?.forEach(milestone => {
       if (progressPercentage >= milestone.percentage && !milestone.achievedAt) {
         toast({
-          title: "🎉 Milestone Reached!",
+          title: "Milestone Reached",
           description: `You've reached ${milestone.percentage}% of your "${goal.name}" goal!`,
           duration: 5000
         })
@@ -210,7 +191,7 @@ export function SavingsGoals() {
 
     if (newTotal >= goal.targetAmount && !goal.isCompleted) {
       toast({
-        title: "🏆 Goal Completed!",
+        title: "Goal Completed",
         description: `Congratulations! You've completed your "${goal.name}" goal!`,
         duration: 7000
       })
@@ -236,63 +217,85 @@ export function SavingsGoals() {
     )
   }
 
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="h-8 w-48 bg-cream/10 rounded animate-pulse mb-2" />
+            <div className="h-4 w-96 bg-cream/5 rounded animate-pulse" />
+          </div>
+          <div className="h-10 w-24 bg-cream/10 rounded animate-pulse" />
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 max-w-7xl mx-auto">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-80 bg-cream/5 rounded-lg animate-pulse" />
+          ))}
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-semibold">Savings Goals</h2>
-          <p className="text-muted-foreground">Track your financial goals and celebrate milestones</p>
+        <div className="space-y-1">
+          <h2 className="text-3xl font-semibold text-cream/90">Savings Goals</h2>
+          <p className="text-cream/60">Track your financial goals and celebrate milestones</p>
         </div>
         <Dialog open={showCreateGoal} onOpenChange={setShowCreateGoal}>
           <DialogTrigger asChild>
-            <Button>
+            <Button className="bg-cream/10 hover:bg-cream/20 text-cream/80 border-cream/20 h-11 px-6">
               <Plus className="mr-2 h-4 w-4" />
               New Goal
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-lg">
             <DialogHeader>
-              <DialogTitle>Create Savings Goal</DialogTitle>
+              <DialogTitle className="text-xl">Create Savings Goal</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="name">Goal Name</Label>
+            <div className="space-y-6 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="name" className="text-sm font-medium">Goal Name</Label>
                 <Input
                   id="name"
                   value={newGoal.name}
                   onChange={(e) => setNewGoal({ ...newGoal, name: e.target.value })}
                   placeholder="Emergency fund, vacation, etc."
+                  className="h-11"
                 />
               </div>
               
-              <div>
-                <Label htmlFor="description">Description (Optional)</Label>
+              <div className="space-y-2">
+                <Label htmlFor="description" className="text-sm font-medium">Description (Optional)</Label>
                 <Textarea
                   id="description"
                   value={newGoal.description}
                   onChange={(e) => setNewGoal({ ...newGoal, description: e.target.value })}
                   placeholder="Details about your goal..."
+                  className="min-h-[80px] resize-none"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="targetAmount">Target Amount</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="targetAmount" className="text-sm font-medium">Target Amount</Label>
                   <Input
                     id="targetAmount"
                     type="number"
                     value={newGoal.targetAmount}
                     onChange={(e) => setNewGoal({ ...newGoal, targetAmount: e.target.value })}
                     placeholder="10000"
+                    className="h-11"
                   />
                 </div>
                 
-                <div>
-                  <Label>Target Date</Label>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Target Date</Label>
                   <Popover>
                     <PopoverTrigger asChild>
-                      <Button variant="outline" className="w-full justify-start text-left">
+                      <Button variant="outline" className="w-full justify-start text-left h-11">
                         <CalendarIcon className="mr-2 h-4 w-4" />
                         {format(newGoal.targetDate, "MMM dd, yyyy")}
                       </Button>
@@ -310,32 +313,35 @@ export function SavingsGoals() {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Category</Label>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Category</Label>
                   <Select 
                     value={newGoal.category} 
                     onValueChange={(value) => setNewGoal({ ...newGoal, category: value })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="h-11">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       {categories.map((cat) => (
                         <SelectItem key={cat.value} value={cat.value}>
-                          {cat.icon} {cat.label}
+                          <div className="flex items-center gap-2">
+                            <cat.icon className="h-4 w-4" />
+                            {cat.label}
+                          </div>
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
 
-                <div>
-                  <Label>Priority</Label>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Priority</Label>
                   <Select 
                     value={newGoal.priority} 
                     onValueChange={(value: any) => setNewGoal({ ...newGoal, priority: value })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="h-11">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -349,7 +355,7 @@ export function SavingsGoals() {
 
               <Button 
                 onClick={createGoal} 
-                className="w-full"
+                className="w-full h-11 mt-6"
                 disabled={!newGoal.name || !newGoal.targetAmount}
               >
                 Create Goal
@@ -360,13 +366,14 @@ export function SavingsGoals() {
       </div>
 
       {/* Goals Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-7xl mx-auto">
         <AnimatePresence>
           {goals.map((goal) => {
             const progressPercentage = getProgressPercentage(goal)
             const daysRemaining = getDaysRemaining(goal.targetDate)
             const nextMilestone = getNextMilestone(goal)
             const categoryInfo = categories.find(c => c.value === goal.category)
+            const IconComponent = categoryInfo?.icon || Bookmark
 
             return (
               <motion.div
@@ -376,24 +383,27 @@ export function SavingsGoals() {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
                 transition={{ duration: 0.2 }}
+                className="w-full"
               >
                 <Card className={cn(
-                  "relative overflow-hidden",
-                  goal.isCompleted && "ring-2 ring-green-500"
+                  "relative overflow-hidden bg-cream/5 border-cream/20 hover:bg-cream/10 transition-colors h-full flex flex-col",
+                  goal.isCompleted && "border-cream/40"
                 )}>
-                  <CardHeader className="pb-3">
+                  <CardHeader className="pb-4">
                     <div className="flex items-start justify-between">
-                      <div className="space-y-1">
-                        <CardTitle className="text-lg flex items-center gap-2">
-                          <span>{categoryInfo?.icon}</span>
-                          {goal.name}
-                          {goal.isCompleted && <Trophy className="h-4 w-4 text-yellow-500" />}
+                      <div className="space-y-2 flex-1 min-w-0">
+                        <CardTitle className="text-lg flex items-center gap-3 text-cream/90">
+                          <div className="h-8 w-8 rounded-full bg-cream/10 flex items-center justify-center flex-shrink-0">
+                            <IconComponent className="h-4 w-4 text-cream/60" />
+                          </div>
+                          <span className="truncate">{goal.name}</span>
+                          {goal.isCompleted && <Trophy className="h-4 w-4 text-cream/60 flex-shrink-0" />}
                         </CardTitle>
-                        <div className="flex items-center gap-2">
-                          <Badge className={cn("text-xs", priorityColors[goal.priority])}>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge variant="outline" className="text-xs border-cream/20 text-cream/60">
                             {goal.priority}
                           </Badge>
-                          <Badge variant="outline" className="text-xs">
+                          <Badge variant="outline" className="text-xs border-cream/20 text-cream/60">
                             {daysRemaining > 0 ? `${daysRemaining} days left` : 'Overdue'}
                           </Badge>
                         </div>
@@ -401,38 +411,52 @@ export function SavingsGoals() {
                     </div>
                   </CardHeader>
 
-                  <CardContent className="space-y-4">
-                    {/* Progress */}
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>${goal.currentAmount.toLocaleString()}</span>
-                        <span>${goal.targetAmount.toLocaleString()}</span>
+                  <CardContent className="space-y-6 pb-6 flex-1 flex flex-col">
+                    {/* Progress Section */}
+                    <div className="space-y-3">
+                      <div className="flex justify-between text-sm text-cream/70">
+                        <span className="font-medium">${goal.currentAmount.toLocaleString()}</span>
+                        <span className="font-medium">${goal.targetAmount.toLocaleString()}</span>
                       </div>
-                      <Progress value={progressPercentage} className="h-3" />
-                      <div className="text-center text-sm text-muted-foreground">
-                        {progressPercentage.toFixed(1)}% Complete
+                      <div className="w-full bg-cream/10 rounded-full h-4">
+                        <div 
+                          className="bg-cream/30 h-4 rounded-full transition-all duration-500 ease-out" 
+                          style={{ width: `${progressPercentage}%` }}
+                        />
+                      </div>
+                      <div className="text-center">
+                        <span className="text-lg font-semibold text-cream/80">
+                          {progressPercentage.toFixed(1)}%
+                        </span>
+                        <span className="text-sm text-cream/60 ml-1">Complete</span>
                       </div>
                     </div>
 
                     {/* Next Milestone */}
                     {nextMilestone && (
-                      <div className="bg-muted/50 rounded-lg p-3">
-                        <div className="flex items-center gap-2 text-sm">
-                          <Target className="h-4 w-4 text-blue-500" />
-                          <span>Next: {nextMilestone.percentage}% milestone</span>
+                      <div className="bg-cream/5 rounded-lg p-4 border border-cream/10">
+                        <div className="flex items-center gap-3 mb-2">
+                          <Target className="h-4 w-4 text-cream/60" />
+                          <span className="text-sm font-medium text-cream/80">
+                            Next Milestone: {nextMilestone.percentage}%
+                          </span>
                         </div>
-                        <div className="text-xs text-muted-foreground mt-1">
-                          ${(nextMilestone.amount - goal.currentAmount).toLocaleString()} to go
+                        <div className="text-sm text-cream/60">
+                          ${(nextMilestone.amount - goal.currentAmount).toLocaleString()} remaining
                         </div>
                       </div>
                     )}
 
                     {/* Action Buttons */}
-                    <div className="flex gap-2">
+                    <div className="flex gap-3 pt-2 mt-auto">
                       <Dialog>
                         <DialogTrigger asChild>
-                          <Button size="sm" className="flex-1" disabled={goal.isCompleted}>
-                            <DollarSign className="mr-1 h-3 w-3" />
+                          <Button 
+                            size="sm" 
+                            className="flex-1 bg-cream/10 hover:bg-cream/20 text-cream/80 border-cream/20 h-10" 
+                            disabled={goal.isCompleted}
+                          >
+                            <DollarSign className="mr-2 h-4 w-4" />
                             Add Money
                           </Button>
                         </DialogTrigger>
@@ -440,9 +464,9 @@ export function SavingsGoals() {
                           <DialogHeader>
                             <DialogTitle>Add Contribution</DialogTitle>
                           </DialogHeader>
-                          <div className="space-y-4">
-                            <div>
-                              <Label htmlFor="amount">Amount</Label>
+                          <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="amount" className="text-sm font-medium">Amount</Label>
                               <Input
                                 id="amount"
                                 type="number"
@@ -450,10 +474,11 @@ export function SavingsGoals() {
                                 onChange={(e) => setContributionAmount(e.target.value)}
                                 placeholder="0.00"
                                 step="0.01"
+                                className="h-11"
                               />
                             </div>
                             <Button 
-                              className="w-full"
+                              className="w-full h-11"
                               onClick={() => {
                                 const amount = parseFloat(contributionAmount)
                                 if (amount > 0) {
@@ -468,17 +493,17 @@ export function SavingsGoals() {
                         </DialogContent>
                       </Dialog>
                       
-                      <Button size="sm" variant="outline">
-                        <TrendingUp className="h-3 w-3" />
+                      <Button size="sm" variant="outline" className="border-cream/20 text-cream/60 hover:bg-cream/10 h-10 px-3">
+                        <TrendingUp className="h-4 w-4" />
                       </Button>
                     </div>
                   </CardContent>
 
                   {/* Completion Overlay */}
                   {goal.isCompleted && (
-                    <div className="absolute inset-0 bg-green-500/10 flex items-center justify-center">
-                      <div className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
-                        🎉 Goal Completed!
+                    <div className="absolute inset-0 bg-cream/10 flex items-center justify-center backdrop-blur-[1px]">
+                      <div className="bg-cream/20 text-cream/80 px-4 py-2 rounded-lg text-sm font-medium border border-cream/30 shadow-sm">
+                        Goal Completed
                       </div>
                     </div>
                   )}
@@ -491,16 +516,21 @@ export function SavingsGoals() {
 
       {/* Empty State */}
       {goals.length === 0 && !loading && (
-        <div className="text-center py-12">
-          <Target className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-medium mb-2">No savings goals yet</h3>
-          <p className="text-muted-foreground mb-4">
-            Create your first savings goal to start tracking your financial progress
-          </p>
-          <Button onClick={() => setShowCreateGoal(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Create Your First Goal
-          </Button>
+        <div className="text-center py-16">
+          <div className="max-w-md mx-auto">
+            <Target className="h-16 w-16 text-cream/40 mx-auto mb-6" />
+            <h3 className="text-xl font-medium mb-3 text-cream/70">No savings goals yet</h3>
+            <p className="text-cream/50 mb-8 leading-relaxed">
+              Create your first savings goal to start tracking your financial progress and build healthy saving habits.
+            </p>
+            <Button 
+              onClick={() => setShowCreateGoal(true)}
+              className="bg-cream/10 hover:bg-cream/20 text-cream/80 border-cream/20 h-11 px-6"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Create Your First Goal
+            </Button>
+          </div>
         </div>
       )}
     </div>

@@ -9,6 +9,10 @@ import { ExpenseChart } from "../../components/dashboard/expense-chart"
 import { CategoryBreakdown } from "../../components/dashboard/category-breakdown"
 import { RecentTransactions } from "../../components/dashboard/recent-transactions"
 import { MetricCard } from "../../components/dashboard/metric-card"
+import { ReceiptScanner } from "../../components/dashboard/receipt-scanner"
+import { SavingsGoals } from "../../components/dashboard/savings-goals"
+import { AdvancedAnalytics } from "../../components/dashboard/advanced-analytics"
+import { BillReminders } from "../../components/dashboard/bill-reminders"
 import { Input } from "../../components/ui/input"
 import { useAuth } from "../../contexts/auth-context"
 import { useRouter } from "next/navigation"
@@ -51,6 +55,8 @@ export default function DashboardPage() {
   const [timeframe, setTimeframe] = useState("30days")
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false)
+  const [expenses, setExpenses] = useState<Expense[]>([])
+  const [budgets, setBudgets] = useState<any[]>([])
 
   // Fix hydration issues by only rendering after mount
   useEffect(() => {
@@ -170,6 +176,11 @@ export default function DashboardPage() {
     setNotifications(
       notifications.map((notification) => (notification.id === id ? { ...notification, read: true } : notification))
     )
+  }
+
+  const handleReceiptDataExtracted = (data: any) => {
+    // Handle extracted receipt data
+    router.push(`/dashboard/add-expense?receiptData=${encodeURIComponent(JSON.stringify(data))}`)
   }
 
   if (authLoading) {
@@ -367,11 +378,65 @@ export default function DashboardPage() {
             </MotionContainer>
           </div>
 
-          <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-4 sm:p-6" delay={0.7}>
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
+            <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-4 sm:p-6" delay={0.7}>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-medium font-outfit">Receipt Scanner</h2>
+                <span className="text-xs bg-cream/10 text-cream/80 px-2 py-1 rounded-full">Smart OCR</span>
+              </div>
+              <ReceiptScanner onDataExtracted={handleReceiptDataExtracted} />
+            </MotionContainer>
+            
+            <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-4 sm:p-6" delay={0.8}>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-medium font-outfit">Savings Goals</h2>
+                <button
+                  onClick={() => router.push("/dashboard/goals")}
+                  className="text-cream/60 text-sm hover:text-cream transition-colors flex items-center group"
+                >
+                  Manage
+                  <ChevronRight className="h-4 w-4 ml-1 transform group-hover:translate-x-1 transition-transform duration-300" />
+                </button>
+              </div>
+              <SavingsGoals />
+            </MotionContainer>
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
+            <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-4 sm:p-6" delay={0.9}>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-medium font-outfit">Bill Reminders</h2>
+                <button
+                  onClick={() => router.push("/dashboard/bills")}
+                  className="text-cream/60 text-sm hover:text-cream transition-colors flex items-center group"
+                >
+                  View All
+                  <ChevronRight className="h-4 w-4 ml-1 transform group-hover:translate-x-1 transition-transform duration-300" />
+                </button>
+              </div>
+              <BillReminders />
+            </MotionContainer>
+            
+            <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-4 sm:p-6" delay={1.0}>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-medium font-outfit">Advanced Analytics</h2>
+                <button
+                  onClick={() => router.push("/dashboard/analytics")}
+                  className="text-cream/60 text-sm hover:text-cream transition-colors flex items-center group"
+                >
+                  View Details
+                  <ChevronRight className="h-4 w-4 ml-1 transform group-hover:translate-x-1 transition-transform duration-300" />
+                </button>
+              </div>
+              <AdvancedAnalytics expenses={expenses} budgets={budgets} timeframe={timeframe} />
+            </MotionContainer>
+          </div>
+
+          <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-4 sm:p-6" delay={1.1}>
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-medium font-outfit">Recent Transactions</h2>
               <button
-                onClick={() => router.push("/dashboard/analytics")}
+                onClick={() => router.push("/dashboard/expenses")}
                 className="text-cream/60 text-sm hover:text-cream transition-colors flex items-center group"
               >
                 View All

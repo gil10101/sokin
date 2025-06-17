@@ -11,6 +11,7 @@ import {
   LogOut,
   Wallet,
   Repeat,
+  Calendar,
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "../../components/ui/avatar"
@@ -165,6 +166,11 @@ const navItems = [
     label: "Budgets",
     href: "/dashboard/budgets",
     icon: Wallet,
+  },
+  {
+    label: "Bills",
+    href: "/dashboard/bills",
+    icon: Calendar,
   },
   {
     label: "Subscriptions",
