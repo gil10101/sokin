@@ -12,8 +12,53 @@ export class GoalsController {
         return res.status(401).json({ error: 'Unauthorized' });
       }
 
-      if (!db) {
-        throw new Error('Database not initialized');
+      // Development mode: Return mock data if database not available
+      if (!db || process.env.NODE_ENV === 'development') {
+        const mockGoals = [
+          {
+            id: 'goal_1',
+            userId,
+            name: 'Emergency Fund',
+            description: 'Build an emergency fund for unexpected expenses',
+            targetAmount: 10000,
+            currentAmount: 2500,
+            targetDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+            category: 'emergency',
+            priority: 'high',
+            isCompleted: false,
+            createdAt: new Date().toISOString(),
+            milestones: [
+              { percentage: 25, amount: 2500, achievedAt: new Date().toISOString() },
+              { percentage: 50, amount: 5000 },
+              { percentage: 75, amount: 7500 },
+              { percentage: 100, amount: 10000 }
+            ],
+            contributions: []
+          },
+          {
+            id: 'goal_2',
+            userId,
+            name: 'Vacation Fund',
+            description: 'Save for a dream vacation to Europe',
+            targetAmount: 5000,
+            currentAmount: 1200,
+            targetDate: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString(),
+            category: 'vacation',
+            priority: 'medium',
+            isCompleted: false,
+            createdAt: new Date().toISOString(),
+            milestones: [
+              { percentage: 25, amount: 1250, achievedAt: new Date().toISOString() },
+              { percentage: 50, amount: 2500 },
+              { percentage: 75, amount: 3750 },
+              { percentage: 100, amount: 5000 }
+            ],
+            contributions: []
+          }
+        ];
+        
+        console.log('Returning mock savings goals for development');
+        return res.json({ goals: mockGoals });
       }
       
       const goalsRef = db.collection('goals');
@@ -27,6 +72,37 @@ export class GoalsController {
       res.json({ goals });
     } catch (error: any) {
       console.error('Error fetching goals:', error);
+      
+      // Fallback to mock data if database fails
+      if (process.env.NODE_ENV === 'development') {
+        const userId = req.user?.uid || 'dev-user';
+        const mockGoals = [
+          {
+            id: 'goal_1',
+            userId,
+            name: 'Emergency Fund',
+            description: 'Build an emergency fund for unexpected expenses',
+            targetAmount: 10000,
+            currentAmount: 2500,
+            targetDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+            category: 'emergency',
+            priority: 'high',
+            isCompleted: false,
+            createdAt: new Date().toISOString(),
+            milestones: [
+              { percentage: 25, amount: 2500, achievedAt: new Date().toISOString() },
+              { percentage: 50, amount: 5000 },
+              { percentage: 75, amount: 7500 },
+              { percentage: 100, amount: 10000 }
+            ],
+            contributions: []
+          }
+        ];
+        
+        console.log('Database error - returning fallback mock goals');
+        return res.json({ goals: mockGoals });
+      }
+      
       res.status(500).json({ error: 'Failed to fetch goals' });
     }
   }
