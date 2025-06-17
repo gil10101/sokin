@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Calendar } from '../ui/calendar'
 import { Switch } from '../ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
 import { 
@@ -26,7 +27,8 @@ import {
   Smartphone,
   Building,
   CreditCard,
-  FileText
+  FileText,
+  ChevronRight
 } from 'lucide-react'
 import { format, addDays, isWithinInterval, isBefore, isAfter } from 'date-fns'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -309,17 +311,38 @@ export function BillReminders() {
           <p className="text-cream/60">Never miss a payment again</p>
         </div>
         <div className="flex gap-2">
-          <Select value={filterStatus} onValueChange={(value: any) => setFilterStatus(value)}>
-            <SelectTrigger className="w-32 border-cream/20 text-cream/70">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Bills</SelectItem>
-              <SelectItem value="upcoming">Upcoming</SelectItem>
-              <SelectItem value="overdue">Overdue</SelectItem>
-              <SelectItem value="paid">Paid</SelectItem>
-            </SelectContent>
-          </Select>
+          <DropdownMenu>
+            <DropdownMenuTrigger className="flex items-center text-cream/60 text-sm hover:text-cream bg-cream/5 px-3 py-1.5 rounded-md border border-cream/10">
+              {filterStatus === "all" ? "All Bills" : filterStatus === "upcoming" ? "Upcoming" : filterStatus === "overdue" ? "Overdue" : "Paid"}
+              <ChevronRight className="h-4 w-4 ml-2 transform rotate-90" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="bg-dark border-cream/10">
+              <DropdownMenuItem
+                className="text-cream hover:bg-cream/10 cursor-pointer"
+                onClick={() => setFilterStatus("all")}
+              >
+                All Bills
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-cream hover:bg-cream/10 cursor-pointer"
+                onClick={() => setFilterStatus("upcoming")}
+              >
+                Upcoming
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-cream hover:bg-cream/10 cursor-pointer"
+                onClick={() => setFilterStatus("overdue")}
+              >
+                Overdue
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-cream hover:bg-cream/10 cursor-pointer"
+                onClick={() => setFilterStatus("paid")}
+              >
+                Paid
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           
           <Dialog open={showCreateBill} onOpenChange={setShowCreateBill}>
             <DialogTrigger asChild>

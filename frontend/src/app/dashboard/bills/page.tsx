@@ -12,6 +12,7 @@ import { Button } from "../../../components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card"
 import { Badge } from "../../../components/ui/badge"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../../../components/ui/dropdown-menu"
 import { 
   Bell, 
   Calendar as CalendarIcon, 
@@ -22,7 +23,8 @@ import {
   Plus,
   ArrowLeft,
   TrendingUp,
-  TrendingDown
+  TrendingDown,
+  ChevronRight
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useToast } from "../../../hooks/use-toast"
@@ -328,31 +330,68 @@ export default function BillsPage() {
               <div className="flex flex-col sm:flex-row gap-4">
                 <div>
                   <label className="text-sm text-cream/60 mb-2 block font-outfit">Filter by Status</label>
-                  <Select value={filterStatus} onValueChange={(value: any) => setFilterStatus(value)}>
-                    <SelectTrigger className="w-40 bg-cream/5 border-cream/20 hover:bg-cream/10 transition-colors duration-200">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-dark border-cream/20">
-                      <SelectItem value="all">All Bills</SelectItem>
-                      <SelectItem value="upcoming">Upcoming</SelectItem>
-                      <SelectItem value="overdue">Overdue</SelectItem>
-                      <SelectItem value="paid">Paid</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger className="flex items-center text-cream/60 text-sm hover:text-cream bg-cream/5 px-3 py-1.5 rounded-md border border-cream/10">
+                      {filterStatus === "all" ? "All Bills" : filterStatus === "upcoming" ? "Upcoming" : filterStatus === "overdue" ? "Overdue" : "Paid"}
+                      <ChevronRight className="h-4 w-4 ml-2 transform rotate-90" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="bg-dark border-cream/10">
+                      <DropdownMenuItem
+                        className="text-cream hover:bg-cream/10 cursor-pointer"
+                        onClick={() => setFilterStatus("all")}
+                      >
+                        All Bills
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="text-cream hover:bg-cream/10 cursor-pointer"
+                        onClick={() => setFilterStatus("upcoming")}
+                      >
+                        Upcoming
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="text-cream hover:bg-cream/10 cursor-pointer"
+                        onClick={() => setFilterStatus("overdue")}
+                      >
+                        Overdue
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="text-cream hover:bg-cream/10 cursor-pointer"
+                        onClick={() => setFilterStatus("paid")}
+                      >
+                        Paid
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
 
                 <div>
                   <label className="text-sm text-cream/60 mb-2 block font-outfit">Sort by</label>
-                  <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
-                    <SelectTrigger className="w-40 bg-cream/5 border-cream/20 hover:bg-cream/10 transition-colors duration-200">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-dark border-cream/20">
-                      <SelectItem value="dueDate">Due Date</SelectItem>
-                      <SelectItem value="amount">Amount</SelectItem>
-                      <SelectItem value="name">Name</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger className="flex items-center text-cream/60 text-sm hover:text-cream bg-cream/5 px-3 py-1.5 rounded-md border border-cream/10">
+                      {sortBy === "dueDate" ? "Due Date" : sortBy === "amount" ? "Amount" : "Name"}
+                      <ChevronRight className="h-4 w-4 ml-2 transform rotate-90" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="bg-dark border-cream/10">
+                      <DropdownMenuItem
+                        className="text-cream hover:bg-cream/10 cursor-pointer"
+                        onClick={() => setSortBy("dueDate")}
+                      >
+                        Due Date
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="text-cream hover:bg-cream/10 cursor-pointer"
+                        onClick={() => setSortBy("amount")}
+                      >
+                        Amount
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="text-cream hover:bg-cream/10 cursor-pointer"
+                        onClick={() => setSortBy("name")}
+                      >
+                        Name
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
 

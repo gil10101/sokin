@@ -9,6 +9,7 @@ import { db } from "../../lib/firebase"
 import { useAuth } from "../../contexts/auth-context"
 import { useViewport } from "../../hooks/use-mobile"
 import { format, subDays, isAfter } from "date-fns"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu"
 
 // Helper function to safely parse dates including Firebase Timestamps
 const safeParseDate = (dateValue: any): Date => {
@@ -114,7 +115,6 @@ export function CategoryBreakdown() {
   const [expanded, setExpanded] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [dateRange, setDateRange] = useState("30days")
-  const [showDateFilter, setShowDateFilter] = useState(false)
   const [categoryData, setCategoryData] = useState<CategoryWithPercentage[]>([])
   const [transactionsByCategory, setTransactionsByCategory] = useState<CategoryTransactions>({})
   const [loading, setLoading] = useState(true)
@@ -274,36 +274,23 @@ export function CategoryBreakdown() {
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 lg:mb-8 gap-4">
                 <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                   <h3 className="text-base lg:text-lg font-medium font-outfit">Category Breakdown</h3>
-                <div className="relative">
-                                      <button
-                      onClick={() => setShowDateFilter(!showDateFilter)}
-                      className="flex items-center gap-2 px-2 lg:px-3 py-2 rounded-lg bg-cream/10 text-cream/80 hover:bg-cream/15 transition-colors text-xs lg:text-sm whitespace-nowrap"
-                    >
-                      <Calendar className="h-3 lg:h-4 w-3 lg:w-4" />
-                      <span className="hidden sm:inline">{dateRangeOptions.find(option => option.value === dateRange)?.label}</span>
-                      <span className="sm:hidden">Filter</span>
-                      <ArrowDown className="h-3 lg:h-4 w-3 lg:w-4" />
-                    </button>
-                  
-                  {showDateFilter && (
-                    <div className="absolute top-full left-0 mt-2 bg-dark border border-cream/10 rounded-lg shadow-lg z-10 min-w-[150px]">
-                      {dateRangeOptions.map((option) => (
-                        <button
-                          key={option.value}
-                          onClick={() => {
-                            setDateRange(option.value)
-                            setShowDateFilter(false)
-                          }}
-                          className={`w-full text-left px-3 py-2 text-sm hover:bg-cream/10 transition-colors ${
-                            dateRange === option.value ? 'bg-cream/10 text-cream' : 'text-cream/80'
-                          }`}
-                        >
-                          {option.label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger className="flex items-center text-cream/60 text-sm hover:text-cream bg-cream/5 px-3 py-1.5 rounded-md border border-cream/10">
+                    {dateRangeOptions.find(option => option.value === dateRange)?.label}
+                    <ChevronRight className="h-4 w-4 ml-2 transform rotate-90" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="bg-dark border-cream/10">
+                    {dateRangeOptions.map((option) => (
+                      <DropdownMenuItem
+                        key={option.value}
+                        className="text-cream hover:bg-cream/10 cursor-pointer"
+                        onClick={() => setDateRange(option.value)}
+                      >
+                        {option.label}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
               <button
                 onClick={toggleExpanded}

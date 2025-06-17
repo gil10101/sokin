@@ -205,7 +205,7 @@ export function AdvancedAnalytics({ expenses, budgets, timeframe }: AdvancedAnal
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
       {/* Insights Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6">
         {insights.map((insight, index) => {
           const Icon = getSeverityIcon(insight.severity)
           return (
@@ -239,7 +239,7 @@ export function AdvancedAnalytics({ expenses, budgets, timeframe }: AdvancedAnal
         </TabsList>
 
         <TabsContent value="overview" className="space-y-8">
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 gap-8">
             {/* Spending Trend */}
             <Card className="bg-cream/5 border-cream/20">
               <CardHeader className="pb-6">
@@ -289,53 +289,6 @@ export function AdvancedAnalytics({ expenses, budgets, timeframe }: AdvancedAnal
                       strokeWidth={2}
                     />
                   </AreaChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            {/* Category Breakdown */}
-            <Card className="bg-cream/5 border-cream/20">
-              <CardHeader className="pb-6">
-                <CardTitle className="text-xl text-cream/90">Category Breakdown</CardTitle>
-                <p className="text-sm text-cream/60">Top spending categories</p>
-              </CardHeader>
-              <CardContent className="pb-6">
-                <ResponsiveContainer width="100%" height={isMobile ? 300 : 400}>
-                  <PieChart>
-                    <Pie
-                      data={categoryComparisonData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={isMobile ? 50 : 80}
-                      outerRadius={isMobile ? 100 : 160}
-                      paddingAngle={5}
-                      dataKey="amount"
-                    >
-                      {categoryComparisonData.map((entry, index) => (
-                        <Cell 
-                          key={`cell-${index}`} 
-                          fill={`rgba(245, 245, 240, ${0.8 - (index * 0.08)})`}
-                          stroke="rgba(245, 245, 240, 0.2)"
-                          strokeWidth={1}
-                        />
-                      ))}
-                    </Pie>
-                    <Tooltip 
-                      formatter={(value: any) => [`$${value.toLocaleString()}`, 'Amount']}
-                      contentStyle={{ 
-                        backgroundColor: 'rgba(245, 245, 240, 0.95)', 
-                        border: '1px solid rgba(245, 245, 240, 0.2)',
-                        borderRadius: '12px',
-                        color: 'rgba(0, 0, 0, 0.8)',
-                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                      }}
-                    />
-                    <Legend 
-                      wrapperStyle={{ paddingTop: '20px' }}
-                      iconType="circle"
-                      fontSize={isMobile ? 12 : 14}
-                    />
-                  </PieChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
