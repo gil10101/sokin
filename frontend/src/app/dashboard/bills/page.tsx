@@ -8,11 +8,13 @@ import { format, addDays, isWithinInterval, isBefore, isAfter } from "date-fns"
 import { DashboardSidebar } from "../../../components/dashboard/sidebar"
 import { PageHeader } from "../../../components/dashboard/page-header"
 import { BillReminders } from "../../../components/dashboard/bill-reminders"
+import { MetricCard } from "../../../components/dashboard/metric-card"
 import { Button } from "../../../components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card"
 import { Badge } from "../../../components/ui/badge"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../../../components/ui/dropdown-menu"
+import { MotionContainer } from "../../../components/ui/motion-container"
 import { 
   Bell, 
   Calendar as CalendarIcon, 
@@ -26,7 +28,7 @@ import {
   TrendingDown,
   ChevronRight
 } from "lucide-react"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion } from "framer-motion"
 import { useToast } from "../../../hooks/use-toast"
 import { LoadingSpinner } from "../../../components/ui/loading-spinner"
 
@@ -198,21 +200,6 @@ export default function BillsPage() {
     return filtered
   }
 
-  const container = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-      },
-    },
-  }
-
-  const item = {
-    hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0, transition: { duration: 0.5 } },
-  }
-
   if (loading) {
     return (
       <div className="flex h-screen bg-dark text-cream overflow-hidden">
@@ -244,88 +231,47 @@ export default function BillsPage() {
               <h1 className="text-2xl md:text-3xl font-medium font-outfit">Bill Reminders</h1>
               <p className="text-cream/60 text-sm mt-1 font-outfit">Manage your bills and never miss a payment</p>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => router.push('/dashboard')}
-              className="flex items-center gap-2 bg-cream/5 border-cream/20 hover:bg-cream/10 transition-colors duration-200"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back to Dashboard
-            </Button>
           </motion.header>
 
           {/* Stats Cards */}
-          <motion.div 
-            variants={container} 
-            initial="hidden" 
-            animate="show" 
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
-          >
-            <motion.div
-              variants={item}
-              className="bg-cream/5 rounded-xl border border-cream/10 p-6 hover:border-cream/20 transition-colors duration-300"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-cream/60 font-outfit">Total Bills</p>
-                  <p className="text-2xl font-medium text-cream font-outfit">{stats.totalBills}</p>
-                </div>
-                <Bell className="h-8 w-8 text-cream/40" />
-              </div>
-            </motion.div>
-
-            <motion.div
-              variants={item}
-              className="bg-cream/5 rounded-xl border border-cream/10 p-6 hover:border-cream/20 transition-colors duration-300"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-cream/60 font-outfit">Upcoming</p>
-                  <p className="text-2xl font-medium text-yellow-400 font-outfit">{stats.upcomingBills}</p>
-                </div>
-                <Clock className="h-8 w-8 text-yellow-400/60" />
-              </div>
-            </motion.div>
-
-            <motion.div
-              variants={item}
-              className="bg-cream/5 rounded-xl border border-cream/10 p-6 hover:border-cream/20 transition-colors duration-300"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-cream/60 font-outfit">Overdue</p>
-                  <p className="text-2xl font-medium text-red-400 font-outfit">{stats.overdueBills}</p>
-                </div>
-                <AlertCircle className="h-8 w-8 text-red-400/60" />
-              </div>
-            </motion.div>
-
-            <motion.div
-              variants={item}
-              className="bg-cream/5 rounded-xl border border-cream/10 p-6 hover:border-cream/20 transition-colors duration-300"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-cream/60 font-outfit">Monthly Total</p>
-                  <p className="text-2xl font-medium text-green-400 font-outfit">${stats.monthlyTotal.toFixed(2)}</p>
-                  <p className="text-xs text-cream/40 font-outfit">
-                    ${stats.monthlyPaid.toFixed(2)} paid
-                  </p>
-                </div>
-                <DollarSign className="h-8 w-8 text-green-400/60" />
-              </div>
-            </motion.div>
-          </motion.div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 sm:mb-8">
+            <MotionContainer delay={0.1}>
+              <MetricCard
+                title="Total Bills"
+                value={stats.totalBills.toString()}
+                secondaryValue={`$${stats.totalBills > 0 ? (stats.monthlyTotal / stats.totalBills).toFixed(0) : 0} avg amount`}
+                icon={<Bell className="h-5 w-5" />}
+              />
+            </MotionContainer>
+            <MotionContainer delay={0.2}>
+              <MetricCard
+                title="Upcoming"
+                value={stats.upcomingBills.toString()}
+                secondaryValue={`$${bills.filter(bill => !bill.isPaid && isAfter(new Date(bill.dueDate), new Date())).reduce((sum, bill) => sum + bill.amount, 0).toFixed(2)} due`}
+                icon={<Clock className="h-5 w-5" />}
+              />
+            </MotionContainer>
+            <MotionContainer delay={0.3}>
+              <MetricCard
+                title="Overdue"
+                value={stats.overdueBills.toString()}
+                secondaryValue={`$${bills.filter(bill => !bill.isPaid && isBefore(new Date(bill.dueDate), new Date())).reduce((sum, bill) => sum + bill.amount, 0).toFixed(2)} overdue`}
+                icon={<AlertCircle className="h-5 w-5" />}
+              />
+            </MotionContainer>
+            <MotionContainer delay={0.4}>
+              <MetricCard
+                title="Monthly Total"
+                value={`$${stats.monthlyTotal.toFixed(2)}`}
+                secondaryValue={`$${stats.monthlyPaid.toFixed(2)} paid`}
+                icon={<DollarSign className="h-5 w-5" />}
+              />
+            </MotionContainer>
+          </div>
 
           {/* Filters and Sort */}
-          <motion.div
-            variants={item}
-            initial="hidden"
-            animate="show"
-            transition={{ delay: 0.5 }}
-            className="bg-cream/5 rounded-xl border border-cream/10 p-6 mb-8 hover:border-cream/20 transition-colors duration-300"
-          >
+          <MotionContainer delay={0.5}>
+            <div className="bg-cream/5 rounded-xl border border-cream/10 p-6 mb-8 hover:border-cream/20 transition-colors duration-300">
             <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
               <div className="flex flex-col sm:flex-row gap-4">
                 <div>
@@ -399,21 +345,18 @@ export default function BillsPage() {
                 Showing {getFilteredAndSortedBills().length} of {bills.length} bills
               </div>
             </div>
-          </motion.div>
+            </div>
+          </MotionContainer>
 
           {/* Bills Component */}
-          <motion.div
-            variants={item}
-            initial="hidden"
-            animate="show"
-            transition={{ delay: 0.6 }}
-            className="bg-cream/5 rounded-xl border border-cream/10 p-6 hover:border-cream/20 transition-colors duration-300"
-          >
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-medium font-outfit">Your Bills</h2>
+          <MotionContainer delay={0.6}>
+            <div className="bg-cream/5 rounded-xl border border-cream/10 p-6 hover:border-cream/20 transition-colors duration-300">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-medium font-outfit">Your Bills</h2>
+              </div>
+              <BillReminders />
             </div>
-            <BillReminders />
-          </motion.div>
+          </MotionContainer>
         </div>
       </main>
     </div>

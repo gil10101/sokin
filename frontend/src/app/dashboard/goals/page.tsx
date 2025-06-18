@@ -9,6 +9,7 @@ import { useAuth } from "../../../contexts/auth-context"
 import { format, differenceInDays, isAfter, isBefore, addMonths, addYears } from "date-fns"
 import { DashboardSidebar } from "../../../components/dashboard/sidebar"
 import { PageHeader } from "../../../components/dashboard/page-header"
+import { MetricCard } from "../../../components/dashboard/metric-card"
 import { Button } from "../../../components/ui/button"
 import { Input } from "../../../components/ui/input"
 import { Label } from "../../../components/ui/label"
@@ -460,61 +461,38 @@ export default function GoalsPage() {
           />
 
           {/* Stats Overview */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 sm:mb-8">
             <MotionContainer delay={0.1}>
-              <Card className="bg-cream/5 border-cream/10">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-cream/60">Total Goals</p>
-                      <p className="text-2xl font-bold text-cream/90">{stats.total}</p>
-                    </div>
-                    <Target className="h-8 w-8 text-cream/40" />
-                  </div>
-                </CardContent>
-              </Card>
+              <MetricCard
+                title="Total Goals"
+                value={stats.total.toString()}
+                secondaryValue={`$${stats.totalValue.toLocaleString()} target`}
+                icon={<Target className="h-5 w-5" />}
+              />
             </MotionContainer>
-            
             <MotionContainer delay={0.2}>
-              <Card className="bg-cream/5 border-cream/10">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-cream/60">Active</p>
-                      <p className="text-2xl font-bold text-cream/90">{stats.active}</p>
-                    </div>
-                    <Clock className="h-8 w-8 text-cream/40" />
-                  </div>
-                </CardContent>
-              </Card>
+              <MetricCard
+                title="Active"
+                value={stats.active.toString()}
+                secondaryValue={`${stats.active > 0 ? Math.round((stats.active / stats.total) * 100) : 0}% of total`}
+                icon={<Clock className="h-5 w-5" />}
+              />
             </MotionContainer>
-            
             <MotionContainer delay={0.3}>
-              <Card className="bg-cream/5 border-cream/10">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-cream/60">Completed</p>
-                      <p className="text-2xl font-bold text-cream/90">{stats.completed}</p>
-                    </div>
-                    <Trophy className="h-8 w-8 text-cream/40" />
-                  </div>
-                </CardContent>
-              </Card>
+              <MetricCard
+                title="Completed"
+                value={stats.completed.toString()}
+                secondaryValue={`${stats.completed > 0 ? Math.round((stats.completed / stats.total) * 100) : 0}% of total`}
+                icon={<Trophy className="h-5 w-5" />}
+              />
             </MotionContainer>
-            
             <MotionContainer delay={0.4}>
-              <Card className="bg-cream/5 border-cream/10">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-cream/60">Progress</p>
-                      <p className="text-2xl font-bold text-cream/90">{stats.overallProgress.toFixed(1)}%</p>
-                    </div>
-                    <TrendingUp className="h-8 w-8 text-cream/40" />
-                  </div>
-                </CardContent>
-              </Card>
+              <MetricCard
+                title="Progress"
+                value={`${stats.overallProgress.toFixed(1)}%`}
+                secondaryValue={`$${stats.savedAmount.toLocaleString()} saved`}
+                icon={<TrendingUp className="h-5 w-5" />}
+              />
             </MotionContainer>
           </div>
 
