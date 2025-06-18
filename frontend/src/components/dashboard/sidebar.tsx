@@ -12,6 +12,7 @@ import {
   Wallet,
   Repeat,
   Calendar,
+  Target,
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "../../components/ui/avatar"
@@ -166,6 +167,11 @@ const navItems = [
     label: "Budgets",
     href: "/dashboard/budgets",
     icon: Wallet,
+  },
+  {
+    label: "Goals",
+    href: "/dashboard/goals",
+    icon: Target,
   },
   {
     label: "Bills",
