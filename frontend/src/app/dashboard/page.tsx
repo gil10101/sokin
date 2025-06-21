@@ -379,6 +379,21 @@ export default function DashboardPage() {
                 </div>
                 <StackedBarChart timeframe={timeframe} />
               </MotionContainer>
+
+              {/* Stock Market Section */}
+              <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-4 sm:p-6" delay={0.8}>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-lg font-medium font-outfit">Stock Market</h2>
+                  <button
+                    onClick={() => router.push("/dashboard/stocks")}
+                    className="text-cream/60 text-sm hover:text-cream transition-colors flex items-center group"
+                  >
+                    View All Stocks
+                    <ChevronRight className="h-4 w-4 ml-1 transform group-hover:translate-x-1 transition-transform duration-300" />
+                  </button>
+                </div>
+                <StockMarket />
+              </MotionContainer>
             </div>
 
             {/* Right Column - Sidebar-like layout */}
@@ -430,20 +445,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Stock Market Section - Full Width */}
-          <MotionContainer className="mt-6 sm:mt-8" delay={0.6}>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-medium font-outfit">Stock Market</h2>
-              <button
-                onClick={() => router.push("/dashboard/stocks")}
-                className="text-cream/60 text-sm hover:text-cream transition-colors flex items-center group"
-              >
-                View All Stocks
-                <ChevronRight className="h-4 w-4 ml-1 transform group-hover:translate-x-1 transition-transform duration-300" />
-              </button>
-            </div>
-            <StockMarket />
-          </MotionContainer>
+
 
           {/* Bottom Section - Two Column Layout */}
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6 mt-6 sm:mt-8">
