@@ -230,18 +230,18 @@ export function CategoryBreakdown() {
 
   if (loading) {
     return (
-      <div className="h-[300px] flex items-center justify-center">
-        <div className="text-cream/60">Loading category data...</div>
+      <div className="min-h-[400px] sm:h-[300px] flex items-center justify-center">
+        <div className="text-cream/60 text-sm">Loading category data...</div>
       </div>
     )
   }
 
   if (categoryData.length === 0) {
     return (
-      <div className="h-[300px] flex items-center justify-center">
+      <div className="min-h-[400px] sm:h-[300px] flex items-center justify-center px-4">
         <div className="text-center">
-          <div className="text-cream/60 mb-2">No expense data available</div>
-          <div className="text-sm text-cream/40">Add some expenses to see category breakdown</div>
+          <div className="text-cream/60 mb-2 text-sm sm:text-base">No expense data available</div>
+          <div className="text-xs sm:text-sm text-cream/40">Add some expenses to see category breakdown</div>
         </div>
       </div>
     )
@@ -552,67 +552,73 @@ export function CategoryBreakdown() {
   }
 
   return (
-    <div className="h-[300px]">
-      <ResponsiveContainer width="100%" height="80%">
-        <PieChart>
-          <Pie
-            data={categoryData}
-            cx="50%"
-            cy="50%"
-            outerRadius={80}
-            fill="#8884d8"
-            dataKey="value"
-            onMouseEnter={onPieEnter}
-            onMouseLeave={onPieLeave}
-          >
-            {categoryData.map((entry, index) => (
-              <Cell 
-                key={`cell-${index}`} 
-                fill={entry.color}
-                stroke={activeIndex === index ? "#F5F5F0" : "none"}
-                strokeWidth={2}
-              />
-            ))}
-          </Pie>
-          <Tooltip
-            content={({ active, payload }) => {
-              if (active && payload && payload.length) {
-                const data = payload[0].payload
-                return (
-                  <div className="bg-dark border border-cream/10 p-2 rounded-md shadow-md">
-                    <p className="text-cream font-medium">{data.name}</p>
-                    <p className="text-cream/80 text-sm">${data.value.toFixed(2)}</p>
-                    <p className="text-cream/60 text-xs">{data.percentage}% of total</p>
-                  </div>
-                )
-              }
-              return null
-            }}
-          />
-        </PieChart>
-      </ResponsiveContainer>
+    <div className="min-h-[400px] sm:h-[300px] flex flex-col">
+      {/* Chart Container */}
+      <div className="h-[200px] sm:h-[180px] flex-shrink-0">
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={categoryData}
+              cx="50%"
+              cy="50%"
+              outerRadius={60}
+              fill="#8884d8"
+              dataKey="value"
+              onMouseEnter={onPieEnter}
+              onMouseLeave={onPieLeave}
+            >
+              {categoryData.map((entry, index) => (
+                <Cell 
+                  key={`cell-${index}`} 
+                  fill={entry.color}
+                  stroke={activeIndex === index ? "#F5F5F0" : "none"}
+                  strokeWidth={2}
+                />
+              ))}
+            </Pie>
+            <Tooltip
+              content={({ active, payload }) => {
+                if (active && payload && payload.length) {
+                  const data = payload[0].payload
+                  return (
+                    <div className="bg-dark border border-cream/10 p-2 rounded-md shadow-md">
+                      <p className="text-cream font-medium text-sm">{data.name}</p>
+                      <p className="text-cream/80 text-xs">${data.value.toFixed(2)}</p>
+                      <p className="text-cream/60 text-xs">{data.percentage}% of total</p>
+                    </div>
+                  )
+                }
+                return null
+              }}
+            />
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
 
-      <div className="mt-4">
-        <div className="grid grid-cols-2 gap-x-4 gap-y-2 mb-2">
+      {/* Category Legend */}
+      <div className="flex-1 flex flex-col mt-3 sm:mt-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 sm:gap-x-4 gap-y-2 sm:gap-y-2 mb-3 sm:mb-2 flex-1">
           {categoryData.map((category, index) => (
-            <div key={index} className="flex items-center justify-between">
-              <div className="flex items-center">
-                <div className="h-3 w-3 rounded-full mr-2" style={{ backgroundColor: category.color }} />
-                <span className="text-sm text-cream/80">{category.name}</span>
+            <div key={index} className="flex items-center justify-between min-w-0">
+              <div className="flex items-center min-w-0 flex-1">
+                <div className="h-3 w-3 rounded-full mr-2 flex-shrink-0" style={{ backgroundColor: category.color }} />
+                <span className="text-xs sm:text-sm text-cream/80 truncate">{category.name}</span>
               </div>
-              <span className="text-sm font-medium text-cream">${category.value.toFixed(2)}</span>
+              <span className="text-xs sm:text-sm font-medium text-cream ml-2 flex-shrink-0">${category.value.toFixed(2)}</span>
             </div>
           ))}
         </div>
 
-        <div className="mt-6 pt-4 border-t border-cream/10 flex justify-between items-center">
+        {/* Total */}
+        <div className="mt-3 sm:mt-6 pt-3 sm:pt-4 border-t border-cream/10 flex justify-between items-center">
           <span className="text-sm font-medium text-cream">Total</span>
           <span className="text-sm font-medium text-cream">${total.toFixed(2)}</span>
         </div>
 
+        {/* Expand Button */}
         <button
           onClick={toggleExpanded}
-          className="mt-4 w-full text-center text-xs text-cream/60 hover:text-cream flex items-center justify-center group transition-colors duration-200"
+          className="mt-3 sm:mt-4 w-full text-center text-xs text-cream/60 hover:text-cream flex items-center justify-center group transition-colors duration-200 py-1"
         >
           View detailed breakdown
           <ChevronRight className="h-3 w-3 ml-1 transform group-hover:translate-x-1 transition-transform duration-300" />

@@ -282,270 +282,290 @@ export function BillReminders() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="h-8 w-48 bg-cream/10 rounded animate-pulse mb-2" />
-            <div className="h-4 w-64 bg-cream/5 rounded animate-pulse" />
+      <div className="w-full max-w-full overflow-hidden">
+        <div className="space-y-4 md:space-y-6">
+          <div className="flex flex-col gap-3 md:gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0 flex-1">
+              <div className="h-6 md:h-8 w-40 md:w-48 bg-cream/10 rounded animate-pulse mb-2" />
+              <div className="h-3 md:h-4 w-48 md:w-64 bg-cream/5 rounded animate-pulse" />
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:gap-3 md:gap-2 flex-shrink-0">
+              <div className="h-10 w-full sm:w-32 md:min-w-[120px] bg-cream/10 rounded animate-pulse" />
+              <div className="h-10 w-full sm:w-24 md:min-w-[110px] bg-cream/10 rounded animate-pulse" />
+            </div>
           </div>
-          <div className="flex gap-2">
-            <div className="h-10 w-32 bg-cream/10 rounded animate-pulse" />
-            <div className="h-10 w-24 bg-cream/10 rounded animate-pulse" />
+          <div className="space-y-3 md:space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-16 md:h-20 bg-cream/5 rounded-lg animate-pulse w-full" />
+            ))}
           </div>
-        </div>
-        <div className="space-y-4">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-20 bg-cream/5 rounded-lg animate-pulse" />
-          ))}
         </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-semibold text-cream/90">Bill Reminders</h2>
-          <p className="text-cream/60">Never miss a payment again</p>
-        </div>
-        <div className="flex gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger className="flex items-center text-cream/60 text-sm hover:text-cream bg-cream/5 px-3 py-1.5 rounded-md border border-cream/10">
-              {filterStatus === "all" ? "All Bills" : filterStatus === "upcoming" ? "Upcoming" : filterStatus === "overdue" ? "Overdue" : "Paid"}
-              <ChevronRight className="h-4 w-4 ml-2 transform rotate-90" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="bg-dark border-cream/10">
-              <DropdownMenuItem
-                className="text-cream hover:bg-cream/10 cursor-pointer"
-                onClick={() => setFilterStatus("all")}
-              >
-                All Bills
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="text-cream hover:bg-cream/10 cursor-pointer"
-                onClick={() => setFilterStatus("upcoming")}
-              >
-                Upcoming
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="text-cream hover:bg-cream/10 cursor-pointer"
-                onClick={() => setFilterStatus("overdue")}
-              >
-                Overdue
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="text-cream hover:bg-cream/10 cursor-pointer"
-                onClick={() => setFilterStatus("paid")}
-              >
-                Paid
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          
-          <Dialog open={showCreateBill} onOpenChange={setShowCreateBill}>
-            <DialogTrigger asChild>
-              <Button className="bg-cream/10 hover:bg-cream/20 text-cream/80 border-cream/20">
-                <Plus className="mr-2 h-4 w-4" />
-                Add Bill
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>Add Bill Reminder</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="billName">Bill Name</Label>
-                    <Input
-                      id="billName"
-                      value={newBill.name}
-                      onChange={(e) => setNewBill({ ...newBill, name: e.target.value })}
-                      placeholder="Electric bill, rent, etc."
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="amount">Amount</Label>
-                    <Input
-                      id="amount"
-                      type="number"
-                      value={newBill.amount}
-                      onChange={(e) => setNewBill({ ...newBill, amount: e.target.value })}
-                      placeholder="0.00"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Category</Label>
-                    <Select 
-                      value={newBill.category} 
-                      onValueChange={(value) => setNewBill({ ...newBill, category: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {billCategories.map((cat) => (
-                          <SelectItem key={cat.value} value={cat.value}>
-                            <div className="flex items-center gap-2">
-                              <cat.icon className="h-4 w-4" />
-                              {cat.label}
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label>Frequency</Label>
-                    <Select 
-                      value={newBill.frequency} 
-                      onValueChange={(value: any) => setNewBill({ ...newBill, frequency: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="weekly">Weekly</SelectItem>
-                        <SelectItem value="monthly">Monthly</SelectItem>
-                        <SelectItem value="quarterly">Quarterly</SelectItem>
-                        <SelectItem value="yearly">Yearly</SelectItem>
-                        <SelectItem value="one-time">One-time</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <Button 
-                  onClick={createBillReminder} 
-                  className="w-full"
-                  disabled={!newBill.name || !newBill.amount}
+    <div className="w-full max-w-full overflow-hidden">
+      <div className="space-y-4 md:space-y-6">
+        {/* Header */}
+        <div className="flex flex-col gap-3 md:gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0 flex-1">
+            <h2 className="text-lg md:text-xl lg:text-2xl font-semibold text-cream/90 truncate">Bill Reminders</h2>
+            <p className="text-sm md:text-base text-cream/60 mt-1">Never miss a payment again</p>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:gap-3 md:gap-2 flex-shrink-0">
+            <DropdownMenu>
+              <DropdownMenuTrigger className="flex items-center justify-center text-cream/60 text-sm hover:text-cream bg-cream/5 px-3 py-2 sm:py-1.5 rounded-md border border-cream/10 w-full sm:w-auto md:min-w-[120px]">
+                <span className="truncate">
+                  {filterStatus === "all" ? "All Bills" : filterStatus === "upcoming" ? "Upcoming" : filterStatus === "overdue" ? "Overdue" : "Paid"}
+                </span>
+                <ChevronRight className="h-4 w-4 ml-2 transform rotate-90 flex-shrink-0" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="bg-dark border-cream/10 w-full sm:w-auto min-w-[150px]">
+                <DropdownMenuItem
+                  className="text-cream hover:bg-cream/10 cursor-pointer"
+                  onClick={() => setFilterStatus("all")}
                 >
-                  Add Bill Reminder
+                  All Bills
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="text-cream hover:bg-cream/10 cursor-pointer"
+                  onClick={() => setFilterStatus("upcoming")}
+                >
+                  Upcoming
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="text-cream hover:bg-cream/10 cursor-pointer"
+                  onClick={() => setFilterStatus("overdue")}
+                >
+                  Overdue
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="text-cream hover:bg-cream/10 cursor-pointer"
+                  onClick={() => setFilterStatus("paid")}
+                >
+                  Paid
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            
+            <Dialog open={showCreateBill} onOpenChange={setShowCreateBill}>
+              <DialogTrigger asChild>
+                <Button className="bg-cream/10 hover:bg-cream/20 text-cream/80 border-cream/20 w-full sm:w-auto md:min-w-[110px] flex-shrink-0">
+                  <Plus className="mr-2 h-4 w-4" />
+                  <span className="sm:inline">Add Bill</span>
                 </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
-      </div>
+              </DialogTrigger>
+              <DialogContent className="mx-4 sm:mx-0 md:mx-auto sm:max-w-md md:max-w-lg max-w-[95vw] max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle className="text-lg md:text-xl">Add Bill Reminder</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 md:space-y-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="md:col-span-1">
+                      <Label htmlFor="billName" className="text-sm md:text-base">Bill Name</Label>
+                      <Input
+                        id="billName"
+                        value={newBill.name}
+                        onChange={(e) => setNewBill({ ...newBill, name: e.target.value })}
+                        placeholder="Electric bill, rent, etc."
+                        className="mt-1 md:mt-2"
+                      />
+                    </div>
+                    <div className="md:col-span-1">
+                      <Label htmlFor="amount" className="text-sm md:text-base">Amount</Label>
+                      <Input
+                        id="amount"
+                        type="number"
+                        value={newBill.amount}
+                        onChange={(e) => setNewBill({ ...newBill, amount: e.target.value })}
+                        placeholder="0.00"
+                        className="mt-1 md:mt-2"
+                      />
+                    </div>
+                  </div>
 
-      {/* Upcoming Reminders Alert */}
-      {upcomingReminders.length > 0 && (
-        <Card className="border-l-4 border-l-cream/40 bg-cream/5">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <Bell className="h-5 w-5 text-cream/60" />
-              <div>
-                <h3 className="font-medium text-cream/80">
-                  {upcomingReminders.length} Bill{upcomingReminders.length > 1 ? 's' : ''} Need Attention
-                </h3>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {upcomingReminders.slice(0, 3).map((reminder) => (
-                    <Badge key={reminder.billId} variant="outline" className="border-cream/20 text-cream/70">
-                      {reminder.billName} - {reminder.daysUntilDue <= 0 ? 'Overdue' : `${reminder.daysUntilDue} days`}
-                    </Badge>
-                  ))}
-                  {upcomingReminders.length > 3 && (
-                    <Badge variant="outline" className="border-cream/20 text-cream/70">
-                      +{upcomingReminders.length - 3} more
-                    </Badge>
-                  )}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-sm md:text-base">Category</Label>
+                      <Select 
+                        value={newBill.category} 
+                        onValueChange={(value) => setNewBill({ ...newBill, category: value })}
+                      >
+                        <SelectTrigger className="mt-1 md:mt-2">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {billCategories.map((cat) => (
+                            <SelectItem key={cat.value} value={cat.value}>
+                              <div className="flex items-center gap-2">
+                                <cat.icon className="h-4 w-4" />
+                                {cat.label}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-sm md:text-base">Frequency</Label>
+                      <Select 
+                        value={newBill.frequency} 
+                        onValueChange={(value: any) => setNewBill({ ...newBill, frequency: value })}
+                      >
+                        <SelectTrigger className="mt-1 md:mt-2">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="weekly">Weekly</SelectItem>
+                          <SelectItem value="monthly">Monthly</SelectItem>
+                          <SelectItem value="quarterly">Quarterly</SelectItem>
+                          <SelectItem value="yearly">Yearly</SelectItem>
+                          <SelectItem value="one-time">One-time</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <Button 
+                    onClick={createBillReminder} 
+                    className="w-full mt-6"
+                    disabled={!newBill.name || !newBill.amount}
+                  >
+                    Add Bill Reminder
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </div>
+
+        {/* Upcoming Reminders Alert */}
+        {upcomingReminders.length > 0 && (
+          <Card className="border-l-4 border-l-cream/40 bg-cream/5">
+            <CardContent className="p-3 md:p-4">
+              <div className="flex items-start gap-3">
+                <Bell className="h-5 w-5 text-cream/60 flex-shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-medium text-cream/80 text-sm md:text-base">
+                    {upcomingReminders.length} Bill{upcomingReminders.length > 1 ? 's' : ''} Need Attention
+                  </h3>
+                  <div className="flex flex-wrap gap-1.5 md:gap-2 mt-2">
+                    {upcomingReminders.slice(0, 3).map((reminder) => (
+                      <Badge key={reminder.billId} variant="outline" className="border-cream/20 text-cream/70 text-xs px-2 py-0.5">
+                        <span className="truncate max-w-[120px] md:max-w-none">
+                          {reminder.billName}
+                        </span>
+                        <span className="ml-1 flex-shrink-0">
+                          - {reminder.daysUntilDue <= 0 ? 'Overdue' : `${reminder.daysUntilDue}d`}
+                        </span>
+                      </Badge>
+                    ))}
+                    {upcomingReminders.length > 3 && (
+                      <Badge variant="outline" className="border-cream/20 text-cream/70 text-xs px-2 py-0.5">
+                        +{upcomingReminders.length - 3} more
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+            </CardContent>
+          </Card>
+        )}
 
-      {/* Bills List */}
-      <div className="grid gap-4">
-        <AnimatePresence>
-          {getFilteredBills().map((bill) => {
-            const categoryInfo = billCategories.find(c => c.value === bill.category)
-            const nextDueDate = getNextDueDate(bill)
-            const IconComponent = categoryInfo?.icon || FileText
+        {/* Bills List */}
+        <div className="w-full overflow-hidden">
+          <div className="grid gap-3 md:gap-4">
+            <AnimatePresence>
+              {getFilteredBills().map((bill) => {
+                const categoryInfo = billCategories.find(c => c.value === bill.category)
+                const nextDueDate = getNextDueDate(bill)
+                const IconComponent = categoryInfo?.icon || FileText
 
-            return (
-              <motion.div
-                key={bill.id}
-                layout
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.2 }}
-              >
-                <Card className="bg-cream/5 border-cream/20 hover:bg-cream/10 transition-colors">
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="h-10 w-10 rounded-full bg-cream/10 flex items-center justify-center">
-                          <IconComponent className="h-5 w-5 text-cream/60" />
-                        </div>
-                        <div>
-                          <h3 className="font-medium text-cream/90">{bill.name}</h3>
-                          <div className="flex items-center gap-2 text-sm text-cream/60">
-                            <CalendarIcon className="h-3 w-3" />
-                            <span>Due {format(nextDueDate, 'MMM dd, yyyy')}</span>
-                            <span>•</span>
-                            <span>{bill.frequency}</span>
+                return (
+                  <motion.div
+                    key={bill.id}
+                    layout
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.2 }}
+                    className="w-full"
+                  >
+                    <Card className="bg-cream/5 border-cream/20 hover:bg-cream/10 transition-colors w-full">
+                      <CardContent className="p-3 md:p-4">
+                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-4">
+                          <div className="flex items-center gap-3 md:gap-4 flex-1 min-w-0">
+                            <div className="h-8 w-8 md:h-10 md:w-10 rounded-full bg-cream/10 flex items-center justify-center flex-shrink-0">
+                              <IconComponent className="h-4 w-4 md:h-5 md:w-5 text-cream/60" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-medium text-cream/90 text-sm md:text-base truncate">{bill.name}</h3>
+                              <div className="flex items-center gap-1.5 md:gap-2 text-xs md:text-sm text-cream/60 mt-0.5">
+                                <CalendarIcon className="h-3 w-3 flex-shrink-0" />
+                                <span className="truncate">Due {format(nextDueDate, 'MMM dd, yyyy')}</span>
+                                <span className="hidden md:inline">•</span>
+                                <span className="hidden md:inline">{bill.frequency}</span>
+                              </div>
+                              <div className="md:hidden text-xs text-cream/50 mt-0.5">
+                                {bill.frequency}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between md:justify-end gap-3 md:gap-4 flex-shrink-0">
+                            <div className="text-left md:text-right">
+                              <div className="font-semibold text-cream/90 text-base md:text-lg">${bill.amount.toFixed(2)}</div>
+                              <Badge variant="outline" className="border-cream/20 text-cream/60 text-xs mt-1">
+                                {getBillStatusText(bill)}
+                              </Badge>
+                            </div>
+
+                            {!bill.isPaid && (
+                              <Button
+                                size="sm"
+                                onClick={() => markBillAsPaid(bill.id!)}
+                                className="flex items-center gap-1 bg-cream/10 hover:bg-cream/20 text-cream/80 border-cream/20 px-2 md:px-3 py-1.5 text-xs md:text-sm flex-shrink-0"
+                              >
+                                <CheckCircle className="h-3 w-3" />
+                                <span className="hidden md:inline">Mark Paid</span>
+                                <span className="md:hidden">Paid</span>
+                              </Button>
+                            )}
                           </div>
                         </div>
-                      </div>
-
-                      <div className="flex items-center gap-4">
-                        <div className="text-right">
-                          <div className="font-semibold text-cream/90">${bill.amount.toFixed(2)}</div>
-                          <Badge variant="outline" className="border-cream/20 text-cream/60">
-                            {getBillStatusText(bill)}
-                          </Badge>
-                        </div>
-
-                        {!bill.isPaid && (
-                          <Button
-                            size="sm"
-                            onClick={() => markBillAsPaid(bill.id!)}
-                            className="flex items-center gap-1 bg-cream/10 hover:bg-cream/20 text-cream/80 border-cream/20"
-                          >
-                            <CheckCircle className="h-3 w-3" />
-                            Mark Paid
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            )
-          })}
-        </AnimatePresence>
-      </div>
-
-      {/* Empty State */}
-      {getFilteredBills().length === 0 && !loading && (
-        <div className="text-center py-12">
-          <Bell className="h-12 w-12 text-cream/40 mx-auto mb-4" />
-          <h3 className="text-lg font-medium mb-2 text-cream/70">No bills found</h3>
-          <p className="text-cream/50 mb-4">
-            {filterStatus === 'all' 
-              ? "Add your first bill reminder to get started"
-              : `No ${filterStatus} bills at the moment`
-            }
-          </p>
-          {filterStatus === 'all' && (
-            <Button 
-              onClick={() => setShowCreateBill(true)}
-              className="bg-cream/10 hover:bg-cream/20 text-cream/80 border-cream/20"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Add Your First Bill
-            </Button>
-          )}
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                )
+              })}
+            </AnimatePresence>
+          </div>
         </div>
-      )}
+
+        {/* Empty State */}
+        {getFilteredBills().length === 0 && !loading && (
+          <div className="text-center py-8 md:py-12 px-4">
+            <Bell className="h-10 w-10 md:h-12 md:w-12 text-cream/40 mx-auto mb-3 md:mb-4" />
+            <h3 className="text-base md:text-lg font-medium mb-2 text-cream/70">No bills found</h3>
+            <p className="text-sm md:text-base text-cream/50 mb-4 max-w-md mx-auto">
+              {filterStatus === 'all' 
+                ? "Add your first bill reminder to get started"
+                : `No ${filterStatus} bills at the moment`
+              }
+            </p>
+            {filterStatus === 'all' && (
+              <Button 
+                onClick={() => setShowCreateBill(true)}
+                className="bg-cream/10 hover:bg-cream/20 text-cream/80 border-cream/20 w-full md:w-auto"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add Your First Bill
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   )
 } 
