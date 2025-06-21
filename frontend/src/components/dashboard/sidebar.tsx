@@ -13,6 +13,7 @@ import {
   Repeat,
   Calendar,
   Target,
+  TrendingUp,
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "../../components/ui/avatar"
@@ -187,6 +188,11 @@ const navItems = [
     label: "Analytics",
     href: "/dashboard/analytics",
     icon: BarChart3,
+  },
+  {
+    label: "Stocks",
+    href: "/dashboard/stocks",
+    icon: TrendingUp,
   },
   {
     label: "Add Expense",

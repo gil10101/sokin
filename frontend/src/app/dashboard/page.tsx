@@ -13,6 +13,7 @@ import { ReceiptScanner } from "../../components/dashboard/receipt-scanner"
 import { SavingsGoals } from "../../components/dashboard/savings-goals"
 import { AdvancedAnalytics } from "../../components/dashboard/advanced-analytics"
 import { BillReminders } from "../../components/dashboard/bill-reminders"
+import { StockMarket } from "../../components/dashboard/stock-market"
 import { Input } from "../../components/ui/input"
 import { useAuth } from "../../contexts/auth-context"
 import { useRouter } from "next/navigation"
@@ -428,6 +429,21 @@ export default function DashboardPage() {
               </MotionContainer>
             </div>
           </div>
+
+          {/* Stock Market Section - Full Width */}
+          <MotionContainer className="mt-6 sm:mt-8" delay={0.6}>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-medium font-outfit">Stock Market</h2>
+              <button
+                onClick={() => router.push("/dashboard/stocks")}
+                className="text-cream/60 text-sm hover:text-cream transition-colors flex items-center group"
+              >
+                View All Stocks
+                <ChevronRight className="h-4 w-4 ml-1 transform group-hover:translate-x-1 transition-transform duration-300" />
+              </button>
+            </div>
+            <StockMarket />
+          </MotionContainer>
 
           {/* Bottom Section - Two Column Layout */}
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6 mt-6 sm:mt-8">
