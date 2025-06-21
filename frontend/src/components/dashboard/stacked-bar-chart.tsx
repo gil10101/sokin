@@ -1,0 +1,352 @@
+"use client"
+
+import { useEffect, useState, useRef } from "react"
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell, Tooltip } from "recharts"
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "../../components/ui/chart"
+import { LoadingSpinner } from "../../components/ui/loading-spinner"
+import { motion } from "framer-motion"
+import { collection, query, where, getDocs } from "firebase/firestore"
+import { db } from "../../lib/firebase"
+import { useAuth } from "../../contexts/auth-context"
+import { useViewport } from "../../hooks/use-mobile"
+import { format, subMonths, startOfMonth, endOfMonth, eachMonthOfInterval } from "date-fns"
+
+// Helper function to safely parse dates including Firebase Timestamps
+const safeParseDate = (dateValue: any): Date => {
+  if (!dateValue) return new Date()
+  
+  try {
+    // If it's already a Date object
+    if (dateValue instanceof Date) {
+      return dateValue
+    }
+    // If it's a Firebase Timestamp object
+    else if (dateValue && typeof dateValue === 'object' && 'toDate' in dateValue) {
+      return dateValue.toDate()
+    }
+    // If it's a numeric timestamp (milliseconds)
+    else if (typeof dateValue === 'number') {
+      return new Date(dateValue)
+    }
+    // If it's a string
+    else if (typeof dateValue === 'string') {
+      const parsedDate = new Date(dateValue)
+      return isNaN(parsedDate.getTime()) ? new Date() : parsedDate
+    }
+    
+    return new Date()
+  } catch (error) {
+    console.error("Error parsing date:", error, "Input:", dateValue)
+    return new Date()
+  }
+}
+
+interface Expense {
+  id: string
+  name: string
+  amount: number
+  date: string
+  category: string
+  userId: string
+}
+
+interface ChartDataPoint {
+  month: string
+  [key: string]: string | number // Dynamic categories
+}
+
+interface StackedBarChartProps {
+  timeframe?: string
+}
+
+// Category colors - enhanced visual appeal with better contrast
+const categoryColors: Record<string, string> = {
+  "Food & Dining": "rgba(245, 245, 240, 0.85)",
+  "Dining": "rgba(245, 245, 240, 0.85)",
+  "Transportation": "rgba(225, 225, 215, 0.85)",
+  "Shopping": "rgba(205, 205, 195, 0.85)",
+  "Entertainment": "rgba(185, 185, 175, 0.85)",
+  "Bills & Utilities": "rgba(165, 165, 155, 0.85)",
+  "Healthcare": "rgba(145, 145, 135, 0.85)",
+  "Travel": "rgba(125, 125, 115, 0.85)",
+  "Education": "rgba(105, 105, 95, 0.85)",
+  "Personal Care": "rgba(85, 85, 75, 0.85)",
+  "Business": "rgba(210, 210, 200, 0.85)",
+  "Gifts & Donations": "rgba(190, 190, 180, 0.85)",
+  "Other": "rgba(65, 65, 55, 0.85)",
+}
+
+export function StackedBarChart({ timeframe = "year" }: StackedBarChartProps) {
+  const { user } = useAuth()
+  const { isMobile } = useViewport()
+  const [mounted, setMounted] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [chartData, setChartData] = useState<ChartDataPoint[]>([])
+  const [categories, setCategories] = useState<string[]>([])
+  const chartRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (user && mounted) {
+      fetchExpenseData()
+    }
+  }, [user, mounted, timeframe])
+
+  const fetchExpenseData = async () => {
+    if (!user) return
+
+    setLoading(true)
+    try {
+      // Calculate date range - always show last 6 months for stacked bar
+      const endDate = new Date()
+      const startDate = subMonths(endDate, 6)
+
+      // Fetch expenses from Firebase
+      const expensesRef = collection(db, "expenses")
+      const q = query(expensesRef, where("userId", "==", user.uid))
+
+      const querySnapshot = await getDocs(q)
+      const allExpenses = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Expense[]
+
+      // Filter expenses by date range
+      const filteredExpenses = allExpenses.filter((expense) => {
+        const expenseDate = safeParseDate(expense.date)
+        return expenseDate >= startDate && expenseDate <= endDate
+      })
+
+      // Get all unique categories
+      const uniqueCategories = Array.from(new Set(filteredExpenses.map(expense => expense.category)))
+      setCategories(uniqueCategories)
+
+      // Generate months in the range
+      const monthIntervals = eachMonthOfInterval({ start: startDate, end: endDate })
+
+      // Group expenses by month and category
+      const groupedData = monthIntervals.map((monthDate) => {
+        const monthStart = startOfMonth(monthDate)
+        const monthEnd = endOfMonth(monthDate)
+
+        const monthExpenses = filteredExpenses.filter((expense) => {
+          const expenseDate = safeParseDate(expense.date)
+          return expenseDate >= monthStart && expenseDate <= monthEnd
+        })
+
+        // Create month data object
+        const monthData: ChartDataPoint = {
+          month: format(monthDate, "MMM yyyy"),
+        }
+
+        // Add spending for each category
+        uniqueCategories.forEach((category) => {
+          const categoryTotal = monthExpenses
+            .filter(expense => expense.category === category)
+            .reduce((sum, expense) => sum + Math.abs(expense.amount), 0) // Ensure positive values
+          monthData[category] = categoryTotal
+        })
+
+        return monthData
+      })
+
+      // Filter out months with no data and reverse to show most recent month at top
+      const dataWithValues = groupedData.filter(monthData => 
+        uniqueCategories.some(category => (monthData[category] as number) > 0)
+      )
+      const reversedData = dataWithValues.reverse()
+      setChartData(reversedData)
+      console.log("Chart data:", reversedData) // Debug log
+      console.log("Categories:", uniqueCategories) // Debug log
+    } catch (error) {
+      console.error("Error fetching expense data:", error)
+      setChartData([])
+      setCategories([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Only handle resize without setting state
+  useEffect(() => {
+    if (!mounted) return
+
+    const handleResize = () => {
+      if (chartRef.current) {
+        chartRef.current.style.display = 'none'
+        void chartRef.current.offsetHeight
+        chartRef.current.style.display = ''
+      }
+    }
+
+    window.addEventListener("resize", handleResize)
+    return () => window.removeEventListener("resize", handleResize)
+  }, [mounted])
+
+  if (!mounted || loading) {
+    return (
+      <div className={`${isMobile ? 'h-[450px]' : 'h-[500px]'} flex items-center justify-center`}>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3 }}
+        >
+          <LoadingSpinner size="md" />
+        </motion.div>
+      </div>
+    )
+  }
+
+  if (chartData.length === 0 || categories.length === 0) {
+    return (
+      <div className={`${isMobile ? 'h-[450px]' : 'h-[500px]'} flex items-center justify-center`}>
+        <div className="text-center">
+          <div className="text-cream/60 mb-2">No expense data available</div>
+          <div className="text-sm text-cream/40">Add some expenses to see category breakdown by month</div>
+        </div>
+      </div>
+    )
+  }
+
+  // Check if all data points have zero values
+  const hasData = chartData.some(monthData => 
+    categories.some(category => (monthData[category] as number) > 0)
+  )
+
+  if (!hasData) {
+    return (
+      <div className={`${isMobile ? 'h-[450px]' : 'h-[500px]'} flex items-center justify-center`}>
+        <div className="text-center">
+          <div className="text-cream/60 mb-2">No expense data for the selected period</div>
+          <div className="text-sm text-cream/40">Expenses will appear here once you add them</div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <motion.div
+      ref={chartRef}
+      className={`${isMobile ? 'h-[450px]' : 'h-[500px]'} w-full min-w-0 overflow-hidden`}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
+    >
+            <ChartContainer
+        config={categories.reduce((config, category) => ({
+          ...config,
+          [category]: {
+            label: category,
+            color: categoryColors[category] || `rgba(245, 245, 240, ${0.8 - (category.length * 0.1)})`,
+          }
+        }), {})}
+        className={`${isMobile ? 'h-[450px]' : 'h-[500px]'} w-full`}
+      >
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart 
+            data={chartData} 
+            layout="vertical"
+            margin={isMobile ? { top: 5, right: 10, left: 50, bottom: 5 } : { top: 10, right: 20, left: 80, bottom: 10 }}
+            barCategoryGap="12%"
+            barSize={isMobile ? 30 : 40}
+          >
+            <defs>
+              {categories.map((category, index) => {
+                const baseColor = categoryColors[category] || `rgba(245, 245, 240, ${0.8 - (index * 0.1)})`
+                const gradientId = `gradient-${category.replace(/\s+/g, '-').toLowerCase()}`
+                return (
+                  <linearGradient key={gradientId} id={gradientId} x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stopColor={baseColor} stopOpacity={0.9} />
+                    <stop offset="100%" stopColor={baseColor} stopOpacity={0.7} />
+                  </linearGradient>
+                )
+              })}
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="rgba(245, 245, 240, 0.08)" />
+            <XAxis
+              type="number"
+              axisLine={false}
+              tickLine={false}
+              tick={{ fill: "rgba(245, 245, 240, 0.6)", fontSize: isMobile ? 9 : 12 }}
+              tickFormatter={(value) => isMobile ? `$${(value/1000).toFixed(0)}k` : `$${value}`}
+            />
+            <YAxis
+              type="category"
+              dataKey="month"
+              axisLine={false}
+              tickLine={false}
+              tick={{ fill: "rgba(245, 245, 240, 0.6)", fontSize: isMobile ? 9 : 11 }}
+              width={isMobile ? 45 : 75}
+              interval={0}
+            />
+            <Tooltip
+              content={({ active, payload, label }) => {
+                if (active && payload && payload.length) {
+                  const total = payload.reduce((sum, entry) => sum + (entry.value as number), 0)
+                  return (
+                    <div className="bg-dark border border-cream/10 p-3 rounded-lg shadow-lg backdrop-blur-sm">
+                      <p className="text-cream font-medium mb-2">{label}</p>
+                      <div className="flex items-center mb-3 pb-2 border-b border-cream/10">
+                        <div className="h-2.5 w-2.5 rounded-full bg-cream/80 mr-2"></div>
+                        <p className="text-cream text-sm font-medium">Total: ${total.toLocaleString()}</p>
+                      </div>
+                      <div className="space-y-1.5">
+                        {payload
+                          .filter(entry => (entry.value as number) > 0)
+                          .sort((a, b) => (b.value as number) - (a.value as number))
+                          .map((entry, index) => {
+                            const categoryName = entry.dataKey as string
+                            const categoryColor = categoryColors[categoryName] || `rgba(245, 245, 240, ${0.85 - (index * 0.1)})`
+                            const value = entry.value as number
+                            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0'
+                            
+                            return (
+                              <div key={index} className="flex items-center justify-between gap-3">
+                                <div className="flex items-center">
+                                  <div 
+                                    className="h-2.5 w-2.5 rounded-full mr-2" 
+                                    style={{ backgroundColor: categoryColor }}
+                                  ></div>
+                                  <span className="text-cream/80 text-sm">{categoryName}</span>
+                                </div>
+                                <div className="flex items-center space-x-1.5">
+                                  <span className="text-cream text-sm font-mono">${value.toLocaleString()}</span>
+                                  <span className="text-cream/60 text-xs">({percentage}%)</span>
+                                </div>
+                              </div>
+                            )
+                          })}
+                      </div>
+                    </div>
+                  )
+                }
+                return null
+              }}
+            />
+            {categories.map((category, index) => {
+              const color = categoryColors[category] || `rgba(245, 245, 240, ${0.8 - (index * 0.1)})`
+              const gradientId = `gradient-${category.replace(/\s+/g, '-').toLowerCase()}`
+              console.log(`Bar ${category}:`, color, chartData[0]?.[category]) // Debug log
+              return (
+                <Bar
+                  key={category}
+                  dataKey={category}
+                  stackId="a"
+                  fill={`url(#${gradientId})`}
+                  stroke="rgba(245, 245, 240, 0.2)"
+                  strokeWidth={0.5}
+                  radius={index === categories.length - 1 ? [0, 3, 3, 0] : [0, 0, 0, 0]}
+                  animationDuration={1200}
+                  animationEasing="ease-out"
+                />
+              )
+            })}
+          </BarChart>
+        </ResponsiveContainer>
+      </ChartContainer>
+    </motion.div>
+  )
+} 
