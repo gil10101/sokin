@@ -11,6 +11,22 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'
 const API_TIMEOUT = 10000 // 10 seconds
 const MAX_RETRIES = 3
 
+// Simple in-memory cache to reduce API calls
+const cache = new Map<string, { data: any; timestamp: number }>()
+const CACHE_DURATION = 2 * 60 * 1000 // 2 minutes
+
+const getCachedData = (key: string) => {
+  const cached = cache.get(key)
+  if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+    return cached.data
+  }
+  return null
+}
+
+const setCachedData = (key: string, data: any) => {
+  cache.set(key, { data, timestamp: Date.now() })
+}
+
 // Request interceptor for authentication
 const getAuthHeaders = async (): Promise<Record<string, string>> => {
   const user = auth.currentUser
@@ -27,7 +43,7 @@ const getAuthHeaders = async (): Promise<Record<string, string>> => {
   }
 }
 
-// Enhanced fetch with retry logic and error handling
+// Enhanced fetch with retry logic and rate limit handling
 const enhancedFetch = async (
   url: string, 
   options: RequestInit = {}, 
@@ -47,15 +63,31 @@ const enhancedFetch = async (
     
     clearTimeout(timeoutId)
     
+    // Handle rate limiting specifically
+    if (response.status === 429) {
+      const errorData = await response.json().catch(() => ({}))
+      const retryAfter = errorData.retryAfter || Math.pow(2, MAX_RETRIES - retries) // Exponential backoff
+      
+      if (retries > 0) {
+        console.warn(`Rate limited. Retrying in ${retryAfter} seconds... (attempt ${MAX_RETRIES - retries + 1}/${MAX_RETRIES})`)
+        await new Promise(resolve => setTimeout(resolve, retryAfter * 1000))
+        return enhancedFetch(url, options, retries - 1)
+      } else {
+        throw new Error(`Rate limited: ${errorData.error || 'Too many requests'}. Please try again in ${retryAfter} seconds.`)
+      }
+    }
+    
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(`HTTP ${response.status}: ${errorData.error || response.statusText}`)
     }
     
     return response
   } catch (error) {
     clearTimeout(timeoutId)
     
-    if (retries > 0 && error instanceof Error && error.name !== 'AbortError') {
+    // For non-rate-limit errors, use the original retry logic
+    if (retries > 0 && error instanceof Error && error.name !== 'AbortError' && !error.message.includes('Rate limited')) {
       console.warn(`API request failed, retrying... (${MAX_RETRIES - retries + 1}/${MAX_RETRIES})`)
       await new Promise(resolve => setTimeout(resolve, 1000 * (MAX_RETRIES - retries + 1)))
       return enhancedFetch(url, options, retries - 1)
@@ -99,6 +131,13 @@ export const receiptAPI = {
 // Savings Goals API
 export const goalsAPI = {
   async getGoals(): Promise<any[]> {
+    const cacheKey = 'goals'
+    const cachedData = getCachedData(cacheKey)
+    
+    if (cachedData) {
+      return cachedData
+    }
+    
     const headers = await getAuthHeaders()
     const response = await enhancedFetch('/api/goals', {
       method: 'GET',
@@ -106,7 +145,12 @@ export const goalsAPI = {
     })
     
     const data = await response.json()
-    return data.goals || []
+    const goals = data.goals || []
+    
+    // Cache the results
+    setCachedData(cacheKey, goals)
+    
+    return goals
   },
   
   async createGoal(goal: {
@@ -123,6 +167,9 @@ export const goalsAPI = {
       body: JSON.stringify(goal)
     })
     
+    // Invalidate cache after creating a goal
+    cache.delete('goals')
+    
     return response.json()
   },
   
@@ -134,6 +181,9 @@ export const goalsAPI = {
       body: JSON.stringify(updates)
     })
     
+    // Invalidate cache after updating a goal
+    cache.delete('goals')
+    
     return response.json()
   },
   
@@ -143,6 +193,9 @@ export const goalsAPI = {
       method: 'DELETE',
       headers
     })
+    
+    // Invalidate cache after deleting a goal
+    cache.delete('goals')
   }
 }
 

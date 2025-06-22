@@ -5,7 +5,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Home, CreditCard, Wallet, Repeat, BarChart3, PlusCircle, User, Settings, Menu, X } from "lucide-react"
 import { Button } from "./ui/button"
-import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet"
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "./ui/sheet"
 import { ScrollArea } from "./ui/scroll-area"
 import { cn } from "../lib/utils"
 
@@ -72,6 +72,9 @@ export function MobileNav() {
         side="left" 
         className="w-[280px] sm:w-[300px] p-0 bg-dark border-cream/10"
       >
+        <SheetHeader className="sr-only">
+          <SheetTitle>Navigation Menu</SheetTitle>
+        </SheetHeader>
         <div className="flex flex-col h-full">
           <div className="flex items-center justify-between p-6 border-b border-cream/10">
             <Link 

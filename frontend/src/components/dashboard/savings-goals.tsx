@@ -65,8 +65,9 @@ interface GoalContribution {
 }
 
 export function SavingsGoals() {
-  const [goals, setGoals] = useState<SavingsGoal[]>([])
+    const [goals, setGoals] = useState<SavingsGoal[]>([])  
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [showCreateGoal, setShowCreateGoal] = useState(false)
   const [selectedGoal, setSelectedGoal] = useState<SavingsGoal | null>(null)
   const [contributionAmount, setContributionAmount] = useState('')
@@ -104,17 +105,31 @@ export function SavingsGoals() {
 
   const fetchSavingsGoals = async () => {
     setLoading(true)
+    setError(null)
     try {
       const { API } = await import('../../lib/api-services')
       const goals = await API.goals.getGoals()
       setGoals(goals)
     } catch (error) {
       console.error('Error fetching goals:', error)
-      toast({
-        title: "Error",
-        description: "Failed to load savings goals",
-        variant: "destructive"
-      })
+      
+      // Enhanced error handling for rate limiting
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      if (errorMessage.includes('Rate limited')) {
+        setError('Rate limited: Too many requests. Please wait a moment and try again.')
+        toast({
+          title: "Rate Limited",
+          description: "Too many requests. Please wait a moment and try again.",
+          variant: "destructive"
+        })
+      } else {
+        setError('Failed to load savings goals. Please try again.')
+        toast({
+          title: "Error",
+          description: "Failed to load savings goals. Please try again.",
+          variant: "destructive"
+        })
+      }
     } finally {
       setLoading(false)
     }
@@ -231,6 +246,37 @@ export function SavingsGoals() {
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="h-80 bg-cream/5 rounded-lg animate-pulse" />
           ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-8 max-w-7xl mx-auto">
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <h2 className="text-3xl font-semibold text-cream/90">Savings Goals</h2>
+            <p className="text-cream/60">Track your financial goals and celebrate milestones</p>
+          </div>
+        </div>
+        
+        <div className="flex flex-col items-center justify-center py-12 px-4">
+          <div className="bg-cream/5 border border-cream/20 rounded-lg p-8 text-center max-w-md mx-auto">
+            <div className="text-cream/40 mb-4">
+              <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-medium text-cream/80 mb-2">Unable to Load Goals</h3>
+            <p className="text-cream/60 mb-6 text-sm">{error}</p>
+            <Button 
+              onClick={fetchSavingsGoals}
+              className="bg-cream/10 hover:bg-cream/20 text-cream/80 border-cream/20"
+            >
+              Try Again
+            </Button>
+          </div>
         </div>
       </div>
     )
