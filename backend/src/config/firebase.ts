@@ -12,40 +12,64 @@ const initializeFirebaseAdmin = () => {
   try {
     // Check if Firebase Admin is already initialized
     if (getApps().length === 0) {
-      // Development mode: Use default credentials or emulator
+      
+      // Check if we have individual service account credentials in environment variables
+      const hasServiceAccountEnvVars = process.env.FIREBASE_PRIVATE_KEY && 
+                                      process.env.FIREBASE_CLIENT_EMAIL && 
+                                      process.env.FIREBASE_PROJECT_ID;
+
+      if (hasServiceAccountEnvVars) {
+        // Construct service account from individual environment variables
+        const serviceAccount = {
+          type: "service_account",
+          project_id: process.env.FIREBASE_PROJECT_ID!,
+          private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID!,
+          private_key: process.env.FIREBASE_PRIVATE_KEY!.replace(/\\n/g, '\n'),
+          client_email: process.env.FIREBASE_CLIENT_EMAIL!,
+          client_id: process.env.FIREBASE_CLIENT_ID!,
+          auth_uri: process.env.FIREBASE_AUTH_URI || "https://accounts.google.com/o/oauth2/auth",
+          token_uri: process.env.FIREBASE_TOKEN_URI || "https://oauth2.googleapis.com/token",
+          auth_provider_x509_cert_url: process.env.FIREBASE_AUTH_PROVIDER_X509_CERT_URL || "https://www.googleapis.com/oauth2/v1/certs",
+          client_x509_cert_url: process.env.FIREBASE_CLIENT_X509_CERT_URL!
+        };
+
+        const app = initializeApp({
+          credential: cert(serviceAccount as any),
+          projectId: process.env.FIREBASE_PROJECT_ID,
+          storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || `${process.env.FIREBASE_PROJECT_ID}.firebasestorage.app`,
+        });
+        
+        logger.info('Firebase Admin initialized with service account from environment variables');
+        return app;
+      }
+
+      // Fallback: Check for service account JSON string
+      const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
+      if (serviceAccountJson) {
+        const serviceAccount = JSON.parse(serviceAccountJson);
+        const app = initializeApp({
+          credential: cert(serviceAccount),
+          projectId: process.env.FIREBASE_PROJECT_ID || 'personalexpensetracker-ff87a',
+          storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || 'personalexpensetracker-ff87a.firebasestorage.app',
+        });
+        
+        logger.info('Firebase Admin initialized with service account JSON');
+        return app;
+      }
+
+      // Development mode fallback
       if (process.env.NODE_ENV === 'development' || process.env.FIRESTORE_EMULATOR_HOST) {
         const app = initializeApp({
-          projectId: process.env.FIREBASE_PROJECT_ID || 'demo-project',
+          projectId: process.env.FIREBASE_PROJECT_ID || 'personalexpensetracker-ff87a',
+          storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || 'personalexpensetracker-ff87a.firebasestorage.app',
         });
         
         logger.info('Firebase Admin initialized in development mode');
         return app;
       }
-      
-      // Production mode: Require service account
-      const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT 
-        ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
-        : undefined;
 
-      if (serviceAccount) {
-        const app = initializeApp({
-          credential: cert(serviceAccount),
-          projectId: process.env.FIREBASE_PROJECT_ID,
-          storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
-        });
-        
-        logger.info('Firebase Admin initialized successfully');
-        return app;
-      } else {
-        logger.warn('Firebase service account not found. Some functionality may be limited.');
-        // Still try to initialize for local development
-        const app = initializeApp({
-          projectId: process.env.FIREBASE_PROJECT_ID || 'demo-project',
-        });
-        
-        logger.info('Firebase Admin initialized with default credentials');
-        return app;
-      }
+      logger.error('No valid Firebase credentials found');
+      throw new Error('Firebase credentials not configured');
     } else {
       logger.info('Firebase Admin already initialized');
       return getApps()[0];
@@ -75,9 +99,12 @@ if (db) {
       // Batch size for batch operations
       maximumBatchSize: 500,
     });
+    logger.info('Firestore settings configured successfully');
   } catch (error) {
     if (error instanceof Error) {
       logger.error(`Error configuring Firestore: ${error.message}`);
     }
   }
+} else {
+  logger.error('Failed to initialize Firestore - db is null');
 } 

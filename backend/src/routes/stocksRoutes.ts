@@ -8,7 +8,7 @@ import { z } from 'zod'
 const router = Router()
 
 // Rate limiting for stock API calls (more lenient than other endpoints)
-const stocksRateLimit = rateLimiter(30, 60 * 1000) // 30 requests per minute
+const stocksRateLimit = rateLimiter(100, 60 * 1000) // 100 requests per minute (increased from 30)
 
 // Validation schemas
 const searchStocksSchema = z.object({

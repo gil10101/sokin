@@ -12,7 +12,7 @@ class GoalsController {
                 return res.status(401).json({ error: 'Unauthorized' });
             }
             if (!firebase_1.db) {
-                throw new Error('Database not initialized');
+                return res.status(500).json({ error: 'Database not initialized' });
             }
             const goalsRef = firebase_1.db.collection('goals');
             const snapshot = await goalsRef.where('userId', '==', userId).get();
@@ -35,6 +35,9 @@ class GoalsController {
             if (!userId) {
                 return res.status(401).json({ error: 'Unauthorized' });
             }
+            if (!firebase_1.db) {
+                return res.status(500).json({ error: 'Database not initialized' });
+            }
             const goalData = {
                 userId,
                 name: req.body.name,
@@ -54,8 +57,8 @@ class GoalsController {
                 ],
                 contributions: []
             };
-            const docRef = await (firebase_1.db === null || firebase_1.db === void 0 ? void 0 : firebase_1.db.collection('goals').add(goalData));
-            const newGoal = { id: docRef === null || docRef === void 0 ? void 0 : docRef.id, ...goalData };
+            const docRef = await firebase_1.db.collection('goals').add(goalData);
+            const newGoal = { id: docRef.id, ...goalData };
             res.status(201).json({ goal: newGoal });
         }
         catch (error) {
@@ -73,9 +76,12 @@ class GoalsController {
             if (!userId) {
                 return res.status(401).json({ error: 'Unauthorized' });
             }
-            const goalRef = firebase_1.db === null || firebase_1.db === void 0 ? void 0 : firebase_1.db.collection('goals').doc(goalId);
-            const goalDoc = await (goalRef === null || goalRef === void 0 ? void 0 : goalRef.get());
-            if (!(goalDoc === null || goalDoc === void 0 ? void 0 : goalDoc.exists)) {
+            if (!firebase_1.db) {
+                return res.status(500).json({ error: 'Database not initialized' });
+            }
+            const goalRef = firebase_1.db.collection('goals').doc(goalId);
+            const goalDoc = await goalRef.get();
+            if (!goalDoc.exists) {
                 return res.status(404).json({ error: 'Goal not found' });
             }
             const goalData = goalDoc.data();
@@ -97,14 +103,14 @@ class GoalsController {
                     ? new Date().toISOString()
                     : milestone.achievedAt
             }));
-            await (goalRef === null || goalRef === void 0 ? void 0 : goalRef.update({
+            await goalRef.update({
                 currentAmount: newCurrentAmount,
                 contributions: [...(goalData.contributions || []), contribution],
                 milestones: updatedMilestones,
                 isCompleted,
                 completedAt: isCompleted ? new Date().toISOString() : goalData.completedAt,
                 updatedAt: new Date().toISOString()
-            }));
+            });
             res.json({
                 success: true,
                 currentAmount: newCurrentAmount,
@@ -125,9 +131,12 @@ class GoalsController {
             if (!userId) {
                 return res.status(401).json({ error: 'Unauthorized' });
             }
-            const goalRef = firebase_1.db === null || firebase_1.db === void 0 ? void 0 : firebase_1.db.collection('goals').doc(goalId);
-            const goalDoc = await (goalRef === null || goalRef === void 0 ? void 0 : goalRef.get());
-            if (!(goalDoc === null || goalDoc === void 0 ? void 0 : goalDoc.exists)) {
+            if (!firebase_1.db) {
+                return res.status(500).json({ error: 'Database not initialized' });
+            }
+            const goalRef = firebase_1.db.collection('goals').doc(goalId);
+            const goalDoc = await goalRef.get();
+            if (!goalDoc.exists) {
                 return res.status(404).json({ error: 'Goal not found' });
             }
             const goalData = goalDoc.data();
@@ -138,7 +147,7 @@ class GoalsController {
                 ...req.body,
                 updatedAt: new Date().toISOString()
             };
-            await (goalRef === null || goalRef === void 0 ? void 0 : goalRef.update(updateData));
+            await goalRef.update(updateData);
             res.json({ success: true });
         }
         catch (error) {
@@ -155,16 +164,19 @@ class GoalsController {
             if (!userId) {
                 return res.status(401).json({ error: 'Unauthorized' });
             }
-            const goalRef = firebase_1.db === null || firebase_1.db === void 0 ? void 0 : firebase_1.db.collection('goals').doc(goalId);
-            const goalDoc = await (goalRef === null || goalRef === void 0 ? void 0 : goalRef.get());
-            if (!(goalDoc === null || goalDoc === void 0 ? void 0 : goalDoc.exists)) {
+            if (!firebase_1.db) {
+                return res.status(500).json({ error: 'Database not initialized' });
+            }
+            const goalRef = firebase_1.db.collection('goals').doc(goalId);
+            const goalDoc = await goalRef.get();
+            if (!goalDoc.exists) {
                 return res.status(404).json({ error: 'Goal not found' });
             }
             const goalData = goalDoc.data();
             if (goalData.userId !== userId) {
                 return res.status(403).json({ error: 'Forbidden' });
             }
-            await (goalRef === null || goalRef === void 0 ? void 0 : goalRef.delete());
+            await goalRef.delete();
             res.json({ success: true });
         }
         catch (error) {

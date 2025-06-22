@@ -71,6 +71,7 @@ export function BudgetProgressChart() {
   const [data, setData] = useState<BudgetProgressData[]>([])
   const [animatedData, setAnimatedData] = useState<BudgetProgressData[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   // Responsive chart configuration
   const chartConfig = useMemo(() => {
@@ -130,6 +131,7 @@ export function BudgetProgressChart() {
     if (!user) return
 
     setLoading(true)
+    setError(null)
     try {
       // Fetch budgets
       const budgetsRef = collection(db, "budgets")
@@ -189,32 +191,10 @@ export function BudgetProgressChart() {
         })
       })
 
-      // If no budgets exist, create sample data from expense categories
-      if (budgetProgress.length === 0) {
-        const categorySpending: Record<string, number> = {}
-        
-        expenses.forEach((expense) => {
-          const expenseDate = safeParseDate(expense.date)
-          if (isWithinInterval(expenseDate, { start: monthStart, end: monthEnd })) {
-            categorySpending[expense.category] = (categorySpending[expense.category] || 0) + expense.amount
-          }
-        })
-
-        // Create mock budgets based on spending (150% of actual spending for demonstration)
-        Object.entries(categorySpending).slice(0, 5).forEach(([category, spent]) => {
-          const mockBudget = spent * 1.5
-          budgetProgress.push({
-            category,
-            budget: mockBudget,
-            spent,
-            percentage: Math.round((spent / mockBudget) * 100),
-          })
-        })
-      }
-
       setData(budgetProgress.slice(0, 5)) // Show top 5
     } catch (error) {
       console.error("Error fetching budget data:", error)
+      setError("Failed to load budget data")
       setData([])
     } finally {
       setLoading(false)
@@ -233,6 +213,17 @@ export function BudgetProgressChart() {
     return (
       <div style={{ height: chartConfig.height }} className="flex items-center justify-center">
         <div className="text-cream/60">Loading budget data...</div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div style={{ height: chartConfig.height }} className="flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-400 mb-2">{error}</div>
+          <div className="text-sm text-cream/40">Please try again later</div>
+        </div>
       </div>
     )
   }

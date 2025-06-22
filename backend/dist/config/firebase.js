@@ -49,7 +49,15 @@ const initializeFirebaseAdmin = () => {
     try {
         // Check if Firebase Admin is already initialized
         if ((0, app_1.getApps)().length === 0) {
-            // Get Firebase service account from environment variable if available
+            // Development mode: Use default credentials or emulator
+            if (process.env.NODE_ENV === 'development' || process.env.FIRESTORE_EMULATOR_HOST) {
+                const app = (0, app_1.initializeApp)({
+                    projectId: process.env.FIREBASE_PROJECT_ID || 'demo-project',
+                });
+                logger_1.default.info('Firebase Admin initialized in development mode');
+                return app;
+            }
+            // Production mode: Require service account
             const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT
                 ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
                 : undefined;
@@ -64,7 +72,12 @@ const initializeFirebaseAdmin = () => {
             }
             else {
                 logger_1.default.warn('Firebase service account not found. Some functionality may be limited.');
-                return null;
+                // Still try to initialize for local development
+                const app = (0, app_1.initializeApp)({
+                    projectId: process.env.FIREBASE_PROJECT_ID || 'demo-project',
+                });
+                logger_1.default.info('Firebase Admin initialized with default credentials');
+                return app;
             }
         }
         else {

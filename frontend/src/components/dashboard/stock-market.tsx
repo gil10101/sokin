@@ -1,10 +1,11 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
-import { TrendingUp, TrendingDown, ChevronRight, Activity } from "lucide-react"
+import { TrendingUp, TrendingDown, ChevronRight, Activity, RefreshCw } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
 import { Badge } from "../ui/badge"
 import { LoadingSpinner } from "../ui/loading-spinner"
+import { Button } from "../ui/button"
 import { useAuth } from "../../contexts/auth-context"
 import { 
   StockAPI, 
@@ -49,6 +50,7 @@ export function StockMarket() {
   const [userPortfolio, setUserPortfolio] = useState<UserPortfolioStock[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isRetrying, setIsRetrying] = useState(false)
 
   useEffect(() => {
     loadStockData()
@@ -68,10 +70,31 @@ export function StockMarket() {
       setUserPortfolio(portfolio)
     } catch (err) {
       console.error('Error loading stock data:', err)
-      setError('Failed to load stock market data')
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error'
+      
+      // Check if it's a rate limiting error
+      if (errorMessage.includes('Rate limited')) {
+        setError('Rate limited: Too many requests. Data will be cached to reduce API calls.')
+      } else if (errorMessage.includes('User not authenticated')) {
+        setError('Please sign in to view your stock portfolio.')
+      } else {
+        setError('Failed to load stock market data. Please try again.')
+      }
     } finally {
       setLoading(false)
+      setIsRetrying(false)
     }
+  }
+
+  const handleRetry = async () => {
+    setIsRetrying(true)
+    await loadStockData()
+  }
+
+  const handleClearCache = () => {
+    StockAPI.clearCache()
+    setIsRetrying(true)
+    loadStockData()
   }
 
   if (loading) {
@@ -90,9 +113,33 @@ export function StockMarket() {
     return (
       <Card className="bg-dark border-cream/10">
         <CardContent className="p-6">
-          <div className="text-center text-cream/60">
+          <div className="text-center text-cream/60 space-y-4">
             <Activity className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p>{error}</p>
+            <p className="text-sm">{error}</p>
+            <div className="flex justify-center space-x-2">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={handleRetry}
+                disabled={isRetrying}
+                className="text-cream/80 hover:text-cream"
+              >
+                {isRetrying ? (
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                )}
+                Retry
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={handleClearCache}
+                className="text-cream/80 hover:text-cream"
+              >
+                Clear Cache & Retry
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -106,7 +153,18 @@ export function StockMarket() {
         <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg font-outfit text-cream">Market Indices</CardTitle>
-            <ChevronRight className="h-4 w-4 text-cream/60" />
+            <div className="flex items-center space-x-2">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={handleRetry}
+                disabled={isRetrying}
+                className="text-cream/60 hover:text-cream/80 p-1"
+              >
+                <RefreshCw className={`h-4 w-4 ${isRetrying ? 'animate-spin' : ''}`} />
+              </Button>
+              <ChevronRight className="h-4 w-4 text-cream/60" />
+            </div>
           </div>
         </CardHeader>
         <CardContent className="pt-0">

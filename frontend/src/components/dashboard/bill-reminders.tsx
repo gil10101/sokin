@@ -129,24 +129,26 @@ export function BillReminders() {
       const dueDate = new Date(bill.dueDate)
       const daysUntilDue = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
 
-      // Check if bill needs a reminder
-      bill.reminderDays.forEach(reminderDay => {
-        if (daysUntilDue === reminderDay || (daysUntilDue <= 0 && daysUntilDue >= -1)) {
-          let priority: 'low' | 'medium' | 'high' = 'low'
-          
-          if (daysUntilDue <= 0) priority = 'high'
-          else if (daysUntilDue <= 3) priority = 'medium'
-          
-          reminders.push({
-            billId: bill.id!,
-            billName: bill.name,
-            amount: bill.amount,
-            dueDate: bill.dueDate,
-            daysUntilDue,
-            priority
-          })
-        }
-      })
+      // Check if bill needs a reminder (only add one reminder per bill, prioritizing the closest match)
+      const matchingReminderDays = bill.reminderDays.filter(reminderDay => 
+        daysUntilDue === reminderDay || (daysUntilDue <= 0 && daysUntilDue >= -1)
+      )
+
+      if (matchingReminderDays.length > 0) {
+        let priority: 'low' | 'medium' | 'high' = 'low'
+        
+        if (daysUntilDue <= 0) priority = 'high'
+        else if (daysUntilDue <= 3) priority = 'medium'
+        
+        reminders.push({
+          billId: bill.id!,
+          billName: bill.name,
+          amount: bill.amount,
+          dueDate: bill.dueDate,
+          daysUntilDue,
+          priority
+        })
+      }
     })
 
     setUpcomingReminders(reminders.sort((a, b) => a.daysUntilDue - b.daysUntilDue))

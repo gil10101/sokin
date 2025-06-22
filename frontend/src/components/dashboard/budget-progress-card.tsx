@@ -18,12 +18,14 @@ export function BudgetProgressCard() {
   const { user } = useAuth()
   const [data, setData] = useState<BudgetProgress[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchBudgetProgress = async () => {
       if (!user) return
 
       setLoading(true)
+      setError(null)
       try {
         // Fetch active budgets
         const budgetsRef = collection(db, "budgets")
@@ -87,14 +89,8 @@ export function BudgetProgressCard() {
         setData(progressData)
       } catch (error) {
         console.error("Error fetching budget progress:", error)
-        // Use mock data if there's an error
-        setData([
-          { category: "Dining", budget: 500, spent: 420, percentage: 84 },
-          { category: "Shopping", budget: 300, spent: 350, percentage: 117 },
-          { category: "Transport", budget: 200, spent: 180, percentage: 90 },
-          { category: "Utilities", budget: 400, spent: 380, percentage: 95 },
-          { category: "Entertainment", budget: 250, spent: 150, percentage: 60 },
-        ])
+        setError("Failed to load budget data")
+        setData([])
       } finally {
         setLoading(false)
       }
@@ -115,6 +111,15 @@ export function BudgetProgressCard() {
     return (
       <div className="h-[300px] flex items-center justify-center">
         <LoadingSpinner />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="h-[300px] flex flex-col items-center justify-center">
+        <p className="text-red-400 text-lg mb-4">{error}</p>
+        <p className="text-cream/40 text-sm">Please try again later</p>
       </div>
     )
   }

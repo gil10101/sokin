@@ -1,59 +1,57 @@
 import { Request, Response } from 'express'
 import { StockData, MarketIndex, UserPortfolioStock } from '../types/stocks'
+import https from 'https'
+import http from 'http'
 
-// Example of how to integrate with a Python service using yfinance
-// This would require a separate Python microservice or API endpoint
-
-interface YFinanceResponse {
-  symbol: string
-  name: string
-  price: number
-  change: number
-  changePercent: number
-  volume: number
-  avgVolume: number
-  marketCap: string
-  peRatio: number | null
-  weekHigh52: number
-  weekLow52: number
-  weekChange52: number
-  chart: number[]
-}
+// Python yfinance service configuration
+const PYTHON_STOCK_SERVICE_URL = process.env.PYTHON_STOCK_SERVICE_URL || 'http://localhost:5000'
 
 class StocksController {
+  // Helper method to call Python yfinance service
+  private async callPythonService<T>(endpoint: string): Promise<T> {
+    return new Promise((resolve, reject) => {
+      const url = `${PYTHON_STOCK_SERVICE_URL}${endpoint}`
+      console.log(`Calling Python service: ${url}`)
+      
+      const client = url.startsWith('https') ? https : http
+      
+      client.get(url, (res) => {
+        let data = ''
+        
+        res.on('data', (chunk) => {
+          data += chunk
+        })
+        
+        res.on('end', () => {
+          try {
+            if (res.statusCode !== 200) {
+              reject(new Error(`Python service error: ${res.statusCode} - ${res.statusMessage}`))
+              return
+            }
+            
+            const jsonData = JSON.parse(data)
+            console.log(`Python service response received successfully`)
+            resolve(jsonData)
+          } catch (error) {
+            console.error(`Failed to parse Python service response:`, error)
+            reject(error)
+          }
+        })
+      }).on('error', (error) => {
+        console.error(`Python service call failed:`, error)
+        reject(error)
+      })
+    })
+  }
+
   // Get market indices (NASDAQ, S&P 500, Dow Jones)
   async getMarketIndices(req: Request, res: Response) {
     try {
-      // In a real implementation, this would call a Python service
-      // Example: const response = await fetch('http://python-service:5000/api/market-indices')
+      const indices = await this.callPythonService<MarketIndex[]>('/api/market-indices')
       
-      const mockIndices: MarketIndex[] = [
-        {
-          symbol: "^IXIC",
-          name: "NASDAQ Composite",
-          price: 14256.45,
-          change: 125.89,
-          changePercent: 0.89,
-        },
-        {
-          symbol: "^DJI", 
-          name: "Dow Jones Industrial Average",
-          price: 33894.12,
-          change: -89.23,
-          changePercent: -0.26,
-        },
-        {
-          symbol: "^GSPC",
-          name: "S&P 500", 
-          price: 4384.65,
-          change: 15.47,
-          changePercent: 0.35,
-        },
-      ]
-
       res.json({
         success: true,
-        data: mockIndices,
+        data: indices,
       })
     } catch (error) {
       console.error('Error fetching market indices:', error)
@@ -69,31 +67,11 @@ class StocksController {
     try {
       const { limit = 10 } = req.query
       
-      // In a real implementation, this would call the Python yfinance service
-      // Example Python service endpoint: /api/trending-stocks?limit=10
+      const stocks = await this.callPythonService<StockData[]>(`/api/trending-stocks?limit=${limit}`)
       
-      const mockStocks: StockData[] = [
-        {
-          symbol: "AAPL",
-          name: "Apple Inc.",
-          price: 178.25,
-          change: 2.34,
-          changePercent: 1.33,
-          volume: 45678910,
-          avgVolume: 52341234,
-          marketCap: "2.8T",
-          peRatio: 28.5,
-          weekHigh52: 198.23,
-          weekLow52: 164.08,
-          weekChange52: 8.45,
-          chart: generateMockChart(),
-        },
-        // ... more stocks
-      ]
-
       res.json({
         success: true,
-        data: mockStocks.slice(0, Number(limit)),
+        data: stocks,
       })
     } catch (error) {
       console.error('Error fetching trending stocks:', error)
@@ -109,33 +87,11 @@ class StocksController {
     try {
       const userId = req.params.userId
       
-      // In a real implementation, this would:
-      // 1. Fetch user's stock holdings from database
-      // 2. Get current prices from Python yfinance service
-      // 3. Calculate gains/losses
+      const portfolio = await this.callPythonService<UserPortfolioStock[]>(`/api/portfolio/${userId}`)
       
-      const mockPortfolio: UserPortfolioStock[] = [
-        {
-          symbol: "AAPL",
-          name: "Apple Inc.",
-          price: 178.25,
-          change: 2.34,
-          changePercent: 1.33,
-          shares: 150,
-          totalValue: 26737.50,
-          purchasePrice: 165.00,
-          gainLoss: 1987.50,
-          gainLossPercent: 8.03,
-        },
-        // ... more holdings
-      ]
-
-      // Sort by total value descending
-      const sortedPortfolio = mockPortfolio.sort((a, b) => b.totalValue - a.totalValue)
-
       res.json({
         success: true,
-        data: sortedPortfolio,
+        data: portfolio,
       })
     } catch (error) {
       console.error('Error fetching user portfolio:', error)
@@ -151,34 +107,17 @@ class StocksController {
     try {
       const { symbol } = req.params
       
-      // In a real implementation, this would call:
-      // const response = await fetch(`http://python-service:5000/api/stock/${symbol}`)
+      const stock = await this.callPythonService<StockData>(`/api/stock/${symbol}`)
       
-      const mockStock: StockData = {
-        symbol: symbol.toUpperCase(),
-        name: "Mock Company Inc.",
-        price: 150.00,
-        change: 2.50,
-        changePercent: 1.69,
-        volume: 1000000,
-        avgVolume: 1200000,
-        marketCap: "500B",
-        peRatio: 25.0,
-        weekHigh52: 180.00,
-        weekLow52: 120.00,
-        weekChange52: 25.00,
-        chart: generateMockChart(),
-      }
-
       res.json({
         success: true,
-        data: mockStock,
+        data: stock,
       })
     } catch (error) {
       console.error('Error fetching stock data:', error)
       res.status(500).json({
         success: false,
-        error: 'Failed to fetch stock data'
+        error: `Failed to fetch data for ${req.params.symbol}`
       })
     }
   }
@@ -195,39 +134,31 @@ class StocksController {
         })
       }
 
-      // In a real implementation, this would call:
-      // const response = await fetch(`http://python-service:5000/api/search?q=${encodeURIComponent(q)}`)
+      const results = await this.callPythonService<StockData[]>(`/api/search?q=${encodeURIComponent(q)}`)
       
-      const mockResults: StockData[] = [
-        // Mock search results based on query
-      ]
-
       res.json({
         success: true,
-        data: mockResults,
+        data: results,
       })
     } catch (error) {
       console.error('Error searching stocks:', error)
       res.status(500).json({
         success: false,
-        error: 'Failed to search stocks'
+        error: 'Stock search failed'
       })
     }
   }
 }
 
-// Helper function to generate mock chart data
-function generateMockChart(): number[] {
-  const points = []
-  let price = 100 + Math.random() * 200
-  for (let i = 0; i < 30; i++) {
-    price += (Math.random() - 0.5) * 10
-    points.push(Math.max(10, price))
-  }
-  return points
-}
+const stocksController = new StocksController()
 
-export default new StocksController()
+export default {
+  getMarketIndices: stocksController.getMarketIndices.bind(stocksController),
+  getTrendingStocks: stocksController.getTrendingStocks.bind(stocksController),
+  getUserPortfolio: stocksController.getUserPortfolio.bind(stocksController),
+  getStockData: stocksController.getStockData.bind(stocksController),
+  searchStocks: stocksController.searchStocks.bind(stocksController),
+}
 
 /*
 Example Python service using yfinance:

@@ -12,7 +12,7 @@ class BillRemindersController {
                 return res.status(401).json({ error: 'Unauthorized' });
             }
             if (!firebase_1.db) {
-                throw new Error('Database not initialized');
+                return res.status(500).json({ error: 'Database not initialized' });
             }
             const billsRef = firebase_1.db.collection('billReminders');
             const snapshot = await billsRef.where('userId', '==', userId).get();
@@ -36,7 +36,7 @@ class BillRemindersController {
                 return res.status(401).json({ error: 'Unauthorized' });
             }
             if (!firebase_1.db) {
-                throw new Error('Database not initialized');
+                return res.status(500).json({ error: 'Database not initialized' });
             }
             const billData = {
                 userId,
@@ -72,7 +72,7 @@ class BillRemindersController {
                 return res.status(401).json({ error: 'Unauthorized' });
             }
             if (!firebase_1.db) {
-                throw new Error('Database not initialized');
+                return res.status(500).json({ error: 'Database not initialized' });
             }
             const billRef = firebase_1.db.collection('billReminders').doc(billId);
             const billDoc = await billRef.get();
@@ -105,7 +105,7 @@ class BillRemindersController {
                 return res.status(401).json({ error: 'Unauthorized' });
             }
             if (!firebase_1.db) {
-                throw new Error('Database not initialized');
+                return res.status(500).json({ error: 'Database not initialized' });
             }
             const billRef = firebase_1.db.collection('billReminders').doc(billId);
             const billDoc = await billRef.get();
@@ -138,7 +138,7 @@ class BillRemindersController {
                 return res.status(401).json({ error: 'Unauthorized' });
             }
             if (!firebase_1.db) {
-                throw new Error('Database not initialized');
+                return res.status(500).json({ error: 'Database not initialized' });
             }
             const billRef = firebase_1.db.collection('billReminders').doc(billId);
             const billDoc = await billRef.get();

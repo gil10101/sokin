@@ -17,6 +17,16 @@ const auth = async (req, res, next) => {
         const token = authHeader.split(' ')[1];
         try {
             if (!firebase_1.auth) {
+                // For development without proper Firebase setup, create a mock user
+                if (process.env.NODE_ENV === 'development') {
+                    logger_1.default.warn('Firebase auth not initialized - using development mock user');
+                    req.user = {
+                        uid: 'dev-user-' + Date.now(),
+                        email: 'dev@example.com'
+                    };
+                    next();
+                    return;
+                }
                 throw new errorHandler_1.AppError('Firebase auth not initialized', 500, false);
             }
             const decodedToken = await firebase_1.auth.verifyIdToken(token);
@@ -29,6 +39,16 @@ const auth = async (req, res, next) => {
         catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             logger_1.default.error('Error verifying token:', { error: errorMessage });
+            // In development mode, if token verification fails, use mock user
+            if (process.env.NODE_ENV === 'development') {
+                logger_1.default.warn('Token verification failed in development - using mock user');
+                req.user = {
+                    uid: 'dev-user-' + Date.now(),
+                    email: 'dev@example.com'
+                };
+                next();
+                return;
+            }
             throw new errorHandler_1.AppError('Unauthorized: Invalid token', 401, true);
         }
     }
