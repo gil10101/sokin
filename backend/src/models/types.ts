@@ -118,8 +118,10 @@ export interface GoalMilestone {
 }
 
 export interface GoalContribution {
+  id: string;
   amount: number;
   date: string;
   method: 'manual' | 'automatic' | 'roundup';
   source?: string; // bank account, cash, etc.
+  note?: string; // user description/note
 } 

@@ -135,7 +135,9 @@ export default function GoalsPage() {
   const [editingGoal, setEditingGoal] = useState<SavingsGoal | null>(null)
   const [goalToDelete, setGoalToDelete] = useState<string | null>(null)
   const [showContributionDialog, setShowContributionDialog] = useState(false)
+  const [showContributionsViewDialog, setShowContributionsViewDialog] = useState(false)
   const [selectedGoal, setSelectedGoal] = useState<SavingsGoal | null>(null)
+  const [viewContributionsGoal, setViewContributionsGoal] = useState<SavingsGoal | null>(null)
   const [contributionAmount, setContributionAmount] = useState('')
   const [contributionNote, setContributionNote] = useState('')
   const [sortBy, setSortBy] = useState('priority')
@@ -322,8 +324,22 @@ export default function GoalsPage() {
       const newCurrentAmount = selectedGoal.currentAmount + amount
       const goalRef = doc(db, "goals", selectedGoal.id)
       
+      // Create new contribution record
+      const newContribution: GoalContribution = {
+        id: `contrib_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        amount,
+        date: new Date().toISOString(),
+        method: 'manual',
+        source: 'Manual Entry',
+        note: contributionNote || undefined
+      }
+
+      // Update goal with new contribution
+      const updatedContributions = [...(selectedGoal.contributions || []), newContribution]
+      
       await updateDoc(goalRef, {
         currentAmount: newCurrentAmount,
+        contributions: updatedContributions,
         updatedAt: new Date().toISOString(),
         isCompleted: newCurrentAmount >= selectedGoal.targetAmount
       })
@@ -391,10 +407,13 @@ export default function GoalsPage() {
 
   const filteredAndSortedGoals = goals
     .filter(goal => {
-      if (activeTab === 'active') return !goal.isCompleted
-      if (activeTab === 'completed') return goal.isCompleted
-      if (filterBy === 'all') return true
-      return goal.category === filterBy
+      // First filter by tab (active/completed)
+      const tabMatch = activeTab === 'active' ? !goal.isCompleted : goal.isCompleted
+      
+      // Then filter by category
+      const categoryMatch = filterBy === 'all' || goal.category === filterBy
+      
+      return tabMatch && categoryMatch
     })
     .sort((a, b) => {
       switch (sortBy) {
@@ -655,6 +674,16 @@ export default function GoalsPage() {
                                 Add Money
                               </DropdownMenuItem>
                               <DropdownMenuItem 
+                                onClick={() => {
+                                  setViewContributionsGoal(goal)
+                                  setShowContributionsViewDialog(true)
+                                }}
+                                disabled={!goal.contributions || goal.contributions.length === 0}
+                              >
+                                <PieChart className="h-4 w-4 mr-2" />
+                                View Contributions ({goal.contributions?.length || 0})
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
                                 onClick={() => setGoalToDelete(goal.id)}
                                 className="text-red-600"
                               >
@@ -702,8 +731,8 @@ export default function GoalsPage() {
                           </div>
                         </div>
 
-                        {/* Timeline */}
-                        <div className="bg-cream/5 rounded-lg p-4 border border-cream/10">
+                        {/* Timeline and Contributions */}
+                        <div className="bg-cream/5 rounded-lg p-4 border border-cream/10 space-y-3">
                           <div className="flex items-center justify-between text-sm">
                             <div className="flex items-center gap-2">
                               <CalendarIcon className="h-4 w-4 text-cream/60" />
@@ -714,8 +743,29 @@ export default function GoalsPage() {
                             </span>
                           </div>
                           {!goal.isCompleted && (
-                            <div className="mt-2 text-xs text-cream/60">
+                            <div className="text-xs text-cream/60">
                               {daysRemaining > 0 ? `${daysRemaining} days remaining` : `${Math.abs(daysRemaining)} days overdue`}
+                            </div>
+                          )}
+                          
+                          {goal.contributions && goal.contributions.length > 0 && (
+                            <div className="flex items-center justify-between text-sm pt-2 border-t border-cream/10">
+                              <div className="flex items-center gap-2">
+                                <DollarSign className="h-4 w-4 text-cream/60" />
+                                <span className="text-cream/70">Contributions</span>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-auto p-1 text-xs text-cream/80 hover:text-cream"
+                                onClick={() => {
+                                  setViewContributionsGoal(goal)
+                                  setShowContributionsViewDialog(true)
+                                }}
+                              >
+                                {goal.contributions.length} transaction{goal.contributions.length !== 1 ? 's' : ''}
+                                <ChevronRight className="h-3 w-3 ml-1" />
+                              </Button>
                             </div>
                           )}
                         </div>
@@ -743,12 +793,23 @@ export default function GoalsPage() {
               <div className="max-w-md mx-auto">
                 <Target className="h-16 w-16 text-cream/40 mx-auto mb-6" />
                 <h3 className="text-xl font-medium mb-3 text-cream/70">
-                  {activeTab === 'completed' ? 'No completed goals yet' : 'No active goals yet'}
+                  {activeTab === 'completed' 
+                    ? filterBy === 'all' 
+                      ? 'No completed goals yet' 
+                      : `No completed ${categories.find(c => c.value === filterBy)?.label.toLowerCase()} goals yet`
+                    : filterBy === 'all'
+                      ? 'No active goals yet'
+                      : `No active ${categories.find(c => c.value === filterBy)?.label.toLowerCase()} goals yet`
+                  }
                 </h3>
                 <p className="text-cream/50 mb-8 leading-relaxed">
                   {activeTab === 'completed' 
-                    ? 'Complete your first goal to see it here!'
-                    : 'Create your first savings goal to start building wealth and tracking your financial progress.'
+                    ? filterBy === 'all'
+                      ? 'Complete your first goal to see it here!'
+                      : `Complete your first ${categories.find(c => c.value === filterBy)?.label.toLowerCase()} goal to see it here!`
+                    : filterBy === 'all'
+                      ? 'Create your first savings goal to start building wealth and tracking your financial progress.'
+                      : `Create your first ${categories.find(c => c.value === filterBy)?.label.toLowerCase()} goal to start building toward this important milestone.`
                   }
                 </p>
                 {activeTab === 'active' && (
@@ -756,12 +817,19 @@ export default function GoalsPage() {
                     onClick={() => {
                       setEditingGoal(null)
                       resetForm()
+                      // Set the form category to match the current filter if it's not "all"
+                      if (filterBy !== 'all') {
+                        setFormData(prev => ({ ...prev, category: filterBy }))
+                      }
                       setShowCreateDialog(true)
                     }}
                     className="bg-cream/10 hover:bg-cream/20 text-cream/80 border-cream/20 h-11 px-6"
                   >
                     <Plus className="mr-2 h-4 w-4" />
-                    Create Your First Goal
+                    {filterBy === 'all' 
+                      ? 'Create Your First Goal' 
+                      : `Create ${categories.find(c => c.value === filterBy)?.label} Goal`
+                    }
                   </Button>
                 )}
               </div>
@@ -967,6 +1035,99 @@ export default function GoalsPage() {
                   </Button>
                 </div>
               </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* View Contributions Dialog */}
+          <Dialog open={showContributionsViewDialog} onOpenChange={setShowContributionsViewDialog}>
+            <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <PieChart className="h-5 w-5" />
+                  Contributions History
+                </DialogTitle>
+              </DialogHeader>
+              
+              {viewContributionsGoal && (
+                <div className="space-y-4 py-4">
+                  <div className="bg-cream/5 rounded-lg p-4 border border-cream/10">
+                    <h3 className="font-medium text-cream/90 mb-2">{viewContributionsGoal.name}</h3>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-cream/60">Total Contributions:</span>
+                        <p className="text-cream/90 font-medium">
+                          {viewContributionsGoal.contributions?.length || 0}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-cream/60">Total Amount:</span>
+                        <p className="text-cream/90 font-medium">
+                          ${viewContributionsGoal.contributions?.reduce((sum, contrib) => sum + contrib.amount, 0).toLocaleString() || '0.00'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <h4 className="font-medium text-cream/80">Recent Contributions</h4>
+                    {viewContributionsGoal.contributions && viewContributionsGoal.contributions.length > 0 ? (
+                      <div className="space-y-3">
+                        {viewContributionsGoal.contributions
+                          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                          .map((contribution) => (
+                            <div 
+                              key={contribution.id} 
+                              className="bg-cream/5 rounded-lg p-4 border border-cream/10 hover:bg-cream/10 transition-colors"
+                            >
+                              <div className="flex items-start justify-between">
+                                <div className="space-y-2 flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <DollarSign className="h-4 w-4 text-green-400" />
+                                    <span className="font-medium text-cream/90">
+                                      ${contribution.amount.toLocaleString()}
+                                    </span>
+                                    <Badge variant="outline" className="text-xs">
+                                      {contribution.method}
+                                    </Badge>
+                                  </div>
+                                  {contribution.note && (
+                                    <p className="text-sm text-cream/70 leading-relaxed">
+                                      {contribution.note}
+                                    </p>
+                                  )}
+                                  {contribution.source && (
+                                    <p className="text-xs text-cream/50">
+                                      Source: {contribution.source}
+                                    </p>
+                                  )}
+                                </div>
+                                <div className="text-right text-xs text-cream/50">
+                                  <p>{format(new Date(contribution.date), "MMM dd, yyyy")}</p>
+                                  <p>{format(new Date(contribution.date), "h:mm a")}</p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-cream/50">
+                        <DollarSign className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                        <p>No contributions yet</p>
+                        <p className="text-sm mt-1">Start adding money to this goal to see your progress!</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex justify-end pt-4">
+                    <Button 
+                      onClick={() => setShowContributionsViewDialog(false)}
+                      variant="outline"
+                    >
+                      Close
+                    </Button>
+                  </div>
+                </div>
+              )}
             </DialogContent>
           </Dialog>
 

@@ -78,7 +78,7 @@ export class GoalsController {
     try {
       const userId = req.user?.uid;
       const { goalId } = req.params;
-      const { amount, method, source } = req.body;
+      const { amount, method, source, note } = req.body;
 
       if (!userId) {
         return res.status(401).json({ error: 'Unauthorized' });
@@ -102,10 +102,12 @@ export class GoalsController {
       }
 
       const contribution: GoalContribution = {
+        id: `contrib_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         amount,
         date: new Date().toISOString(),
         method: method || 'manual',
-        source
+        source,
+        note
       };
 
       const newCurrentAmount = goalData.currentAmount + amount;

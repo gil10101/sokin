@@ -1,6 +1,9 @@
 "use client"
 
 import { useState, useEffect } from 'react'
+import { collection, query, where, orderBy, getDocs, addDoc, doc, updateDoc } from "firebase/firestore"
+import { db } from '../../lib/firebase'
+import { useAuth } from '../../contexts/auth-context'
 import { Button } from '../ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog'
@@ -30,7 +33,7 @@ import {
 import { format } from 'date-fns'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useToast } from '../../hooks/use-toast'
-import { cn } from '../../../../lib/utils'
+import { cn } from '../../lib/utils'
 
 interface SavingsGoal {
   id?: string
@@ -65,12 +68,14 @@ interface GoalContribution {
 }
 
 export function SavingsGoals() {
-    const [goals, setGoals] = useState<SavingsGoal[]>([])  
+  const { user } = useAuth()
+  const [goals, setGoals] = useState<SavingsGoal[]>([])  
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showCreateGoal, setShowCreateGoal] = useState(false)
   const [selectedGoal, setSelectedGoal] = useState<SavingsGoal | null>(null)
   const [contributionAmount, setContributionAmount] = useState('')
+  const [contributionNote, setContributionNote] = useState('')
   const { toast } = useToast()
 
   // Form state for new goal
@@ -100,53 +105,70 @@ export function SavingsGoals() {
   }
 
   useEffect(() => {
-    fetchSavingsGoals()
-  }, [])
+    if (user) {
+      fetchSavingsGoals()
+    }
+  }, [user])
 
   const fetchSavingsGoals = async () => {
+    if (!user) return
+
     setLoading(true)
     setError(null)
     try {
-      const { API } = await import('../../lib/api-services')
-      const goals = await API.goals.getGoals()
-      setGoals(goals)
-    } catch (error) {
+      const goalsRef = collection(db, "goals")
+      const q = query(
+        goalsRef, 
+        where("userId", "==", user.uid), 
+        orderBy("createdAt", "desc")
+      )
+
+      const querySnapshot = await getDocs(q)
+      const goalsData = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as SavingsGoal[]
+
+      setGoals(goalsData)
+    } catch (error: any) {
       console.error('Error fetching goals:', error)
-      
-      // Enhanced error handling for rate limiting
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-      if (errorMessage.includes('Rate limited')) {
-        setError('Rate limited: Too many requests. Please wait a moment and try again.')
-        toast({
-          title: "Rate Limited",
-          description: "Too many requests. Please wait a moment and try again.",
-          variant: "destructive"
-        })
-      } else {
-        setError('Failed to load savings goals. Please try again.')
-        toast({
-          title: "Error",
-          description: "Failed to load savings goals. Please try again.",
-          variant: "destructive"
-        })
-      }
+      setError('Failed to load savings goals. Please try again.')
+      toast({
+        title: "Error loading goals",
+        description: error.message || "There was an error loading your savings goals",
+        variant: "destructive",
+      })
     } finally {
       setLoading(false)
     }
   }
 
   const createGoal = async () => {
+    if (!user || !newGoal.name || !newGoal.targetAmount) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all required fields",
+        variant: "destructive"
+      })
+      return
+    }
+
     try {
-      const { API } = await import('../../lib/api-services')
       const goalData = {
+        userId: user.uid,
         name: newGoal.name,
+        description: newGoal.description,
         targetAmount: parseFloat(newGoal.targetAmount),
         currentAmount: 0,
-        deadline: newGoal.targetDate.toISOString(),
-        category: newGoal.category
+        targetDate: newGoal.targetDate.toISOString(),
+        category: newGoal.category,
+        priority: newGoal.priority,
+        isCompleted: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       }
 
-      await API.goals.createGoal(goalData)
+      await addDoc(collection(db, "goals"), goalData)
       await fetchSavingsGoals()
       setShowCreateGoal(false)
       setNewGoal({
@@ -161,30 +183,75 @@ export function SavingsGoals() {
         title: "Goal Created",
         description: `Your goal "${goalData.name}" has been created successfully.`
       })
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating goal:', error)
       toast({
         title: "Error",
-        description: "Failed to create savings goal",
+        description: error.message || "Failed to create savings goal",
         variant: "destructive"
       })
     }
   }
 
-  const addContribution = async (goalId: string, amount: number) => {
-    try {
+  const addContribution = async () => {
+    if (!selectedGoal || !contributionAmount) return
+
+    const amount = parseFloat(contributionAmount)
+    if (amount <= 0) {
       toast({
-        title: "Feature Coming Soon",
-        description: "Goal contributions will be available in a future update.",
-        variant: "default"
+        title: "Invalid Amount",
+        description: "Please enter a valid contribution amount",
+        variant: "destructive"
       })
+      return
+    }
+
+    try {
+      const newCurrentAmount = selectedGoal.currentAmount + amount
+      const goalRef = doc(db, "goals", selectedGoal.id!)
+      
+      await updateDoc(goalRef, {
+        currentAmount: newCurrentAmount,
+        updatedAt: new Date().toISOString(),
+        isCompleted: newCurrentAmount >= selectedGoal.targetAmount
+      })
+
+      // Check for milestones
+      const progressPercentage = (newCurrentAmount / selectedGoal.targetAmount) * 100
+      if (progressPercentage >= 100) {
+        toast({
+          title: "Goal Completed",
+          description: `Congratulations! You have successfully achieved your "${selectedGoal.name}" savings goal.`,
+          duration: 7000
+        })
+      } else if (progressPercentage >= 75 && selectedGoal.currentAmount / selectedGoal.targetAmount < 0.75) {
+        toast({
+          title: "Milestone Achieved",
+          description: `You have reached 75% of your "${selectedGoal.name}" savings target.`,
+          duration: 5000
+        })
+      } else if (progressPercentage >= 50 && selectedGoal.currentAmount / selectedGoal.targetAmount < 0.50) {
+        toast({
+          title: "Progress Update",
+          description: `You have reached 50% of your "${selectedGoal.name}" savings target.`,
+          duration: 5000
+        })
+      }
+
+      await fetchSavingsGoals()
       setContributionAmount('')
+      setContributionNote('')
       setSelectedGoal(null)
-    } catch (error) {
+      
+      toast({
+        title: "Contribution Added",
+        description: `$${amount.toLocaleString()} has been added to your goal.`
+      })
+    } catch (error: any) {
       console.error('Error adding contribution:', error)
       toast({
         title: "Error",
-        description: "Failed to add contribution",
+        description: error.message || "Failed to add contribution",
         variant: "destructive"
       })
     }
@@ -495,49 +562,15 @@ export function SavingsGoals() {
 
                     {/* Action Buttons */}
                     <div className="flex gap-3 pt-2 mt-auto">
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button 
-                            size="sm" 
-                            className="flex-1 bg-cream/10 hover:bg-cream/20 text-cream/80 border-cream/20 h-10" 
-                            disabled={goal.isCompleted}
-                          >
-                            <DollarSign className="mr-2 h-4 w-4" />
-                            Add Money
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-md">
-                          <DialogHeader>
-                            <DialogTitle>Add Contribution</DialogTitle>
-                          </DialogHeader>
-                          <div className="space-y-4 py-4">
-                            <div className="space-y-2">
-                              <Label htmlFor="amount" className="text-sm font-medium">Amount</Label>
-                              <Input
-                                id="amount"
-                                type="number"
-                                value={contributionAmount}
-                                onChange={(e) => setContributionAmount(e.target.value)}
-                                placeholder="0.00"
-                                step="0.01"
-                                className="h-11"
-                              />
-                            </div>
-                            <Button 
-                              className="w-full h-11"
-                              onClick={() => {
-                                const amount = parseFloat(contributionAmount)
-                                if (amount > 0) {
-                                  addContribution(goal.id!, amount)
-                                }
-                              }}
-                              disabled={!contributionAmount || parseFloat(contributionAmount) <= 0}
-                            >
-                              Add ${contributionAmount || '0.00'}
-                            </Button>
-                          </div>
-                        </DialogContent>
-                      </Dialog>
+                      <Button 
+                        size="sm" 
+                        className="flex-1 bg-cream/10 hover:bg-cream/20 text-cream/80 border-cream/20 h-10" 
+                        disabled={goal.isCompleted}
+                        onClick={() => setSelectedGoal(goal)}
+                      >
+                        <DollarSign className="mr-2 h-4 w-4" />
+                        Add Money
+                      </Button>
                       
                       <Button size="sm" variant="outline" className="border-cream/20 text-cream/60 hover:bg-cream/10 h-10 px-3">
                         <TrendingUp className="h-4 w-4" />
@@ -579,6 +612,69 @@ export function SavingsGoals() {
           </div>
         </div>
       )}
+
+      {/* Add Contribution Dialog */}
+      <Dialog open={!!selectedGoal} onOpenChange={() => setSelectedGoal(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Contribution</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {selectedGoal && (
+              <div className="bg-cream/5 rounded-lg p-4 border border-cream/10">
+                <p className="font-medium text-cream/90">{selectedGoal.name}</p>
+                <p className="text-sm text-cream/60 mt-1">
+                  Current: ${selectedGoal.currentAmount.toLocaleString()} / ${selectedGoal.targetAmount.toLocaleString()}
+                </p>
+              </div>
+            )}
+            
+            <div className="space-y-2">
+              <Label htmlFor="contributionAmount" className="text-sm font-medium">Amount *</Label>
+              <Input
+                id="contributionAmount"
+                type="number"
+                value={contributionAmount}
+                onChange={(e) => setContributionAmount(e.target.value)}
+                placeholder="0.00"
+                step="0.01"
+                min="0.01"
+                className="h-11"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="contributionNote" className="text-sm font-medium">Note (Optional)</Label>
+              <Input
+                id="contributionNote"
+                value={contributionNote}
+                onChange={(e) => setContributionNote(e.target.value)}
+                placeholder="e.g., Bonus money, side hustle..."
+                className="h-11"
+              />
+            </div>
+            
+            <div className="flex gap-3 pt-4">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => setSelectedGoal(null)}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={addContribution}
+                className="flex-1"
+                disabled={!contributionAmount || parseFloat(contributionAmount) <= 0}
+              >
+                Add ${contributionAmount || '0.00'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 } 
