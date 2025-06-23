@@ -34,3 +34,5 @@ environment.json
 /misc
 
 service-account-key.json
+
+.c*
