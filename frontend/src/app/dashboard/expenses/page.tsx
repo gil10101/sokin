@@ -23,7 +23,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "../../../components/ui/alert-dialog"
-import { Search, Trash2, Edit, PlusCircle, ChevronDown, ChevronRight } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../../../components/ui/dialog"
+import { Search, Trash2, Edit, PlusCircle, ChevronDown, ChevronRight, Image, Receipt } from "lucide-react"
 import { useToast } from "../../../hooks/use-toast"
 import { useRouter } from "next/navigation"
 import { MotionContainer } from "../../../components/ui/motion-container"
@@ -40,6 +41,13 @@ interface Expense {
   date: string
   createdAt: string
   userId: string
+  receiptImageUrl?: string
+  receiptData?: {
+    merchant?: string
+    confidence?: number
+    items?: string[]
+    rawText?: string
+  }
 }
 
 // Helper function to safely format dates
@@ -105,6 +113,7 @@ export default function ExpensesPage() {
   const [expenseToDelete, setExpenseToDelete] = useState<string | null>(null)
   const [expandedExpenses, setExpandedExpenses] = useState<Record<string, boolean>>({})
   const [mounted, setMounted] = useState(false)
+  const [receiptImageUrl, setReceiptImageUrl] = useState<string | null>(null)
 
   useEffect(() => {
     setMounted(true)
@@ -398,7 +407,12 @@ export default function ExpensesPage() {
                     <div key={expense.id} className="bg-cream/5 rounded-lg border border-cream/10 p-4">
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex-1">
-                          <h3 className="font-medium text-cream mb-1">{expense.name}</h3>
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-medium text-cream">{expense.name}</h3>
+                            {expense.receiptImageUrl && (
+                              <Receipt className="h-4 w-4 text-cream/60" />
+                            )}
+                          </div>
                           <div className="flex items-center gap-2 mb-2">
                             <span className="px-2 py-1 rounded-full bg-cream/10 text-xs">{expense.category}</span>
                             <span className="text-xs text-cream/60">
@@ -485,7 +499,14 @@ export default function ExpensesPage() {
                               <ChevronRight className="h-4 w-4 text-cream/60" />
                             )}
                           </TableCell>
-                          <TableCell className="font-medium">{expense.name}</TableCell>
+                          <TableCell className="font-medium">
+                            <div className="flex items-center gap-2">
+                              {expense.name}
+                              {expense.receiptImageUrl && (
+                                <Receipt className="h-4 w-4 text-cream/60" />
+                              )}
+                            </div>
+                          </TableCell>
                           <TableCell>
                             <span className="px-2 py-1 rounded-full bg-cream/10 text-xs">{expense.category}</span>
                           </TableCell>
@@ -549,7 +570,7 @@ export default function ExpensesPage() {
                                   {expense.description || "No description provided"}
                                 </p>
 
-                                <div className="grid grid-cols-2 gap-4 text-sm">
+                                <div className="grid grid-cols-2 gap-4 text-sm mb-4">
                                   <div>
                                     <h4 className="font-medium mb-1">Created</h4>
                                     <p className="text-cream/70">
@@ -565,6 +586,71 @@ export default function ExpensesPage() {
                                     </p>
                                   </div>
                                 </div>
+
+                                {/* Receipt Information */}
+                                {expense.receiptImageUrl && (
+                                  <div className="border-t border-cream/10 pt-4">
+                                    <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                                      <Receipt className="h-4 w-4" />
+                                      Receipt Information
+                                    </h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                      <div>
+                                        <Dialog>
+                                          <DialogTrigger asChild>
+                                            <Button
+                                              variant="outline"
+                                              size="sm"
+                                              onClick={() => setReceiptImageUrl(expense.receiptImageUrl!)}
+                                              className="bg-cream/5 border-cream/20 text-cream hover:bg-cream/10"
+                                            >
+                                              <Image className="h-4 w-4 mr-2" />
+                                              View Receipt Image
+                                            </Button>
+                                          </DialogTrigger>
+                                          <DialogContent className="max-w-3xl bg-dark border-cream/10">
+                                            <DialogHeader>
+                                              <DialogTitle className="text-cream">Receipt Image</DialogTitle>
+                                            </DialogHeader>
+                                            <div className="mt-4">
+                                              <img
+                                                src={expense.receiptImageUrl}
+                                                alt="Receipt"
+                                                className="w-full h-auto max-h-[60vh] object-contain rounded-lg border border-cream/10"
+                                              />
+                                            </div>
+                                          </DialogContent>
+                                        </Dialog>
+                                      </div>
+                                      
+                                      {expense.receiptData && (
+                                        <div className="space-y-2 text-xs">
+                                          {expense.receiptData.merchant && (
+                                            <div>
+                                              <span className="text-cream/60">Merchant: </span>
+                                              <span className="text-cream">{expense.receiptData.merchant}</span>
+                                            </div>
+                                          )}
+                                          {expense.receiptData.confidence && (
+                                            <div>
+                                              <span className="text-cream/60">OCR Confidence: </span>
+                                              <span className="text-cream">{Math.round(expense.receiptData.confidence * 100)}%</span>
+                                            </div>
+                                          )}
+                                          {expense.receiptData.items && expense.receiptData.items.length > 0 && (
+                                            <div>
+                                              <span className="text-cream/60">Items: </span>
+                                              <span className="text-cream">{expense.receiptData.items.slice(0, 2).join(', ')}</span>
+                                              {expense.receiptData.items.length > 2 && (
+                                                <span className="text-cream/60"> +{expense.receiptData.items.length - 2} more</span>
+                                              )}
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             </TableCell>
                           </TableRow>

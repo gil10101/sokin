@@ -18,6 +18,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "../../../components/ui/
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "../../../components/ui/command"
 import { useToast } from "../../../hooks/use-toast"
 import { MotionContainer } from "../../../components/ui/motion-container"
+import { ReceiptScanner } from "../../../components/dashboard/receipt-scanner"
 
 // Import the useNotifications hook
 import { useNotifications } from "../../../contexts/notifications-context"
@@ -54,6 +55,8 @@ export default function AddExpensePage() {
   const [loading, setLoading] = useState(false)
   const [openCategoryPopover, setOpenCategoryPopover] = useState(false)
   const [openDatePopover, setOpenDatePopover] = useState(false)
+  const [receiptImageUrl, setReceiptImageUrl] = useState("")
+  const [receiptData, setReceiptData] = useState<any>(null)
 
   useEffect(() => {
     // Fetch categories from Firestore
@@ -94,6 +97,23 @@ export default function AddExpensePage() {
     fetchCategories()
   }, [user])
 
+  const handleReceiptData = (data: any) => {
+    // Auto-fill form with receipt data
+    if (data.suggestedName) setName(data.suggestedName)
+    if (data.amount) setAmount(data.amount.toString())
+    if (data.suggestedCategory) setCategory(data.suggestedCategory)
+    if (data.suggestedDescription) setDescription(data.suggestedDescription)
+    if (data.date) {
+      try {
+        setDate(new Date(data.date))
+      } catch (e) {
+        // Keep current date if parsing fails
+      }
+    }
+    if (data.imageUrl) setReceiptImageUrl(data.imageUrl)
+    if (data) setReceiptData(data)
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -126,6 +146,8 @@ export default function AddExpensePage() {
         description: description || null,
         category,
         date: date.toISOString(),
+        receiptImageUrl: receiptImageUrl || '',
+        receiptData: receiptData || null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       })
@@ -149,6 +171,8 @@ export default function AddExpensePage() {
       setDescription("")
       setCategory("")
       setDate(new Date())
+      setReceiptImageUrl("")
+      setReceiptData(null)
 
       // Redirect to expenses page
       router.push("/dashboard/expenses")
@@ -175,6 +199,15 @@ export default function AddExpensePage() {
           </header>
 
           <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-6">
+            {/* Receipt Scanner Section */}
+            <div className="mb-6 p-4 bg-cream/5 rounded-lg border border-cream/10">
+              <h3 className="text-sm font-medium text-cream mb-3">Scan Receipt (Optional)</h3>
+              <p className="text-xs text-cream/60 mb-4">
+                Upload a receipt image to automatically extract expense details
+              </p>
+              <ReceiptScanner onDataExtracted={handleReceiptData} />
+            </div>
+
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
                 <label htmlFor="name" className="text-sm font-outfit block">

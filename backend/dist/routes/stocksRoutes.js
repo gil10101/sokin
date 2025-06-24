@@ -10,7 +10,7 @@ const rateLimiter_1 = require("../middleware/rateLimiter");
 const zod_1 = require("zod");
 const router = (0, express_1.Router)();
 // Rate limiting for stock API calls (more lenient than other endpoints)
-const stocksRateLimit = (0, rateLimiter_1.rateLimiter)(30, 60 * 1000); // 30 requests per minute
+const stocksRateLimit = (0, rateLimiter_1.rateLimiter)(100, 60 * 1000); // 100 requests per minute (increased from 30)
 // Validation schemas
 const searchStocksSchema = zod_1.z.object({
     query: zod_1.z.object({

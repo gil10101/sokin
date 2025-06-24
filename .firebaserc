@@ -1,5 +1,7 @@
 {
   "projects": {
     "default": "personalexpensetracker-ff87a"
-  }
+  },
+  "targets": {},
+  "etags": {}
 }

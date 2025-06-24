@@ -12,6 +12,7 @@ class StocksController {
     async callPythonService(endpoint) {
         return new Promise((resolve, reject) => {
             const url = `${PYTHON_STOCK_SERVICE_URL}${endpoint}`;
+            console.log(`Calling Python service: ${url}`);
             const client = url.startsWith('https') ? https_1.default : http_1.default;
             client.get(url, (res) => {
                 let data = '';
@@ -25,13 +26,16 @@ class StocksController {
                             return;
                         }
                         const jsonData = JSON.parse(data);
+                        console.log(`Python service response received successfully`);
                         resolve(jsonData);
                     }
                     catch (error) {
+                        console.error(`Failed to parse Python service response:`, error);
                         reject(error);
                     }
                 });
             }).on('error', (error) => {
+                console.error(`Python service call failed:`, error);
                 reject(error);
             });
         });
@@ -46,6 +50,7 @@ class StocksController {
             });
         }
         catch (error) {
+            console.error('Error fetching market indices:', error);
             res.status(500).json({
                 success: false,
                 error: 'Failed to fetch market indices'
@@ -63,6 +68,7 @@ class StocksController {
             });
         }
         catch (error) {
+            console.error('Error fetching trending stocks:', error);
             res.status(500).json({
                 success: false,
                 error: 'Failed to fetch trending stocks'
@@ -80,6 +86,7 @@ class StocksController {
             });
         }
         catch (error) {
+            console.error('Error fetching user portfolio:', error);
             res.status(500).json({
                 success: false,
                 error: 'Failed to fetch user portfolio'
@@ -97,9 +104,10 @@ class StocksController {
             });
         }
         catch (error) {
+            console.error('Error fetching stock data:', error);
             res.status(500).json({
                 success: false,
-                error: 'Failed to fetch stock data'
+                error: `Failed to fetch data for ${req.params.symbol}`
             });
         }
     }
@@ -120,9 +128,10 @@ class StocksController {
             });
         }
         catch (error) {
+            console.error('Error searching stocks:', error);
             res.status(500).json({
                 success: false,
-                error: 'Failed to search stocks'
+                error: 'Stock search failed'
             });
         }
     }
@@ -135,3 +144,85 @@ exports.default = {
     getStockData: stocksController.getStockData.bind(stocksController),
     searchStocks: stocksController.searchStocks.bind(stocksController),
 };
+/*
+Example Python service using yfinance:
+
+```python
+# stock_service.py
+import yfinance as yf
+from flask import Flask, jsonify, request
+from flask_cors import CORS
+
+app = Flask(__name__)
+CORS(app)
+
+@app.route('/api/market-indices')
+def get_market_indices():
+    symbols = ['^IXIC', '^DJI', '^GSPC']
+    indices = []
+    
+    for symbol in symbols:
+        ticker = yf.Ticker(symbol)
+        info = ticker.info
+        hist = ticker.history(period='2d')
+        
+        current_price = hist['Close'].iloc[-1]
+        prev_price = hist['Close'].iloc[-2]
+        change = current_price - prev_price
+        change_percent = (change / prev_price) * 100
+        
+        indices.append({
+            'symbol': symbol,
+            'name': info.get('longName', symbol),
+            'price': current_price,
+            'change': change,
+            'changePercent': change_percent
+        })
+    
+    return jsonify(indices)
+
+@app.route('/api/trending-stocks')
+def get_trending_stocks():
+    # Implementation for trending stocks
+    pass
+
+@app.route('/api/stock/<symbol>')
+def get_stock_data(symbol):
+    ticker = yf.Ticker(symbol)
+    info = ticker.info
+    hist = ticker.history(period='1y')
+    
+    # Calculate metrics and return stock data
+    pass
+
+if __name__ == '__main__':
+    app.run(debug=True, port=5000)
+```
+
+To use this with Docker:
+
+```dockerfile
+# Dockerfile for Python service
+FROM python:3.9-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
+COPY . .
+
+EXPOSE 5000
+
+CMD ["python", "stock_service.py"]
+```
+
+requirements.txt:
+```
+yfinance==0.2.28
+flask==2.3.3
+flask-cors==4.0.0
+pandas==2.1.0
+numpy==1.24.3
+```
+*/ 

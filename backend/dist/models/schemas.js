@@ -12,7 +12,14 @@ exports.createExpenseSchema = joi_1.default.object({
     date: joi_1.default.string().isoDate().required(),
     category: joi_1.default.string().required().trim(),
     description: joi_1.default.string().allow(''),
-    tags: joi_1.default.array().items(joi_1.default.string())
+    tags: joi_1.default.array().items(joi_1.default.string()),
+    receiptImageUrl: joi_1.default.string().uri().allow(''),
+    receiptData: joi_1.default.object({
+        merchant: joi_1.default.string().allow(''),
+        confidence: joi_1.default.number().min(0).max(1),
+        items: joi_1.default.array().items(joi_1.default.string()),
+        rawText: joi_1.default.string().allow('')
+    }).allow(null)
 });
 exports.updateExpenseSchema = joi_1.default.object({
     name: joi_1.default.string().trim(),
@@ -20,7 +27,14 @@ exports.updateExpenseSchema = joi_1.default.object({
     date: joi_1.default.string().isoDate(),
     category: joi_1.default.string().trim(),
     description: joi_1.default.string().allow(''),
-    tags: joi_1.default.array().items(joi_1.default.string())
+    tags: joi_1.default.array().items(joi_1.default.string()),
+    receiptImageUrl: joi_1.default.string().uri().allow(''),
+    receiptData: joi_1.default.object({
+        merchant: joi_1.default.string().allow(''),
+        confidence: joi_1.default.number().min(0).max(1),
+        items: joi_1.default.array().items(joi_1.default.string()),
+        rawText: joi_1.default.string().allow('')
+    }).allow(null)
 }).min(1);
 // Budget schemas
 exports.createBudgetSchema = joi_1.default.object({

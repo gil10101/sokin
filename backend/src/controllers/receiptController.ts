@@ -1,8 +1,9 @@
 import { Request, Response } from 'express';
-import { auth } from '../config/firebase';
+import { auth, storage } from '../config/firebase';
 import { ImageAnnotatorClient } from '@google-cloud/vision';
 import multer from 'multer';
 import sharp from 'sharp';
+import crypto from 'crypto';
 
 // Initialize Google Cloud Vision client
 const visionClient = new ImageAnnotatorClient({
@@ -31,6 +32,9 @@ interface ParsedReceiptData {
   date?: string;
   items?: string[];
   confidence: number;
+  suggestedName?: string;
+  suggestedCategory?: string;
+  suggestedDescription?: string;
 }
 
 export class ReceiptController {
@@ -54,6 +58,9 @@ export class ReceiptController {
         .normalize()
         .toBuffer();
 
+      // Upload original image to Firebase Storage
+      const imageUrl = await ReceiptController.uploadImageToStorage(userId, req.file.buffer);
+
       // Perform OCR using Google Cloud Vision
       const [result] = await visionClient.textDetection({
         image: { content: processedImage }
@@ -71,8 +78,11 @@ export class ReceiptController {
 
       res.json({
         success: true,
-        data: parsedData,
-        rawText: fullText
+        data: {
+          ...parsedData,
+          imageUrl,
+          rawText: fullText
+        }
       });
 
     } catch (error: any) {
@@ -81,6 +91,51 @@ export class ReceiptController {
         error: 'Failed to process receipt',
         details: error.message 
       });
+    }
+  }
+
+  private static async uploadImageToStorage(userId: string, imageBuffer: Buffer): Promise<string> {
+    try {
+      if (!storage) {
+        throw new Error('Firebase Storage not initialized');
+      }
+      
+      // Get the default bucket or use the project bucket
+      const bucketName = process.env.FIREBASE_STORAGE_BUCKET || 
+                         process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || 
+                         `${process.env.FIREBASE_PROJECT_ID || 'personalexpensetracker-ff87a'}.appspot.com`;
+      
+      const bucket = storage.bucket(bucketName);
+      
+      // Generate unique filename
+      const timestamp = Date.now();
+      const randomId = crypto.randomBytes(8).toString('hex');
+      const fileName = `receipts/${userId}/${timestamp}-${randomId}.jpg`;
+      
+      const file = bucket.file(fileName);
+      
+      // Upload the file
+      await file.save(imageBuffer, {
+        metadata: {
+          contentType: 'image/jpeg',
+          metadata: {
+            userId: userId,
+            uploadedAt: new Date().toISOString()
+          }
+        },
+        public: true
+      });
+
+      // Return the public URL
+      return `https://storage.googleapis.com/${bucketName}/${fileName}`;
+    } catch (error: any) {
+      console.error('Error uploading image to storage:', error);
+      console.error('Error details:', {
+        message: error.message,
+        code: error.code,
+        details: error.details
+      });
+      throw new Error(`Failed to upload receipt image: ${error.message}`);
     }
   }
 
@@ -155,12 +210,78 @@ export class ReceiptController {
       }
     }
 
-    return {
-      merchant: merchant || undefined,
-      amount: amount || undefined,
-      date: date || undefined,
-      items: items.length > 0 ? items : undefined,
-      confidence: Math.min(confidence, 1.0)
-    };
+          // Generate suggestions based on extracted data
+      const suggestedName = ReceiptController.generateExpenseName(merchant, items);
+      const suggestedCategory = ReceiptController.categorizeExpense(merchant, items, text);
+      const suggestedDescription = ReceiptController.generateDescription(merchant, items, amount);
+
+      return {
+        merchant: merchant || undefined,
+        amount: amount || undefined,
+        date: date || undefined,
+        items: items.length > 0 ? items : undefined,
+        confidence: Math.min(confidence, 1.0),
+        suggestedName,
+        suggestedCategory,
+        suggestedDescription
+      };
+    }
+
+    private static generateExpenseName(merchant?: string, items?: string[]): string {
+      if (merchant) {
+        return `${merchant} Purchase`;
+      }
+      if (items && items.length > 0) {
+        return items.length === 1 ? items[0] : `${items[0]} & ${items.length - 1} more`;
+      }
+      return 'Receipt Purchase';
+    }
+
+    private static categorizeExpense(merchant?: string, items?: string[], fullText?: string): string {
+      const text = (merchant + ' ' + (items?.join(' ') || '') + ' ' + (fullText || '')).toLowerCase();
+      
+      // Category mapping based on keywords
+      const categories = {
+        'Food & Dining': ['restaurant', 'cafe', 'food', 'pizza', 'burger', 'coffee', 'starbucks', 'mcdonald', 'subway', 'dining'],
+        'Groceries': ['grocery', 'supermarket', 'market', 'walmart', 'target', 'costco', 'safeway', 'kroger', 'milk', 'bread', 'produce'],
+        'Transportation': ['gas', 'fuel', 'uber', 'lyft', 'taxi', 'metro', 'bus', 'parking', 'shell', 'bp', 'exxon'],
+        'Entertainment': ['movie', 'cinema', 'theater', 'netflix', 'spotify', 'game', 'concert', 'ticket'],
+        'Healthcare': ['pharmacy', 'hospital', 'doctor', 'medical', 'cvs', 'walgreens', 'medicine', 'prescription'],
+        'Shopping': ['amazon', 'ebay', 'mall', 'store', 'clothing', 'shoes', 'electronics', 'home depot', 'lowes'],
+        'Utilities': ['electric', 'water', 'internet', 'phone', 'cable', 'utility', 'bill'],
+        'Other': []
+      };
+
+      for (const [category, keywords] of Object.entries(categories)) {
+        if (category === 'Other') continue;
+        if (keywords.some(keyword => text.includes(keyword))) {
+          return category;
+        }
+      }
+
+      return 'Other';
+    }
+
+    private static generateDescription(merchant?: string, items?: string[], amount?: number): string {
+      let description = '';
+      
+      if (merchant) {
+        description += `Purchase from ${merchant}`;
+      }
+      
+      if (items && items.length > 0) {
+        if (description) description += ' - ';
+        description += `Items: ${items.slice(0, 3).join(', ')}`;
+        if (items.length > 3) {
+          description += ` and ${items.length - 3} more`;
+        }
+      }
+      
+      if (amount) {
+        if (description) description += ` `;
+        description += `($${amount.toFixed(2)})`;
+      }
+      
+      return description || 'Expense from receipt';
+    }
   }
-}

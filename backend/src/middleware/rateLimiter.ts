@@ -4,6 +4,11 @@ import { Request, Response, NextFunction } from 'express';
 // In production, use a more robust solution like redis-based rate limiter
 const requestCounts: Record<string, { count: number; resetTime: number }> = {};
 
+// Function to clear rate limits (for development)
+export const clearRateLimits = () => {
+  Object.keys(requestCounts).forEach(key => delete requestCounts[key]);
+};
+
 export const rateLimiter = (
   maxRequests: number = 100,
   windowMs: number = 15 * 60 * 1000 // 15 minutes

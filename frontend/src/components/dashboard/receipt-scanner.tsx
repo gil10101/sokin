@@ -17,20 +17,37 @@ interface ParsedReceiptData {
   date?: string
   items?: string[]
   confidence: number
+  suggestedName?: string
+  suggestedCategory?: string
+  suggestedDescription?: string
+  imageUrl?: string
+  rawText?: string
 }
 
 interface ReceiptScannerProps {
-  onDataExtracted: (data: ParsedReceiptData) => void
+  onDataExtracted?: (data: ParsedReceiptData) => void
+  onExpenseCreated?: () => void
 }
 
-export function ReceiptScanner({ onDataExtracted }: ReceiptScannerProps) {
+export function ReceiptScanner({ onDataExtracted, onExpenseCreated }: ReceiptScannerProps) {
   const [loading, setLoading] = useState(false)
   const [dragActive, setDragActive] = useState(false)
   const [previewImage, setPreviewImage] = useState<string | null>(null)
   const [extractedData, setExtractedData] = useState<ParsedReceiptData | null>(null)
   const [showConfirmation, setShowConfirmation] = useState(false)
+  const [creatingExpense, setCreatingExpense] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
+
+  // Expense form state
+  const [expenseForm, setExpenseForm] = useState({
+    name: '',
+    amount: 0,
+    date: '',
+    category: '',
+    description: '',
+    tags: [] as string[]
+  })
 
   const processReceipt = async (file: File) => {
     setLoading(true)
@@ -67,6 +84,16 @@ export function ReceiptScanner({ onDataExtracted }: ReceiptScannerProps) {
       
       if (result.success) {
         setExtractedData(result.data)
+        // Pre-populate form with extracted data
+        const today = new Date().toISOString().split('T')[0]
+        setExpenseForm({
+          name: result.data.suggestedName || '',
+          amount: result.data.amount || 0,
+          date: result.data.date ? new Date(result.data.date).toISOString().split('T')[0] : today,
+          category: result.data.suggestedCategory || 'Other',
+          description: result.data.suggestedDescription || '',
+          tags: []
+        })
         setShowConfirmation(true)
         toast({
           title: "Receipt processed successfully",
@@ -135,9 +162,77 @@ export function ReceiptScanner({ onDataExtracted }: ReceiptScannerProps) {
     }
   }
 
+  const createExpenseFromReceipt = async () => {
+    if (!extractedData) return
+
+    setCreatingExpense(true)
+    try {
+      // Get Firebase auth token
+      const user = auth.currentUser
+      if (!user) {
+        throw new Error('User not authenticated')
+      }
+      const token = await user.getIdToken()
+
+      // Create expense with receipt data
+      const expenseData = {
+        ...expenseForm,
+        receiptImageUrl: extractedData.imageUrl || '',
+        receiptData: {
+          merchant: extractedData.merchant || '',
+          confidence: extractedData.confidence,
+          items: extractedData.items || [],
+          rawText: extractedData.rawText || ''
+        }
+      }
+
+      const response = await fetch('/api/expenses', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(expenseData)
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to create expense')
+      }
+
+      toast({
+        title: "Expense created successfully",
+        description: "Your receipt has been processed and expense added"
+      })
+
+      // Reset state
+      setShowConfirmation(false)
+      setExtractedData(null)
+      setPreviewImage(null)
+      setExpenseForm({
+        name: '',
+        amount: 0,
+        date: '',
+        category: '',
+        description: '',
+        tags: []
+      })
+
+      onExpenseCreated?.()
+    } catch (error: any) {
+      console.error('Error creating expense:', error)
+      toast({
+        title: "Error creating expense",
+        description: error.message || "Please try again",
+        variant: "destructive"
+      })
+    } finally {
+      setCreatingExpense(false)
+    }
+  }
+
   const confirmExtraction = () => {
     if (extractedData) {
-      onDataExtracted(extractedData)
+      onDataExtracted?.(extractedData)
       setShowConfirmation(false)
       setExtractedData(null)
       setPreviewImage(null)
@@ -211,77 +306,154 @@ export function ReceiptScanner({ onDataExtracted }: ReceiptScannerProps) {
 
       {/* Confirmation Dialog */}
       <Dialog open={showConfirmation} onOpenChange={setShowConfirmation}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Confirm Extracted Data</DialogTitle>
+            <DialogTitle>Create Expense from Receipt</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            {previewImage && (
-              <div className="aspect-video bg-muted rounded-lg overflow-hidden">
-                <img 
-                  src={previewImage} 
-                  alt="Receipt preview" 
-                  className="w-full h-full object-contain"
-                />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Receipt Preview */}
+              <div className="space-y-4">
+                {previewImage && (
+                  <div className="aspect-video bg-muted rounded-lg overflow-hidden">
+                    <img 
+                      src={previewImage} 
+                      alt="Receipt preview" 
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                )}
+                
+                {extractedData && (
+                  <Card className="text-xs">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm">
+                        Extracted Data 
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          ({Math.round(extractedData.confidence * 100)}% confidence)
+                        </span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-1 text-xs">
+                      {extractedData.merchant && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Merchant:</span>
+                          <span>{extractedData.merchant}</span>
+                        </div>
+                      )}
+                      {extractedData.amount && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Amount:</span>
+                          <span className="font-medium">${extractedData.amount.toFixed(2)}</span>
+                        </div>
+                      )}
+                      {extractedData.items && extractedData.items.length > 0 && (
+                        <div>
+                          <span className="text-muted-foreground">Items:</span>
+                          <div className="mt-1">
+                            {extractedData.items.slice(0, 2).map((item, index) => (
+                              <div key={index} className="text-muted-foreground">• {item}</div>
+                            ))}
+                            {extractedData.items.length > 2 && (
+                              <div className="text-muted-foreground">
+                                +{extractedData.items.length - 2} more
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
               </div>
-            )}
-            
-            {extractedData && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-sm">
-                    Extracted Information 
-                    <span className="ml-2 text-xs text-muted-foreground">
-                      ({Math.round(extractedData.confidence * 100)}% confidence)
-                    </span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {extractedData.merchant && (
-                    <div className="flex justify-between">
-                      <Label className="text-xs text-muted-foreground">Merchant:</Label>
-                      <span className="text-sm">{extractedData.merchant}</span>
-                    </div>
-                  )}
-                  {extractedData.amount && (
-                    <div className="flex justify-between">
-                      <Label className="text-xs text-muted-foreground">Amount:</Label>
-                      <span className="text-sm font-medium">${extractedData.amount.toFixed(2)}</span>
-                    </div>
-                  )}
-                  {extractedData.date && (
-                    <div className="flex justify-between">
-                      <Label className="text-xs text-muted-foreground">Date:</Label>
-                      <span className="text-sm">{extractedData.date}</span>
-                    </div>
-                  )}
-                  {extractedData.items && extractedData.items.length > 0 && (
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Items:</Label>
-                      <ul className="text-sm mt-1 space-y-1">
-                        {extractedData.items.slice(0, 3).map((item, index) => (
-                          <li key={index} className="text-muted-foreground">• {item}</li>
-                        ))}
-                        {extractedData.items.length > 3 && (
-                          <li className="text-xs text-muted-foreground">
-                            +{extractedData.items.length - 3} more items
-                          </li>
-                        )}
-                      </ul>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
+
+              {/* Expense Form */}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Expense Name</Label>
+                  <Input
+                    id="name"
+                    value={expenseForm.name}
+                    onChange={(e) => setExpenseForm(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder="Enter expense name"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="amount">Amount</Label>
+                    <Input
+                      id="amount"
+                      type="number"
+                      step="0.01"
+                      value={expenseForm.amount}
+                      onChange={(e) => setExpenseForm(prev => ({ ...prev, amount: parseFloat(e.target.value) || 0 }))}
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="date">Date</Label>
+                    <Input
+                      id="date"
+                      type="date"
+                      value={expenseForm.date}
+                      onChange={(e) => setExpenseForm(prev => ({ ...prev, date: e.target.value }))}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="category">Category</Label>
+                  <select
+                    id="category"
+                    value={expenseForm.category}
+                    onChange={(e) => setExpenseForm(prev => ({ ...prev, category: e.target.value }))}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+                  >
+                    <option value="Food & Dining">Food & Dining</option>
+                    <option value="Groceries">Groceries</option>
+                    <option value="Transportation">Transportation</option>
+                    <option value="Entertainment">Entertainment</option>
+                    <option value="Healthcare">Healthcare</option>
+                    <option value="Shopping">Shopping</option>
+                    <option value="Utilities">Utilities</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="description">Description</Label>
+                  <Input
+                    id="description"
+                    value={expenseForm.description}
+                    onChange={(e) => setExpenseForm(prev => ({ ...prev, description: e.target.value }))}
+                    placeholder="Optional description"
+                  />
+                </div>
+              </div>
+            </div>
             
             <div className="flex space-x-2">
-              <Button onClick={confirmExtraction} className="flex-1">
-                <Check className="mr-2 h-4 w-4" />
-                Use This Data
+              <Button 
+                onClick={createExpenseFromReceipt} 
+                className="flex-1"
+                disabled={creatingExpense || !expenseForm.name || !expenseForm.amount}
+              >
+                {creatingExpense ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <Check className="mr-2 h-4 w-4" />
+                    Create Expense
+                  </>
+                )}
               </Button>
               <Button variant="outline" onClick={rejectExtraction} className="flex-1">
                 <X className="mr-2 h-4 w-4" />
-                Manual Entry
+                Cancel
               </Button>
             </div>
           </div>

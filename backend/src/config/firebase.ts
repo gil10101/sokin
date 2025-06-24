@@ -1,6 +1,7 @@
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
+import { getStorage } from 'firebase-admin/storage';
 import * as dotenv from 'dotenv';
 import logger from '../utils/logger';
 
@@ -90,6 +91,7 @@ const app = initializeFirebaseAdmin();
 // Export Firebase Admin services
 export const auth = app ? getAuth(app) : null;
 export const db = app ? getFirestore(app) : null;
+export const storage = app ? getStorage(app) : null;
 
 // Configure Firestore settings for better performance
 if (db) {

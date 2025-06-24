@@ -89,7 +89,7 @@ export const createExpense = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    const { name, amount, date, category, description, tags } = req.body;
+    const { name, amount, date, category, description, tags, receiptImageUrl, receiptData } = req.body;
 
     // Basic validation
     if (!name || !amount || !date || !category) {
@@ -105,6 +105,8 @@ export const createExpense = async (req: Request, res: Response): Promise<void> 
       category,
       description: description || '',
       tags: tags || [],
+      receiptImageUrl: receiptImageUrl || '',
+      receiptData: receiptData || null,
       createdAt: new Date().toISOString(),
     };
 
@@ -157,7 +159,7 @@ export const updateExpense = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    const { name, amount, date, category, description, tags } = req.body;
+    const { name, amount, date, category, description, tags, receiptImageUrl, receiptData } = req.body;
     
     // Build update object with only provided fields
     const updateData: Record<string, any> = {};
@@ -167,6 +169,8 @@ export const updateExpense = async (req: Request, res: Response): Promise<void> 
     if (category) updateData.category = category;
     if (description !== undefined) updateData.description = description;
     if (tags) updateData.tags = tags;
+    if (receiptImageUrl !== undefined) updateData.receiptImageUrl = receiptImageUrl;
+    if (receiptData !== undefined) updateData.receiptData = receiptData;
     updateData.updatedAt = new Date().toISOString();
 
     await db.collection('expenses').doc(expenseId).update(updateData);

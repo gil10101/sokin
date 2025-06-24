@@ -78,7 +78,7 @@ const createExpense = async (req, res) => {
             res.status(500).json({ error: 'Database not initialized' });
             return;
         }
-        const { name, amount, date, category, description, tags } = req.body;
+        const { name, amount, date, category, description, tags, receiptImageUrl, receiptData } = req.body;
         // Basic validation
         if (!name || !amount || !date || !category) {
             res.status(400).json({ error: 'Missing required fields: name, amount, date, and category are required' });
@@ -92,6 +92,8 @@ const createExpense = async (req, res) => {
             category,
             description: description || '',
             tags: tags || [],
+            receiptImageUrl: receiptImageUrl || '',
+            receiptData: receiptData || null,
             createdAt: new Date().toISOString(),
         };
         const expenseRef = await firebase_1.db.collection('expenses').add(expenseData);
@@ -136,7 +138,7 @@ const updateExpense = async (req, res) => {
             res.status(403).json({ error: 'Forbidden: You do not have access to this expense' });
             return;
         }
-        const { name, amount, date, category, description, tags } = req.body;
+        const { name, amount, date, category, description, tags, receiptImageUrl, receiptData } = req.body;
         // Build update object with only provided fields
         const updateData = {};
         if (name)
@@ -151,6 +153,10 @@ const updateExpense = async (req, res) => {
             updateData.description = description;
         if (tags)
             updateData.tags = tags;
+        if (receiptImageUrl !== undefined)
+            updateData.receiptImageUrl = receiptImageUrl;
+        if (receiptData !== undefined)
+            updateData.receiptData = receiptData;
         updateData.updatedAt = new Date().toISOString();
         await firebase_1.db.collection('expenses').doc(expenseId).update(updateData);
         res.status(200).json({

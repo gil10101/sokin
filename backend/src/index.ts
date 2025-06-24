@@ -18,7 +18,7 @@ import logger from './utils/logger';
 import './config/firebase';
 
 // Import middleware
-import { rateLimiter } from './middleware/rateLimiter';
+import { rateLimiter, clearRateLimits } from './middleware/rateLimiter';
 import { errorHandler } from './middleware/errorHandler';
 
 // Create Express app
@@ -36,7 +36,10 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Apply rate limiting to all requests
-app.use(rateLimiter(100, 15 * 60 * 1000)); // 100 requests per 15 minutes
+// More lenient in development mode
+const maxRequests = process.env.NODE_ENV === 'development' ? 1000 : 100;
+const windowMs = process.env.NODE_ENV === 'development' ? 60 * 1000 : 15 * 60 * 1000; // 1 minute in dev, 15 minutes in prod
+app.use(rateLimiter(maxRequests, windowMs));
 
 // Routes
 import expenseRoutes from './routes/expenses';
@@ -61,6 +64,14 @@ app.use('/api/stocks', stocksRoutes);
 app.get('/health', (req: Request, res: Response) => {
   res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+// Development endpoint to clear rate limits
+if (process.env.NODE_ENV === 'development') {
+  app.post('/dev/clear-rate-limits', (req: Request, res: Response) => {
+    clearRateLimits();
+    res.json({ message: 'Rate limits cleared' });
+  });
+}
 
 // 404 handler
 app.use((req: Request, res: Response) => {

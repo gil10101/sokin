@@ -33,7 +33,10 @@ app.use((0, cors_1.default)({
 app.use(express_1.default.json());
 app.use(express_1.default.urlencoded({ extended: true }));
 // Apply rate limiting to all requests
-app.use((0, rateLimiter_1.rateLimiter)(100, 15 * 60 * 1000)); // 100 requests per 15 minutes
+// More lenient in development mode
+const maxRequests = process.env.NODE_ENV === 'development' ? 1000 : 100;
+const windowMs = process.env.NODE_ENV === 'development' ? 60 * 1000 : 15 * 60 * 1000; // 1 minute in dev, 15 minutes in prod
+app.use((0, rateLimiter_1.rateLimiter)(maxRequests, windowMs));
 // Routes
 const expenses_1 = __importDefault(require("./routes/expenses"));
 const users_1 = __importDefault(require("./routes/users"));
@@ -55,6 +58,13 @@ app.use('/api/stocks', stocksRoutes_1.default);
 app.get('/health', (req, res) => {
     res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+// Development endpoint to clear rate limits
+if (process.env.NODE_ENV === 'development') {
+    app.post('/dev/clear-rate-limits', (req, res) => {
+        (0, rateLimiter_1.clearRateLimits)();
+        res.json({ message: 'Rate limits cleared' });
+    });
+}
 // 404 handler
 app.use((req, res) => {
     res.status(404).json({ error: 'Route not found' });

@@ -1,9 +1,14 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.rateLimiter = void 0;
+exports.rateLimiter = exports.clearRateLimits = void 0;
 // Simple in-memory rate limiter
 // In production, use a more robust solution like redis-based rate limiter
 const requestCounts = {};
+// Function to clear rate limits (for development)
+const clearRateLimits = () => {
+    Object.keys(requestCounts).forEach(key => delete requestCounts[key]);
+};
+exports.clearRateLimits = clearRateLimits;
 const rateLimiter = (maxRequests = 100, windowMs = 15 * 60 * 1000 // 15 minutes
 ) => {
     return (req, res, next) => {

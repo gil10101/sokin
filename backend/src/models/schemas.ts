@@ -7,7 +7,14 @@ export const createExpenseSchema = Joi.object({
   date: Joi.string().isoDate().required(),
   category: Joi.string().required().trim(),
   description: Joi.string().allow(''),
-  tags: Joi.array().items(Joi.string())
+  tags: Joi.array().items(Joi.string()),
+  receiptImageUrl: Joi.string().uri().allow(''),
+  receiptData: Joi.object({
+    merchant: Joi.string().allow(''),
+    confidence: Joi.number().min(0).max(1),
+    items: Joi.array().items(Joi.string()),
+    rawText: Joi.string().allow('')
+  }).allow(null)
 });
 
 export const updateExpenseSchema = Joi.object({
@@ -16,7 +23,14 @@ export const updateExpenseSchema = Joi.object({
   date: Joi.string().isoDate(),
   category: Joi.string().trim(),
   description: Joi.string().allow(''),
-  tags: Joi.array().items(Joi.string())
+  tags: Joi.array().items(Joi.string()),
+  receiptImageUrl: Joi.string().uri().allow(''),
+  receiptData: Joi.object({
+    merchant: Joi.string().allow(''),
+    confidence: Joi.number().min(0).max(1),
+    items: Joi.array().items(Joi.string()),
+    rawText: Joi.string().allow('')
+  }).allow(null)
 }).min(1);
 
 // Budget schemas
