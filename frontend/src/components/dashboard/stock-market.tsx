@@ -1,16 +1,19 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
-import { TrendingUp, TrendingDown, ChevronRight, Activity, RefreshCw } from "lucide-react"
+import { TrendingUp, TrendingDown, ChevronRight, Activity, RefreshCw, DollarSign, PieChart, BarChart3 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
 import { Badge } from "../ui/badge"
 import { LoadingSpinner } from "../ui/loading-spinner"
 import { Button } from "../ui/button"
 import { useAuth } from "../../contexts/auth-context"
+import { useStockPrices } from "../../hooks/use-stock-prices"
 import { 
   StockAPI, 
   MarketIndex, 
   UserPortfolioStock, 
+  PortfolioHolding,
+  StockTransaction,
   formatPrice, 
   formatChange, 
   formatPercent 
@@ -44,13 +47,91 @@ const Sparkline: React.FC<{ data: number[]; positive: boolean }> = ({ data, posi
   )
 }
 
+// Portfolio Summary Component
+const PortfolioSummary: React.FC<{ portfolio: UserPortfolioStock[]; connected?: boolean }> = ({ portfolio, connected }) => {
+  const totalValue = portfolio.reduce((sum, stock) => sum + stock.totalValue, 0)
+  const totalGainLoss = portfolio.reduce((sum, stock) => sum + stock.gainLoss, 0)
+  const totalGainLossPercent = totalValue > 0 ? (totalGainLoss / (totalValue - totalGainLoss)) * 100 : 0
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <Card className="bg-dark border-cream/10">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <DollarSign className="h-5 w-5 text-cream/60" />
+              <div>
+                <p className="text-sm text-cream/60">Total Value</p>
+                <p className="text-lg font-semibold text-cream">{formatPrice(totalValue)}</p>
+              </div>
+            </div>
+            {connected && (
+              <div className="flex items-center space-x-1 text-green-500 text-xs">
+                <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+                <span>Live</span>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+      
+      <Card className="bg-dark border-cream/10">
+        <CardContent className="p-4">
+          <div className="flex items-center space-x-2">
+            {totalGainLoss >= 0 ? (
+              <TrendingUp className="h-5 w-5 text-green-500" />
+            ) : (
+              <TrendingDown className="h-5 w-5 text-red-500" />
+            )}
+            <div>
+              <p className="text-sm text-cream/60">Total Gain/Loss</p>
+              <p className={`text-lg font-semibold ${totalGainLoss >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                {formatChange(totalGainLoss)}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+      
+      <Card className="bg-dark border-cream/10">
+        <CardContent className="p-4">
+          <div className="flex items-center space-x-2">
+            <BarChart3 className="h-5 w-5 text-cream/60" />
+            <div>
+              <p className="text-sm text-cream/60">Total Return</p>
+              <Badge 
+                variant={totalGainLossPercent >= 0 ? "default" : "destructive"}
+                className="text-sm font-semibold"
+              >
+                {formatPercent(totalGainLossPercent)}
+              </Badge>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
 export function StockMarket() {
   const { user } = useAuth()
   const [marketIndices, setMarketIndices] = useState<MarketIndex[]>([])
   const [userPortfolio, setUserPortfolio] = useState<UserPortfolioStock[]>([])
+  const [portfolioHoldings, setPortfolioHoldings] = useState<PortfolioHolding[]>([])
+  const [recentTransactions, setRecentTransactions] = useState<StockTransaction[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isRetrying, setIsRetrying] = useState(false)
+
+  // Real-time price updates for portfolio symbols
+  const portfolioSymbols = React.useMemo(() => {
+    return userPortfolio.map(stock => stock.symbol)
+  }, [userPortfolio])
+
+  const { prices: realTimePrices, connected: priceConnected } = useStockPrices({
+    symbols: portfolioSymbols,
+    enabled: portfolioSymbols.length > 0,
+  })
 
   useEffect(() => {
     loadStockData()
@@ -61,13 +142,80 @@ export function StockMarket() {
       setLoading(true)
       setError(null)
       
-      const [indices, portfolio] = await Promise.all([
-        StockAPI.getMarketIndices(),
-        user ? StockAPI.getUserPortfolio(user.uid) : Promise.resolve([])
+      console.log('Loading stock market data...')
+      
+      // Load market indices (always available)
+      console.log('Fetching market indices...')
+      const indicesPromise = StockAPI.getMarketIndices()
+      
+      // Load user-specific data if authenticated
+      let portfolioPromise: Promise<UserPortfolioStock[]> = Promise.resolve([])
+      let holdingsPromise: Promise<PortfolioHolding[]> = Promise.resolve([])
+      let transactionsPromise: Promise<StockTransaction[]> = Promise.resolve([])
+      
+      if (user) {
+        console.log('User authenticated, fetching portfolio data for:', user.uid)
+        portfolioPromise = StockAPI.getUserPortfolio(user.uid)
+        holdingsPromise = StockAPI.getPortfolioHoldings(user.uid)
+        transactionsPromise = StockAPI.getTransactionHistory(user.uid)
+      } else {
+        console.log('User not authenticated, skipping portfolio data')
+      }
+
+      const [indices, portfolio, holdings, transactions] = await Promise.all([
+        indicesPromise,
+        portfolioPromise,
+        holdingsPromise,
+        transactionsPromise
       ])
 
-      setMarketIndices(indices)
-      setUserPortfolio(portfolio)
+      // Add null checks and default to empty arrays if undefined
+      const safeIndices = indices || []
+      const safePortfolio = portfolio || []
+      const safeHoldings = holdings || []
+      const safeTransactions = transactions || []
+
+      console.log('Market indices loaded:', safeIndices.length, 'items')
+      console.log('Portfolio loaded:', safePortfolio.length, 'items')
+      console.log('Holdings loaded:', safeHoldings.length, 'items')
+      console.log('Transactions loaded:', safeTransactions.length, 'items')
+
+      setMarketIndices(safeIndices)
+      setUserPortfolio(safePortfolio)
+      setPortfolioHoldings(safeHoldings)
+      setRecentTransactions(safeTransactions.slice(0, 5)) // Show last 5 transactions
+
+      // If we're in development and have no portfolio data, show sample data for testing
+      if (process.env.NODE_ENV === 'development' && user && safePortfolio.length === 0) {
+        console.log('No portfolio data found, using sample data for development')
+        const samplePortfolio: UserPortfolioStock[] = [
+          {
+            symbol: 'AAPL',
+            name: 'Apple Inc.',
+            price: 175.50,
+            change: 2.30,
+            changePercent: 1.33,
+            shares: 10,
+            totalValue: 1755.00,
+            purchasePrice: 170.00,
+            gainLoss: 55.00,
+            gainLossPercent: 3.24
+          },
+          {
+            symbol: 'GOOGL',
+            name: 'Alphabet Inc.',
+            price: 140.20,
+            change: -1.80,
+            changePercent: -1.27,
+            shares: 5,
+            totalValue: 701.00,
+            purchasePrice: 145.00,
+            gainLoss: -24.00,
+            gainLossPercent: -3.31
+          }
+        ]
+        setUserPortfolio(samplePortfolio)
+      }
     } catch (err) {
       console.error('Error loading stock data:', err)
       const errorMessage = err instanceof Error ? err.message : 'Unknown error'
@@ -76,9 +224,11 @@ export function StockMarket() {
       if (errorMessage.includes('Rate limited')) {
         setError('Rate limited: Too many requests. Data will be cached to reduce API calls.')
       } else if (errorMessage.includes('User not authenticated')) {
-        setError('Please sign in to view your stock portfolio.')
+        setError('Please sign in to view your complete stock portfolio.')
+      } else if (errorMessage.includes('Failed to fetch') || errorMessage.includes('Network')) {
+        setError('Stock service is temporarily unavailable. Please check your connection and try again.')
       } else {
-        setError('Failed to load stock market data. Please try again.')
+        setError(`Failed to load stock market data: ${errorMessage}`)
       }
     } finally {
       setLoading(false)
@@ -95,6 +245,29 @@ export function StockMarket() {
     StockAPI.clearCache()
     setIsRetrying(true)
     loadStockData()
+  }
+
+  // Function to update portfolio stocks with real-time prices
+  const updatePortfolioWithRealTimePrices = (portfolio: UserPortfolioStock[]): UserPortfolioStock[] => {
+    return portfolio.map(stock => {
+      const realTimePrice = realTimePrices[stock.symbol]
+      if (realTimePrice) {
+        const newTotalValue = realTimePrice.price * stock.shares
+        const newGainLoss = (realTimePrice.price - stock.purchasePrice) * stock.shares
+        const newGainLossPercent = ((realTimePrice.price - stock.purchasePrice) / stock.purchasePrice) * 100
+        
+        return {
+          ...stock,
+          price: realTimePrice.price,
+          change: realTimePrice.change,
+          changePercent: realTimePrice.changePercent,
+          totalValue: newTotalValue,
+          gainLoss: newGainLoss,
+          gainLossPercent: newGainLossPercent,
+        }
+      }
+      return stock
+    })
   }
 
   if (loading) {
@@ -168,8 +341,9 @@ export function StockMarket() {
           </div>
         </CardHeader>
         <CardContent className="pt-0">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {marketIndices.map((index) => (
+          {marketIndices.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {marketIndices.map((index) => (
               <div key={index.symbol} className="p-4 rounded-lg bg-cream/5 border border-cream/10">
                 <div className="flex items-center justify-between mb-2">
                   <div>
@@ -197,62 +371,149 @@ export function StockMarket() {
                 </div>
               </div>
             ))}
-          </div>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-cream/60">
+              <Activity className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              <p className="text-sm">No market data available</p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      {/* User Portfolio */}
-      {user && userPortfolio.length > 0 && (
-        <Card className="bg-dark border-cream/10">
-          <CardHeader className="pb-4">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg font-outfit text-cream">Your Portfolio</CardTitle>
-              <div className="text-sm text-cream/60">
-                Total: {formatPrice(userPortfolio.reduce((sum, stock) => sum + stock.totalValue, 0))}
+      {/* User Portfolio Section */}
+      {user && (
+        <>
+          {/* Portfolio Summary */}
+          {userPortfolio.length > 0 && (
+            <PortfolioSummary portfolio={updatePortfolioWithRealTimePrices(userPortfolio)} connected={priceConnected} />
+          )}
+
+          {/* Portfolio Holdings */}
+          <Card className="bg-dark border-cream/10">
+            <CardHeader className="pb-4">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg font-outfit text-cream">
+                  Your Portfolio {userPortfolio.length > 0 && `(${userPortfolio.length} holdings)`}
+                </CardTitle>
+                <div className="flex items-center space-x-2">
+                  <PieChart className="h-4 w-4 text-cream/60" />
+                  <ChevronRight className="h-4 w-4 text-cream/60" />
+                </div>
               </div>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="space-y-3">
-              {userPortfolio.slice(0, 4).map((stock) => (
-                <div key={stock.symbol} className="flex items-center justify-between p-3 rounded-lg bg-cream/5 border border-cream/10 hover:bg-cream/10 transition-colors">
-                  <div className="flex items-center space-x-3">
-                    <div className="flex-shrink-0">
-                      <div className="w-10 h-10 rounded-full bg-cream/10 flex items-center justify-center">
-                        <span className="text-xs font-bold text-cream">{stock.symbol}</span>
+            </CardHeader>
+            <CardContent className="pt-0">
+              {userPortfolio.length > 0 ? (
+                <div className="space-y-3">
+                  {updatePortfolioWithRealTimePrices(userPortfolio).map((stock) => (
+                    <div key={stock.symbol} className="flex items-center justify-between p-3 rounded-lg bg-cream/5 border border-cream/10">
+                      <div className="flex items-center space-x-3">
+                        <div>
+                          <p className="font-medium text-cream">{stock.symbol}</p>
+                          <p className="text-xs text-cream/60 truncate max-w-32">{stock.name}</p>
+                        </div>
+                        <div className="text-sm text-cream/70">
+                          {stock.shares} shares
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center space-x-4">
+                        <div className="text-right">
+                          <p className="text-sm font-medium text-cream">{formatPrice(stock.price)}</p>
+                          <p className={`text-xs ${stock.changePercent >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                            {formatPercent(stock.changePercent)}
+                          </p>
+                        </div>
+                        
+                        <div className="text-right">
+                          <p className="text-sm font-semibold text-cream">{formatPrice(stock.totalValue)}</p>
+                          <p className={`text-xs ${stock.gainLoss >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                            {formatChange(stock.gainLoss)} ({formatPercent(stock.gainLossPercent)})
+                          </p>
+                        </div>
+                        
+                        {stock.gainLoss >= 0 ? (
+                          <TrendingUp className="h-4 w-4 text-green-500" />
+                        ) : (
+                          <TrendingDown className="h-4 w-4 text-red-500" />
+                        )}
                       </div>
                     </div>
-                    <div>
-                      <p className="font-medium text-cream">{stock.symbol}</p>
-                      <p className="text-xs text-cream/60 truncate max-w-32">{stock.name}</p>
-                      <p className="text-xs text-cream/50">{stock.shares} shares</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-semibold text-cream">{formatPrice(stock.totalValue)}</p>
-                    <p className="text-sm text-cream/80">{formatPrice(stock.price)}</p>
-                    <div className="flex items-center justify-end space-x-1">
-                      <span className={`text-xs ${
-                        stock.gainLoss >= 0 ? 'text-green-500' : 'text-red-500'
-                      }`}>
-                        {formatChange(stock.gainLoss)}
-                      </span>
-                      <span className={`text-xs ${
-                        stock.gainLossPercent >= 0 ? 'text-green-500' : 'text-red-500'
-                      }`}>
-                        ({formatPercent(stock.gainLossPercent)})
-                      </span>
-                    </div>
-                  </div>
+                  ))}
                 </div>
-              ))}
-              {userPortfolio.length > 4 && (
-                <div className="text-center pt-2">
-                  <p className="text-sm text-cream/60">
-                    +{userPortfolio.length - 4} more stocks in your portfolio
-                  </p>
+              ) : (
+                <div className="text-center py-8 text-cream/60">
+                  <PieChart className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p className="text-sm">Your portfolio is empty</p>
+                  <p className="text-xs text-cream/40 mt-1">Start building your portfolio by searching and buying stocks</p>
                 </div>
               )}
+            </CardContent>
+          </Card>
+
+          {/* Recent Transactions */}
+          {recentTransactions.length > 0 && (
+            <Card className="bg-dark border-cream/10">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg font-outfit text-cream">Recent Transactions</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="space-y-3">
+                  {recentTransactions.map((transaction) => (
+                    <div key={transaction.id} className="flex items-center justify-between p-3 rounded-lg bg-cream/5 border border-cream/10">
+                      <div className="flex items-center space-x-3">
+                        <div className={`p-2 rounded-full ${
+                          transaction.type === 'buy' ? 'bg-green-500/20' : 'bg-red-500/20'
+                        }`}>
+                          {transaction.type === 'buy' ? (
+                            <TrendingUp className="h-3 w-3 text-green-500" />
+                          ) : (
+                            <TrendingDown className="h-3 w-3 text-red-500" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-cream">
+                            {transaction.type.toUpperCase()} {transaction.symbol}
+                          </p>
+                          <p className="text-xs text-cream/60">
+                            {transaction.shares} shares at {formatPrice(transaction.price)}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div className="text-right">
+                        <p className="text-sm font-medium text-cream">
+                          {formatPrice(transaction.totalValue)}
+                        </p>
+                        <p className="text-xs text-cream/60">
+                          {transaction.timestamp.toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </>
+      )}
+
+      {/* Sign-in prompt for unauthenticated users */}
+      {!user && (
+        <Card className="bg-dark border-cream/10">
+          <CardContent className="p-6">
+            <div className="text-center text-cream/60 space-y-4">
+              <DollarSign className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <div>
+                <p className="text-lg font-medium text-cream mb-2">Portfolio Tracking</p>
+                <p className="text-sm">Sign in to track your stock portfolio and investment performance</p>
+              </div>
+              <Button 
+                variant="outline" 
+                className="text-cream/80 hover:text-cream border-cream/20 hover:border-cream/40"
+              >
+                Sign In to View Portfolio
+              </Button>
             </div>
           </CardContent>
         </Card>

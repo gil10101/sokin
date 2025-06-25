@@ -1,71 +1,337 @@
 rules_version = '2';
+
+/**
+ * Firestore Security Rules for Sokin Finance App
+ * 
+ * Security Principles:
+ * - User isolation: Users can only access their own data
+ * - Data validation: All writes are validated for required fields and types
+ * - Read optimization: Allow efficient queries while maintaining security
+ * - Audit trail: Maintain created/updated timestamps
+ * 
+ * Collections covered:
+ * - users: User profile and settings
+ * - expenses: User expense records
+ * - budgets: User budget configurations
+ * - subscriptions: User recurring subscriptions
+ * - notifications: User notifications
+ * - goals: User savings goals
+ * - billReminders: User bill reminders
+ * - portfolios: User stock portfolios (deprecated - use stockTransactions)
+ * - watchlists: User stock watchlists
+ * - stockTransactions: User stock transactions
+ * - netWorthSnapshots: User net worth history
+ * - categories: Global expense categories (read-only)
+ */
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper function to check if user is authenticated
+    
+    /**
+     * Helper function to check if user is authenticated
+     * @returns {bool} True if user is authenticated
+     */
     function isAuthenticated() {
       return request.auth != null;
     }
     
-    // Helper function to check if user is accessing their own data
+    /**
+     * Helper function to check if user is accessing their own data
+     * @param {string} userId - The user ID to check against
+     * @returns {bool} True if authenticated user matches the userId
+     */
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
-    // Users collection
+    /**
+     * Helper function to validate required fields exist in document
+     * @param {list} fields - List of required field names
+     * @returns {bool} True if all required fields are present
+     */
+    function hasRequiredFields(fields) {
+      return fields.hasAll(request.resource.data.keys());
+    }
+
+    /**
+     * Helper function to check if document has valid timestamp fields
+     * @returns {bool} True if document has proper timestamp fields
+     */
+    function hasValidTimestamps() {
+      return request.resource.data.keys().hasAny(['createdAt', 'updatedAt']) &&
+             (!('createdAt' in request.resource.data) || request.resource.data.createdAt is timestamp) &&
+             (!('updatedAt' in request.resource.data) || request.resource.data.updatedAt is timestamp);
+    }
+
+    /**
+     * Helper function to validate monetary amounts
+     * @param {number} amount - The amount to validate
+     * @returns {bool} True if amount is valid
+     */
+    function isValidAmount(amount) {
+      return amount is number && amount >= 0 && amount <= 1000000000; // Max $1B
+    }
+
+    /**
+     * Helper function to validate stock symbol format
+     * @param {string} symbol - The stock symbol to validate
+     * @returns {bool} True if symbol format is valid
+     */
+    function isValidStockSymbol(symbol) {
+      return symbol is string && 
+             symbol.size() >= 1 && 
+             symbol.size() <= 10 &&
+             symbol.matches('^[A-Z^]+$');
+    }
+
+    /**
+     * Users collection - User profiles and settings
+     * Security: Users can only read/write their own profile
+     */
     match /users/{userId} {
       allow read, write: if isOwner(userId);
       
-      // User's categories subcollection
+      // Validate user document structure on writes
+      allow create, update: if isOwner(userId) &&
+        hasValidTimestamps() &&
+        request.resource.data.userId == userId &&
+        request.resource.data.email is string;
+      
+      /**
+       * User's categories subcollection - Custom expense categories
+       * Security: Inherits user ownership from parent document
+       */
       match /categories/{document=**} {
         allow read, write: if isOwner(userId);
       }
     }
     
-    // Expenses collection
+    /**
+     * Expenses collection - User expense records
+     * Security: Users can only access expenses they own
+     * Validation: Ensures required fields and valid amounts
+     */
     match /expenses/{expenseId} {
       allow read, write: if isAuthenticated() && request.auth.uid == resource.data.userId;
-      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.userId;
+      allow create: if isAuthenticated() && 
+        request.auth.uid == request.resource.data.userId &&
+        hasRequiredFields(['userId', 'amount', 'category', 'description']) &&
+        isValidAmount(request.resource.data.amount) &&
+        request.resource.data.category is string &&
+        request.resource.data.description is string &&
+        hasValidTimestamps();
+      
+      allow update: if isAuthenticated() && 
+        request.auth.uid == resource.data.userId &&
+        request.auth.uid == request.resource.data.userId &&
+        isValidAmount(request.resource.data.amount) &&
+        hasValidTimestamps();
     }
     
-    // Budgets collection
+    /**
+     * Budgets collection - User budget configurations
+     * Security: Users can only access their own budgets
+     * Validation: Ensures valid amounts and time periods
+     */
     match /budgets/{budgetId} {
       allow read, write: if isAuthenticated() && request.auth.uid == resource.data.userId;
-      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.userId;
+      allow create: if isAuthenticated() && 
+        request.auth.uid == request.resource.data.userId &&
+        hasRequiredFields(['userId', 'category', 'amount', 'period']) &&
+        isValidAmount(request.resource.data.amount) &&
+        request.resource.data.category is string &&
+        request.resource.data.period in ['weekly', 'monthly', 'yearly'] &&
+        hasValidTimestamps();
+        
+      allow update: if isAuthenticated() && 
+        request.auth.uid == resource.data.userId &&
+        request.auth.uid == request.resource.data.userId &&
+        isValidAmount(request.resource.data.amount) &&
+        hasValidTimestamps();
     }
     
-    // Subscriptions collection
+    /**
+     * Subscriptions collection - User recurring subscriptions
+     * Security: Users can only access their own subscriptions
+     * Validation: Ensures valid amounts and billing cycles
+     */
     match /subscriptions/{subscriptionId} {
       allow read, write: if isAuthenticated() && request.auth.uid == resource.data.userId;
-      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.userId;
+      allow create: if isAuthenticated() && 
+        request.auth.uid == request.resource.data.userId &&
+        hasRequiredFields(['userId', 'name', 'amount', 'billingCycle']) &&
+        isValidAmount(request.resource.data.amount) &&
+        request.resource.data.name is string &&
+        request.resource.data.billingCycle in ['daily', 'weekly', 'monthly', 'yearly'] &&
+        hasValidTimestamps();
+        
+      allow update: if isAuthenticated() && 
+        request.auth.uid == resource.data.userId &&
+        request.auth.uid == request.resource.data.userId &&
+        isValidAmount(request.resource.data.amount) &&
+        hasValidTimestamps();
     }
     
-    // Notifications collection
+    /**
+     * Notifications collection - User notifications
+     * Security: Users can only access their own notifications
+     * Validation: Ensures proper notification structure
+     */
     match /notifications/{notificationId} {
       allow read, write: if isAuthenticated() && request.auth.uid == resource.data.userId;
-      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.userId;
+      allow create: if isAuthenticated() && 
+        request.auth.uid == request.resource.data.userId &&
+        hasRequiredFields(['userId', 'title', 'message', 'type']) &&
+        request.resource.data.title is string &&
+        request.resource.data.message is string &&
+        request.resource.data.type in ['info', 'warning', 'error', 'success'] &&
+        hasValidTimestamps();
+        
+      allow update: if isAuthenticated() && 
+        request.auth.uid == resource.data.userId &&
+        request.auth.uid == request.resource.data.userId &&
+        hasValidTimestamps();
     }
     
-    // Savings goals collection
+    /**
+     * Savings goals collection - User financial goals
+     * Security: Users can only access their own goals
+     * Validation: Ensures valid target amounts and dates
+     */
     match /goals/{goalId} {
       allow read, write: if isAuthenticated() && request.auth.uid == resource.data.userId;
-      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.userId;
+      allow create: if isAuthenticated() && 
+        request.auth.uid == request.resource.data.userId &&
+        hasRequiredFields(['userId', 'name', 'targetAmount', 'currentAmount']) &&
+        request.resource.data.name is string &&
+        isValidAmount(request.resource.data.targetAmount) &&
+        isValidAmount(request.resource.data.currentAmount) &&
+        request.resource.data.currentAmount <= request.resource.data.targetAmount &&
+        hasValidTimestamps();
+        
+      allow update: if isAuthenticated() && 
+        request.auth.uid == resource.data.userId &&
+        request.auth.uid == request.resource.data.userId &&
+        isValidAmount(request.resource.data.targetAmount) &&
+        isValidAmount(request.resource.data.currentAmount) &&
+        hasValidTimestamps();
     }
     
-    // Bill reminders collection
+    /**
+     * Bill reminders collection - User bill reminders
+     * Security: Users can only access their own bill reminders
+     * Validation: Ensures valid amounts and due dates
+     */
     match /billReminders/{billId} {
       allow read, write: if isAuthenticated() && request.auth.uid == resource.data.userId;
-      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.userId;
+      allow create: if isAuthenticated() && 
+        request.auth.uid == request.resource.data.userId &&
+        hasRequiredFields(['userId', 'name', 'amount', 'dueDate']) &&
+        request.resource.data.name is string &&
+        isValidAmount(request.resource.data.amount) &&
+        request.resource.data.dueDate is timestamp &&
+        hasValidTimestamps();
+        
+      allow update: if isAuthenticated() && 
+        request.auth.uid == resource.data.userId &&
+        request.auth.uid == request.resource.data.userId &&
+        isValidAmount(request.resource.data.amount) &&
+        hasValidTimestamps();
     }
     
-    // Global categories collection (read-only for authenticated users)
+    /**
+     * Stock portfolios collection (DEPRECATED)
+     * Use stockTransactions collection instead for new implementations
+     * Security: Users can only access their own portfolios
+     */
+    match /portfolios/{portfolioId} {
+      allow read, write: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      allow create: if isAuthenticated() && 
+        request.auth.uid == request.resource.data.userId &&
+        hasValidTimestamps();
+    }
+    
+    /**
+     * Stock watchlists collection - User stock watchlists
+     * Security: Users can only access their own watchlists
+     * Validation: Ensures valid stock symbols
+     */
+    match /watchlists/{userId} {
+      allow read, write: if isOwner(userId);
+      allow create: if isAuthenticated() && 
+        request.auth.uid == request.resource.data.userId &&
+        request.resource.data.userId == userId &&
+        hasRequiredFields(['userId', 'symbols']) &&
+        request.resource.data.symbols is list &&
+        request.resource.data.symbols.size() <= 50 && // Max 50 symbols per watchlist
+        hasValidTimestamps();
+        
+      allow update: if isOwner(userId) &&
+        request.auth.uid == request.resource.data.userId &&
+        request.resource.data.symbols is list &&
+        request.resource.data.symbols.size() <= 50 &&
+        hasValidTimestamps();
+    }
+    
+    /**
+     * Stock transactions collection - User stock buy/sell transactions
+     * Security: Users can only access their own transactions
+     * Validation: Ensures valid transaction data and stock symbols
+     */
+    match /stockTransactions/{transactionId} {
+      allow read, write: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      allow create: if isAuthenticated() && 
+        request.auth.uid == request.resource.data.userId &&
+        hasRequiredFields(['userId', 'symbol', 'type', 'shares', 'price', 'totalValue']) &&
+        isValidStockSymbol(request.resource.data.symbol) &&
+        request.resource.data.type in ['buy', 'sell'] &&
+        request.resource.data.shares is number &&
+        request.resource.data.shares > 0 &&
+        request.resource.data.shares <= 1000000 && // Max 1M shares per transaction
+        isValidAmount(request.resource.data.price) &&
+        isValidAmount(request.resource.data.totalValue) &&
+        // Validate total value calculation (with 1% tolerance for rounding)
+        math.abs(request.resource.data.totalValue - (request.resource.data.shares * request.resource.data.price)) <= (request.resource.data.totalValue * 0.01) &&
+        hasValidTimestamps();
+        
+      allow update: if isAuthenticated() && 
+        request.auth.uid == resource.data.userId &&
+        request.auth.uid == request.resource.data.userId &&
+        hasValidTimestamps();
+    }
+    
+    /**
+     * Global categories collection - Read-only expense categories
+     * Security: All authenticated users can read, no writes allowed
+     */
     match /categories/{document=**} {
       allow read: if isAuthenticated();
+      // No write permissions - categories are managed server-side
     }
     
-    // Net worth snapshots collection
+    /**
+     * Net worth snapshots collection - User net worth history
+     * Security: Users can only access their own snapshots
+     * Validation: Ensures valid net worth amounts and timestamps
+     */
     match /netWorthSnapshots/{snapshotId} {
       allow read, write: if isAuthenticated() && request.auth.uid == resource.data.userId;
-      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.userId;
+      allow create: if isAuthenticated() && 
+        request.auth.uid == request.resource.data.userId &&
+        hasRequiredFields(['userId', 'netWorth', 'assets', 'liabilities']) &&
+        isValidAmount(request.resource.data.netWorth) &&
+        isValidAmount(request.resource.data.assets) &&
+        isValidAmount(request.resource.data.liabilities) &&
+        // Validate net worth calculation
+        request.resource.data.netWorth == (request.resource.data.assets - request.resource.data.liabilities) &&
+        hasValidTimestamps();
+        
+      allow update: if isAuthenticated() && 
+        request.auth.uid == resource.data.userId &&
+        request.auth.uid == request.resource.data.userId &&
+        isValidAmount(request.resource.data.netWorth) &&
+        isValidAmount(request.resource.data.assets) &&
+        isValidAmount(request.resource.data.liabilities) &&
+        hasValidTimestamps();
     }
   }
 }

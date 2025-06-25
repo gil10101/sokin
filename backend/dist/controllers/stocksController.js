@@ -9,12 +9,23 @@ const http_1 = __importDefault(require("http"));
 const PYTHON_STOCK_SERVICE_URL = process.env.PYTHON_STOCK_SERVICE_URL || 'http://localhost:5000';
 class StocksController {
     // Helper method to call Python yfinance service
-    async callPythonService(endpoint) {
+    async callPythonService(endpoint, req) {
         return new Promise((resolve, reject) => {
             const url = `${PYTHON_STOCK_SERVICE_URL}${endpoint}`;
             console.log(`Calling Python service: ${url}`);
             const client = url.startsWith('https') ? https_1.default : http_1.default;
-            client.get(url, (res) => {
+            // Set up headers
+            const headers = {
+                'Content-Type': 'application/json',
+            };
+            // Forward Authorization header if available (for authenticated endpoints)
+            if (req === null || req === void 0 ? void 0 : req.headers.authorization) {
+                headers.Authorization = req.headers.authorization;
+            }
+            const options = {
+                headers
+            };
+            client.get(url, options, (res) => {
                 let data = '';
                 res.on('data', (chunk) => {
                     data += chunk;
@@ -43,7 +54,7 @@ class StocksController {
     // Get market indices (NASDAQ, S&P 500, Dow Jones)
     async getMarketIndices(req, res) {
         try {
-            const indices = await this.callPythonService('/api/market-indices');
+            const indices = await this.callPythonService('/api/market-indices', req);
             res.json({
                 success: true,
                 data: indices,
@@ -61,7 +72,7 @@ class StocksController {
     async getTrendingStocks(req, res) {
         try {
             const { limit = 10 } = req.query;
-            const stocks = await this.callPythonService(`/api/trending-stocks?limit=${limit}`);
+            const stocks = await this.callPythonService(`/api/trending-stocks?limit=${limit}`, req);
             res.json({
                 success: true,
                 data: stocks,
@@ -79,7 +90,7 @@ class StocksController {
     async getUserPortfolio(req, res) {
         try {
             const userId = req.params.userId;
-            const portfolio = await this.callPythonService(`/api/portfolio/${userId}`);
+            const portfolio = await this.callPythonService(`/api/portfolio/${userId}`, req);
             res.json({
                 success: true,
                 data: portfolio,
@@ -97,7 +108,7 @@ class StocksController {
     async getStockData(req, res) {
         try {
             const { symbol } = req.params;
-            const stock = await this.callPythonService(`/api/stock/${symbol}`);
+            const stock = await this.callPythonService(`/api/stock/${symbol}`, req);
             res.json({
                 success: true,
                 data: stock,
@@ -121,7 +132,7 @@ class StocksController {
                     error: 'Search query is required'
                 });
             }
-            const results = await this.callPythonService(`/api/search?q=${encodeURIComponent(q)}`);
+            const results = await this.callPythonService(`/api/search?q=${encodeURIComponent(q)}`, req);
             res.json({
                 success: true,
                 data: results,
