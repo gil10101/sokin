@@ -86,17 +86,32 @@ export interface PortfolioHolding {
 }
 
 /**
- * Stock transaction record
+ * Stock transaction record (updated to support currency-based transactions)
  */
 export interface StockTransaction {
   id?: string
   userId: string
   symbol: string
-  type: 'buy' | 'sell'
+  transactionType: 'buy' | 'sell'
   shares: number
+  pricePerShare: number
+  totalAmount: number
+  transactionDate: string
+  createdAt: string
+  timestamp?: Date
+}
+
+
+
+/**
+ * Currency-based transaction request (new interface for UI)
+ */
+export interface CurrencyTransaction {
+  userId: string
+  symbol: string
+  type: 'buy' | 'sell'
+  amount: number // Currency amount instead of shares
   price: number
-  totalValue: number
-  timestamp: Date
 }
 
 /**
@@ -412,10 +427,10 @@ export class StockAPI {
 
     const headers = await this.getAuthHeaders()
     const response = await this.fetchWithRetry(`${this.baseUrl}/stocks/portfolio/${userId}`, { headers })
-    const result = await this.handleResponse<{ data: UserPortfolioStock[] }>(response)
+    const result = await this.handleResponse<UserPortfolioStock[]>(response)
     
-    this.setCache(cacheKey, result.data, 15000) // Cache for 15 seconds
-    return result.data
+    this.setCache(cacheKey, result, 15000) // Cache for 15 seconds
+    return result
   }
 
   /**
@@ -515,6 +530,20 @@ export class StockAPI {
   static async executeTransaction(transaction: Omit<StockTransaction, 'id'>): Promise<void> {
     if (!auth.currentUser) throw new Error('User not authenticated')
     
+    // Validation for sell transactions
+    if (transaction.transactionType === 'sell') {
+      const holdings = await this.getPortfolioHoldings(transaction.userId)
+      const currentHolding = holdings.find(h => h.symbol === transaction.symbol)
+      
+      if (!currentHolding) {
+        throw new Error(`Cannot sell ${transaction.symbol} - you don't own any shares of this stock`)
+      }
+      
+      if (currentHolding.shares < transaction.shares) {
+        throw new Error(`Cannot sell ${transaction.shares} shares of ${transaction.symbol} - you only own ${currentHolding.shares} shares`)
+      }
+    }
+    
     const batch = writeBatch(db)
     
     // Add transaction record
@@ -533,15 +562,15 @@ export class StockAPI {
     
     const holdingsSnapshot = await getDocs(holdingsQuery)
     
-    if (holdingsSnapshot.empty && transaction.type === 'buy') {
+    if (holdingsSnapshot.empty && transaction.transactionType === 'buy') {
       // Create new holding
       const newHoldingRef = doc(collection(db, 'portfolios'))
       batch.set(newHoldingRef, {
         userId: transaction.userId,
         symbol: transaction.symbol,
         shares: transaction.shares,
-        averagePrice: transaction.price,
-        totalInvested: transaction.totalValue,
+        averagePrice: transaction.pricePerShare,
+        totalInvested: transaction.totalAmount,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       })
@@ -550,9 +579,9 @@ export class StockAPI {
       const holdingDoc = holdingsSnapshot.docs[0]
       const currentHolding = holdingDoc.data() as PortfolioHolding
       
-      if (transaction.type === 'buy') {
+      if (transaction.transactionType === 'buy') {
         const newShares = currentHolding.shares + transaction.shares
-        const newTotalInvested = currentHolding.totalInvested + transaction.totalValue
+        const newTotalInvested = currentHolding.totalInvested + transaction.totalAmount
         const newAveragePrice = newTotalInvested / newShares
         
         batch.update(holdingDoc.ref, {
@@ -561,7 +590,7 @@ export class StockAPI {
           totalInvested: newTotalInvested,
           updatedAt: serverTimestamp(),
         })
-      } else if (transaction.type === 'sell') {
+      } else if (transaction.transactionType === 'sell') {
         const newShares = Math.max(0, currentHolding.shares - transaction.shares)
         
         if (newShares === 0) {
@@ -579,12 +608,49 @@ export class StockAPI {
           })
         }
       }
+    } else if (transaction.transactionType === 'sell') {
+      // This should not happen due to validation above, but keeping as failsafe
+      throw new Error(`Cannot sell ${transaction.symbol} - you don't own any shares of this stock`)
     }
     
     await batch.commit()
     
     // Clear cache
     this.clearCache()
+  }
+
+  /**
+   * Execute a currency-based transaction via backend API
+   */
+  static async executeCurrencyTransaction(currencyTransaction: CurrencyTransaction): Promise<void> {
+    const headers = await this.getAuthHeaders()
+    
+    const response = await this.fetchWithRetry(`${this.baseUrl}/stocks/transaction`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        symbol: currencyTransaction.symbol,
+        type: currencyTransaction.type,
+        amount: currencyTransaction.amount,
+        price: currencyTransaction.price
+      })
+    })
+    
+    await this.handleResponse(response)
+    
+    // Clear cache after successful transaction
+    this.clearCache()
+  }
+
+  /**
+   * Get the maximum amount a user can sell for a given stock via backend API
+   */
+  static async getMaxSellAmount(userId: string, symbol: string): Promise<{ shares: number; value: number; price: number }> {
+    if (!auth.currentUser) throw new Error('User not authenticated')
+    
+    const headers = await this.getAuthHeaders()
+    const response = await this.fetchWithRetry(`${this.baseUrl}/stocks/max-sell/${symbol}`, { headers })
+    return this.handleResponse<{ shares: number; value: number; price: number }>(response)
   }
 
   // Firestore-based watchlist management
@@ -637,18 +703,9 @@ export class StockAPI {
   static async getTransactionHistory(userId: string): Promise<StockTransaction[]> {
     if (!auth.currentUser) throw new Error('User not authenticated')
     
-    const transactionsQuery = query(
-      collection(db, 'stockTransactions'),
-      where('userId', '==', userId),
-      orderBy('timestamp', 'desc')
-    )
-    
-    const snapshot = await getDocs(transactionsQuery)
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      timestamp: doc.data().timestamp?.toDate() || new Date(),
-    })) as StockTransaction[]
+    const headers = await this.getAuthHeaders()
+    const response = await this.fetchWithRetry(`${this.baseUrl}/stocks/transactions`, { headers })
+    return this.handleResponse<StockTransaction[]>(response)
   }
 
   // Clear cache (useful for debugging or force refresh)
