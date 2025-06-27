@@ -169,53 +169,17 @@ export function StockMarket() {
         transactionsPromise
       ])
 
-      // Add null checks and default to empty arrays if undefined
-      const safeIndices = indices || []
-      const safePortfolio = portfolio || []
-      const safeHoldings = holdings || []
-      const safeTransactions = transactions || []
+      console.log('Market indices loaded:', indices.length, 'items')
+      console.log('Portfolio loaded:', portfolio.length, 'items')
+      console.log('Holdings loaded:', holdings.length, 'items')
+      console.log('Transactions loaded:', transactions.length, 'items')
 
-      console.log('Market indices loaded:', safeIndices.length, 'items')
-      console.log('Portfolio loaded:', safePortfolio.length, 'items')
-      console.log('Holdings loaded:', safeHoldings.length, 'items')
-      console.log('Transactions loaded:', safeTransactions.length, 'items')
+      setMarketIndices(indices)
+      setUserPortfolio(portfolio)
+      setPortfolioHoldings(holdings)
+      setRecentTransactions(transactions.slice(0, 5)) // Show last 5 transactions
 
-      setMarketIndices(safeIndices)
-      setUserPortfolio(safePortfolio)
-      setPortfolioHoldings(safeHoldings)
-      setRecentTransactions(safeTransactions.slice(0, 5)) // Show last 5 transactions
 
-      // If we're in development and have no portfolio data, show sample data for testing
-      if (process.env.NODE_ENV === 'development' && user && safePortfolio.length === 0) {
-        console.log('No portfolio data found, using sample data for development')
-        const samplePortfolio: UserPortfolioStock[] = [
-          {
-            symbol: 'AAPL',
-            name: 'Apple Inc.',
-            price: 175.50,
-            change: 2.30,
-            changePercent: 1.33,
-            shares: 10,
-            totalValue: 1755.00,
-            purchasePrice: 170.00,
-            gainLoss: 55.00,
-            gainLossPercent: 3.24
-          },
-          {
-            symbol: 'GOOGL',
-            name: 'Alphabet Inc.',
-            price: 140.20,
-            change: -1.80,
-            changePercent: -1.27,
-            shares: 5,
-            totalValue: 701.00,
-            purchasePrice: 145.00,
-            gainLoss: -24.00,
-            gainLossPercent: -3.31
-          }
-        ]
-        setUserPortfolio(samplePortfolio)
-      }
     } catch (err) {
       console.error('Error loading stock data:', err)
       const errorMessage = err instanceof Error ? err.message : 'Unknown error'
@@ -463,9 +427,9 @@ export function StockMarket() {
                     <div key={transaction.id} className="flex items-center justify-between p-3 rounded-lg bg-cream/5 border border-cream/10">
                       <div className="flex items-center space-x-3">
                         <div className={`p-2 rounded-full ${
-                          transaction.type === 'buy' ? 'bg-green-500/20' : 'bg-red-500/20'
+                          transaction.transactionType === 'buy' ? 'bg-green-500/20' : 'bg-red-500/20'
                         }`}>
-                          {transaction.type === 'buy' ? (
+                          {transaction.transactionType === 'buy' ? (
                             <TrendingUp className="h-3 w-3 text-green-500" />
                           ) : (
                             <TrendingDown className="h-3 w-3 text-red-500" />
@@ -473,20 +437,21 @@ export function StockMarket() {
                         </div>
                         <div>
                           <p className="text-sm font-medium text-cream">
-                            {transaction.type.toUpperCase()} {transaction.symbol}
+                            {transaction.transactionType.toUpperCase()} {transaction.symbol}
                           </p>
                           <p className="text-xs text-cream/60">
-                            {transaction.shares} shares at {formatPrice(transaction.price)}
+                            {transaction.shares} shares at {formatPrice(transaction.pricePerShare)}
                           </p>
                         </div>
                       </div>
                       
                       <div className="text-right">
                         <p className="text-sm font-medium text-cream">
-                          {formatPrice(transaction.totalValue)}
+                          {formatPrice(transaction.totalAmount)}
                         </p>
                         <p className="text-xs text-cream/60">
-                          {transaction.timestamp.toLocaleDateString()}
+                          {transaction.timestamp ? new Date(transaction.timestamp).toLocaleDateString() : 
+                           new Date(transaction.transactionDate).toLocaleDateString()}
                         </p>
                       </div>
                     </div>
