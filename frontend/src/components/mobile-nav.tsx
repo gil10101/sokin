@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, CreditCard, Wallet, Repeat, BarChart3, PlusCircle, User, Settings, Menu, X } from "lucide-react"
+import { Home, CreditCard, Wallet, Repeat, BarChart3, PlusCircle, User, Settings, Menu, X, Target, Calendar, TrendingUp } from "lucide-react"
 import { Button } from "./ui/button"
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "./ui/sheet"
 import { ScrollArea } from "./ui/scroll-area"
@@ -26,6 +26,16 @@ const navigationItems = [
     icon: Wallet,
   },
   {
+    title: "Goals",
+    href: "/dashboard/goals",
+    icon: Target,
+  },
+  {
+    title: "Bills",
+    href: "/dashboard/bills",
+    icon: Calendar,
+  },
+  {
     title: "Subscriptions",
     href: "/dashboard/subscriptions",
     icon: Repeat,
@@ -34,6 +44,11 @@ const navigationItems = [
     title: "Analytics",
     href: "/dashboard/analytics",
     icon: BarChart3,
+  },
+  {
+    title: "Stocks",
+    href: "/dashboard/stocks",
+    icon: TrendingUp,
   },
   {
     title: "Add Expense",
