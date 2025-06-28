@@ -14,6 +14,7 @@ import {
   Calendar,
   Target,
   TrendingUp,
+  Building,
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "../../components/ui/avatar"
@@ -173,6 +174,11 @@ const navItems = [
     label: "Goals",
     href: "/dashboard/goals",
     icon: Target,
+  },
+  {
+    label: "Net Worth",
+    href: "/dashboard/net-worth",
+    icon: Building,
   },
   {
     label: "Bills",

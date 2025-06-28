@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, CreditCard, Wallet, Repeat, BarChart3, PlusCircle, User, Settings, Menu, X, Target, Calendar, TrendingUp } from "lucide-react"
+import { Home, CreditCard, Wallet, Repeat, BarChart3, PlusCircle, User, Settings, Menu, X, Target, Calendar, TrendingUp, Building } from "lucide-react"
 import { Button } from "./ui/button"
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "./ui/sheet"
 import { ScrollArea } from "./ui/scroll-area"
@@ -29,6 +29,11 @@ const navigationItems = [
     title: "Goals",
     href: "/dashboard/goals",
     icon: Target,
+  },
+  {
+    title: "Net Worth",
+    href: "/dashboard/net-worth",
+    icon: Building,
   },
   {
     title: "Bills",
