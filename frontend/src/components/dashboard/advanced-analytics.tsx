@@ -55,11 +55,22 @@ export function AdvancedAnalytics({ expenses, budgets, timeframe }: AdvancedAnal
     
     const dailySpending = dateRange.map(date => {
       const dayExpenses = expenses.filter(expense => {
+        // Validate and sanitize the expense date
+        if (!expense.date) return false
+        
         const expenseDate = new Date(expense.date)
-        return format(expenseDate, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')
+        // Check if the date is valid
+        if (isNaN(expenseDate.getTime())) return false
+        
+        try {
+          return format(expenseDate, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')
+        } catch (error) {
+          console.warn('Invalid date format for expense:', expense.id, expense.date)
+          return false
+        }
       })
       
-      const totalSpent = dayExpenses.reduce((sum, expense) => sum + expense.amount, 0)
+      const totalSpent = dayExpenses.reduce((sum, expense) => sum + (expense.amount || 0), 0)
       
       return {
         date: format(date, 'yyyy-MM-dd'),
@@ -77,7 +88,8 @@ export function AdvancedAnalytics({ expenses, budgets, timeframe }: AdvancedAnal
   // Category comparison data
   const categoryComparisonData = useMemo(() => {
     const categoryTotals = expenses.reduce((acc, expense) => {
-      acc[expense.category] = (acc[expense.category] || 0) + expense.amount
+      if (!expense.category || !expense.amount) return acc
+      acc[expense.category] = (acc[expense.category] || 0) + (expense.amount || 0)
       return acc
     }, {} as Record<string, number>)
 
@@ -95,11 +107,16 @@ export function AdvancedAnalytics({ expenses, budgets, timeframe }: AdvancedAnal
       const monthEnd = endOfMonth(date)
       
       const monthExpenses = expenses.filter(expense => {
+        if (!expense.date) return false
+        
         const expenseDate = new Date(expense.date)
+        // Check if the date is valid
+        if (isNaN(expenseDate.getTime())) return false
+        
         return expenseDate >= monthStart && expenseDate <= monthEnd
       })
       
-      const totalSpent = monthExpenses.reduce((sum, expense) => sum + expense.amount, 0)
+      const totalSpent = monthExpenses.reduce((sum, expense) => sum + (expense.amount || 0), 0)
       const avgDaily = totalSpent / date.getDate()
       
       return {
