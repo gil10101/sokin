@@ -2,6 +2,26 @@ import { auth } from './firebase';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
 
+// Ensure we always have a valid base URL
+const getApiBaseUrl = () => {
+  let baseUrl: string;
+  
+  if (typeof window !== 'undefined') {
+    // Client side - use environment variable or fallback
+    baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  } else {
+    // Server side - use environment variable or fallback  
+    baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  }
+  
+  // Ensure the base URL always includes /api
+  if (!baseUrl.endsWith('/api')) {
+    baseUrl = baseUrl.replace(/\/$/, '') + '/api';
+  }
+  
+  return baseUrl;
+};
+
 /**
  * API client for making authenticated requests to the backend
  */
@@ -33,12 +53,17 @@ export async function apiClient<T = any>(
       }
     }
 
-    const response = await fetch(`${API_BASE_URL}/${endpoint}`, config);
+    const baseUrl = getApiBaseUrl();
+    const finalUrl = `${baseUrl}/${endpoint}`;
+
+    const response = await fetch(finalUrl, config);
     
     // Handle HTTP errors
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ message: 'An unknown error occurred' }));
-      return Promise.reject(new Error(errorData.message || `Error ${response.status}: ${response.statusText}`));
+      const errorData = await response.json().catch(() => ({ error: 'An unknown error occurred' }));
+      // Backend sends error messages in 'error' field, not 'message'
+      const errorMessage = errorData.error || errorData.message || `Error ${response.status}: ${response.statusText}`;
+      return Promise.reject(new Error(errorMessage));
     }
     
     // Parse and return the response data
