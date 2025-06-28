@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
-import { PieChart, PlusCircle, CreditCard, ChevronRight, Calendar, Search } from "lucide-react"
+import { PieChart, PlusCircle, CreditCard, ChevronRight, Calendar, Search, TrendingUp } from "lucide-react"
 import { DashboardSidebar } from "../../components/dashboard/sidebar"
 import { ExpenseChart } from "../../components/dashboard/expense-chart"
 import { CategoryBreakdown } from "../../components/dashboard/category-breakdown"
@@ -23,8 +23,10 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { NotificationsDropdown } from "../../components/notifications/notifications-dropdown"
 import { collection, query, where, orderBy, limit, getDocs } from "firebase/firestore"
 import { db } from "../../lib/firebase"
+import { api } from "../../lib/api"
 import Link from "next/link"
 import { StackedBarChart } from "../../components/dashboard/stacked-bar-chart"
+import type { NetWorthCalculation } from "../../lib/types"
 
 interface Expense {
   id: string
@@ -59,6 +61,7 @@ export default function DashboardPage() {
   const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false)
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [budgets, setBudgets] = useState<any[]>([])
+  const [netWorth, setNetWorth] = useState<NetWorthCalculation | null>(null)
 
   // Fix hydration issues by only rendering after mount
   useEffect(() => {
@@ -69,6 +72,8 @@ export default function DashboardPage() {
   useEffect(() => {
     if (user && mounted) {
       fetchNotifications()
+      fetchExpenses()
+      fetchNetWorth()
     }
   }, [user, mounted])
 
@@ -104,42 +109,72 @@ export default function DashboardPage() {
     }
   }
 
+  const fetchExpenses = async () => {
+    try {
+      const expensesRef = collection(db, "expenses")
+      const q = query(
+        expensesRef,
+        where("userId", "==", user?.uid),
+        orderBy("date", "desc"),
+        limit(100)
+      )
+      const snapshot = await getDocs(q)
+      const expensesData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Expense[]
+      setExpenses(expensesData)
+    } catch (error) {
+      console.error("Error fetching expenses:", error)
+    }
+  }
+
+  const fetchNetWorth = async () => {
+    try {
+      const token = await user?.getIdToken()
+      const data = await api.get('net-worth/calculate', { token })
+      setNetWorth(data.data)
+    } catch (error) {
+      console.error('Error fetching net worth:', error)
+    }
+  }
+
   const searchExpenses = async (searchTerm: string) => {
-    if (!user || !searchTerm.trim()) {
+    if (!searchTerm.trim()) {
       setSearchResults([])
       setShowSearchResults(false)
       return
     }
 
+    setShowSearchResults(true)
+    
     try {
       const expensesRef = collection(db, "expenses")
       const q = query(
         expensesRef,
-        where("userId", "==", user.uid),
+        where("userId", "==", user?.uid),
         orderBy("date", "desc"),
-        limit(10)
+        limit(20)
       )
-
-      const querySnapshot = await getDocs(q)
-      const allExpenses = querySnapshot.docs.map((doc) => ({
+      const snapshot = await getDocs(q)
+      const allExpenses = snapshot.docs.map(doc => ({
         id: doc.id,
-        ...doc.data(),
+        ...doc.data()
       })) as Expense[]
 
-      // Filter expenses by search term (client-side filtering)
-      const filteredExpenses = allExpenses.filter(
-        (expense) =>
-          expense.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          expense.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          expense.description?.toLowerCase().includes(searchTerm.toLowerCase())
+      // Filter client-side for name matches
+      const filtered = allExpenses.filter(expense => 
+        expense.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        expense.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        expense.description?.toLowerCase().includes(searchTerm.toLowerCase())
       )
 
-      setSearchResults(filteredExpenses)
-      setShowSearchResults(true)
+      setSearchResults(filtered)
     } catch (error) {
       console.error("Error searching expenses:", error)
       setSearchResults([])
-      setShowSearchResults(false)
+    } finally {
+      setShowSearchResults(true)
     }
   }
 
@@ -152,16 +187,11 @@ export default function DashboardPage() {
     const value = e.target.value
     setSearchQuery(value)
     
-    if (!value.trim()) {
-      setShowSearchResults(false)
-      setSearchResults([])
+    if (value.trim()) {
+      searchExpenses(value)
     } else {
-      // Debounce search
-      const timeoutId = setTimeout(() => {
-        searchExpenses(value)
-      }, 300)
-      
-      return () => clearTimeout(timeoutId)
+      setSearchResults([])
+      setShowSearchResults(false)
     }
   }
 
@@ -181,8 +211,23 @@ export default function DashboardPage() {
   }
 
   const handleReceiptDataExtracted = (data: any) => {
-    // Handle extracted receipt data
-    router.push(`/dashboard/add-expense?receiptData=${encodeURIComponent(JSON.stringify(data))}`)
+    // Handle receipt data extraction
+    console.log("Receipt data extracted:", data)
+  }
+
+  // Helper function to format currency
+  const formatCurrency = (amount: number): string => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount)
+  }
+
+  // Helper function to format percentage
+  const formatPercent = (percent: number): string => {
+    return `${percent >= 0 ? '+' : ''}${percent.toFixed(1)}%`
   }
 
   if (authLoading) {
@@ -316,12 +361,16 @@ export default function DashboardPage() {
               />
             </MotionContainer>
             <MotionContainer delay={0.3}>
-              <MetricCard
-                title="Top Category"
-                value="Dining"
-                secondaryValue="$840.00"
-                icon={<PieChart className="h-5 w-5" />}
-              />
+              <Link href="/dashboard/net-worth" className="block">
+                <MetricCard
+                  title="Net Worth"
+                  value={netWorth ? formatCurrency(netWorth.netWorth) : "$0.00"}
+                  change={netWorth?.monthlyChangePercent ? formatPercent(netWorth.monthlyChangePercent) : "0.0%"}
+                  trend={netWorth?.monthlyChange ? (netWorth.monthlyChange >= 0 ? "up" : "down") : "up"}
+                  period="vs last month"
+                  icon={<TrendingUp className="h-5 w-5" />}
+                />
+              </Link>
             </MotionContainer>
             <MotionContainer delay={0.4}>
               <MetricCard
@@ -444,8 +493,6 @@ export default function DashboardPage() {
               </MotionContainer>
             </div>
           </div>
-
-
 
           {/* Bottom Section - Two Column Layout */}
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6 mt-6 sm:mt-8">
