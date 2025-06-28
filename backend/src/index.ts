@@ -50,6 +50,7 @@ import notificationRoutes from './routes/notificationRoutes';
 import goalsRoutes from './routes/goalsRoutes';
 import billRemindersRoutes from './routes/billRemindersRoutes';
 import stocksRoutes from './routes/stocksRoutes';
+import netWorthRoutes from './routes/netWorthRoutes';
 
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/users', userRoutes);
@@ -59,6 +60,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/goals', goalsRoutes);
 app.use('/api/bill-reminders', billRemindersRoutes);
 app.use('/api/stocks', stocksRoutes);
+app.use('/api/net-worth', netWorthRoutes);
 
 // Health check route
 app.get('/health', (req: Request, res: Response) => {

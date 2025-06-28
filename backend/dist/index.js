@@ -46,6 +46,7 @@ const notificationRoutes_1 = __importDefault(require("./routes/notificationRoute
 const goalsRoutes_1 = __importDefault(require("./routes/goalsRoutes"));
 const billRemindersRoutes_1 = __importDefault(require("./routes/billRemindersRoutes"));
 const stocksRoutes_1 = __importDefault(require("./routes/stocksRoutes"));
+const netWorthRoutes_1 = __importDefault(require("./routes/netWorthRoutes"));
 app.use('/api/expenses', expenses_1.default);
 app.use('/api/users', users_1.default);
 app.use('/api/budgets', budgets_1.default);
@@ -54,6 +55,7 @@ app.use('/api/notifications', notificationRoutes_1.default);
 app.use('/api/goals', goalsRoutes_1.default);
 app.use('/api/bill-reminders', billRemindersRoutes_1.default);
 app.use('/api/stocks', stocksRoutes_1.default);
+app.use('/api/net-worth', netWorthRoutes_1.default);
 // Health check route
 app.get('/health', (req, res) => {
     res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
