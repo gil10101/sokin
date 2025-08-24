@@ -6,6 +6,7 @@ import { useEffect, useState } from "react"
 import { ArrowRight, Menu, X, ArrowDown } from "lucide-react"
 import { motion, useScroll, useTransform } from "framer-motion"
 import { useAuth } from "../contexts/auth-context"
+import { Hero3DScene } from "../components/ui/hero-3d-scene"
 
 export default function LandingPage() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -190,17 +191,51 @@ export default function LandingPage() {
         )}
       </header>
       <main className="flex-1 relative z-10">
-        <section id="hero" className="min-h-screen flex items-center justify-center relative pt-20 sm:pt-24 pb-8">
-          <motion.div
-            className="container mx-auto px-4 sm:px-6 md:px-12 lg:px-16 relative z-10 text-center"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 1.5, ease: "easeOut" }}
-          >
-            <h1 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-medium tracking-tight font-outfit mb-6">Sokin</h1>
-            <p className="text-lg md:text-xl text-cream/70 font-outfit mb-24 max-w-md mx-auto">
-              Personal finance, redefined.
-            </p>
+                 <section id="hero" className="min-h-screen flex items-start justify-center relative pt-12 sm:pt-16 pb-8">
+           <div className="w-full px-4 sm:px-6 md:px-8 lg:px-12 relative z-10 max-w-[1600px] mx-auto">
+                                       <div className="flex flex-col lg:flex-row gap-0 lg:gap-8 items-center min-h-[80vh] mt-8 lg:mt-12">
+               {/* Left side - Text content */}
+               <motion.div
+                 className="flex flex-col justify-center text-center lg:text-left flex-shrink-0 lg:w-2/5 order-2 lg:order-1"
+                 initial={{ opacity: 0, x: -50 }}
+                 animate={{ opacity: 1, x: 0 }}
+                 transition={{ duration: 1.5, ease: "easeOut" }}
+               >
+                 <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-medium tracking-tight font-outfit mb-6">
+                   Sokin
+                 </h1>
+                 <p className="text-lg md:text-xl lg:text-2xl text-cream/70 font-outfit mb-8 max-w-md mx-auto lg:mx-0">
+                   Personal finance, redefined.
+                 </p>
+                 <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+                   <Link
+                     href={user ? "/dashboard" : "/signup"}
+                     className="inline-flex h-12 items-center justify-center rounded-full bg-cream text-dark px-8 text-sm font-medium transition-all hover:bg-cream/90 group"
+                   >
+                     {user ? "Go to Dashboard" : "Get Started"}
+                     <ArrowRight className="ml-2 h-4 w-4 transform group-hover:translate-x-1 transition-transform duration-300" />
+                   </Link>
+                   <button
+                     onClick={() => scrollToSection("about")}
+                     className="inline-flex h-12 items-center justify-center rounded-full border border-cream/20 px-8 text-sm font-medium text-cream transition-colors hover:border-cream/40"
+                   >
+                     Learn More
+                   </button>
+                 </div>
+               </motion.div>
+
+               {/* Right side - 3D Scene */}
+               <motion.div
+                 className="relative w-full lg:w-3/5 h-[60vh] min-h-[500px] max-h-[800px] order-1 lg:order-2 -mt-4 lg:mt-0"
+                 initial={{ opacity: 0, x: 50 }}
+                 animate={{ opacity: 1, x: 0 }}
+                 transition={{ duration: 1.5, ease: "easeOut", delay: 0.3 }}
+               >
+                 <Hero3DScene />
+               </motion.div>
+             </div>
+
+            {/* Scroll indicator */}
             <motion.div
               className="absolute bottom-12 left-1/2 -translate-x-1/2"
               animate={{ y: [0, 10, 0] }}
@@ -213,7 +248,7 @@ export default function LandingPage() {
                 <ArrowDown className="h-8 w-8" />
               </button>
             </motion.div>
-          </motion.div>
+          </div>
         </section>
 
         <section id="about" className="min-h-screen flex items-center py-24">
