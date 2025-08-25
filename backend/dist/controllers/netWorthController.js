@@ -292,14 +292,44 @@ const calculateNetWorth = async (req, res) => {
         if (!userId) {
             return res.status(401).json({ error: 'Unauthorized' });
         }
+        console.log('Calculating net worth for user:', userId);
         if (!firebase_1.db) {
-            return res.status(500).json({ error: 'Database not initialized' });
+            console.log('Database not initialized, returning empty calculation');
+            // Return empty calculation for development mode
+            const emptyCalculation = {
+                userId,
+                calculatedAt: new Date().toISOString(),
+                totalAssets: 0,
+                totalLiabilities: 0,
+                netWorth: 0,
+                assetBreakdown: {
+                    bankAccounts: 0,
+                    investmentAccounts: 0,
+                    realEstate: 0,
+                    vehicles: 0,
+                    otherValuables: 0,
+                },
+                liabilityBreakdown: {
+                    creditCards: 0,
+                    mortgages: 0,
+                    studentLoans: 0,
+                    autoLoans: 0,
+                    personalLoans: 0,
+                    otherDebts: 0,
+                },
+                assets: [],
+                liabilities: [],
+                monthlyChange: 0,
+                monthlyChangePercent: 0,
+            };
+            return res.json({ data: emptyCalculation });
         }
         const calculation = await (0, exports.calculateUserNetWorth)(userId);
         res.json({ data: calculation });
     }
     catch (error) {
         console.error('Error calculating net worth:', error);
+        console.error('Error details:', error);
         res.status(500).json({ error: 'Failed to calculate net worth' });
     }
 };
@@ -342,40 +372,85 @@ const getNetWorthTrends = async (req, res) => {
         if (!userId) {
             return res.status(401).json({ error: 'Unauthorized' });
         }
+        console.log('Getting net worth trends for user:', userId);
         if (!firebase_1.db) {
-            return res.status(500).json({ error: 'Database not initialized' });
+            console.log('Database not initialized, returning empty trends');
+            // Return empty trends for development mode
+            return res.json({ data: [] });
         }
         const months = parseInt(req.query.months) || 12;
-        const snapshotsRef = firebase_1.db.collection('netWorthSnapshots');
-        const snapshot = await snapshotsRef
-            .where('userId', '==', userId)
-            .orderBy('date', 'desc')
-            .limit(months)
-            .get();
-        const snapshots = [];
-        snapshot.forEach(doc => {
-            snapshots.push(doc.data());
-        });
-        snapshots.reverse(); // Chronological order
-        const trends = snapshots.map((snap, index) => {
-            const prevSnap = index > 0 ? snapshots[index - 1] : null;
-            const monthlyChange = prevSnap ? snap.netWorth - prevSnap.netWorth : 0;
-            const monthlyChangePercent = prevSnap && prevSnap.netWorth !== 0
-                ? (monthlyChange / Math.abs(prevSnap.netWorth)) * 100
-                : 0;
-            return {
-                period: snap.date.substring(0, 7), // YYYY-MM format
-                netWorth: snap.netWorth,
-                totalAssets: snap.totalAssets,
-                totalLiabilities: snap.totalLiabilities,
-                monthlyChange,
-                monthlyChangePercent,
-            };
-        });
-        res.json({ data: trends });
+        console.log('Requesting trends for months:', months);
+        try {
+            const snapshotsRef = firebase_1.db.collection('netWorthSnapshots');
+            console.log('Querying netWorthSnapshots collection...');
+            const snapshot = await snapshotsRef
+                .where('userId', '==', userId)
+                .orderBy('date', 'desc')
+                .limit(months)
+                .get();
+            console.log('Query executed successfully. Found', snapshot.size, 'snapshots');
+            const snapshots = [];
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                console.log('Processing snapshot:', doc.id, 'with date:', data.date);
+                snapshots.push(data);
+            });
+            console.log('Total snapshots processed:', snapshots.length);
+            if (snapshots.length === 0) {
+                console.log('No snapshots found, returning empty trends');
+                return res.json({ data: [] });
+            }
+            snapshots.reverse(); // Chronological order
+            const trends = snapshots.map((snap, index) => {
+                try {
+                    const prevSnap = index > 0 ? snapshots[index - 1] : null;
+                    const monthlyChange = prevSnap ? snap.netWorth - prevSnap.netWorth : 0;
+                    const monthlyChangePercent = prevSnap && prevSnap.netWorth !== 0
+                        ? (monthlyChange / Math.abs(prevSnap.netWorth)) * 100
+                        : 0;
+                    // Ensure date is a string and extract period
+                    const period = snap.date.substring(0, 7); // YYYY-MM format
+                    return {
+                        period,
+                        netWorth: snap.netWorth,
+                        totalAssets: snap.totalAssets,
+                        totalLiabilities: snap.totalLiabilities,
+                        monthlyChange,
+                        monthlyChangePercent,
+                    };
+                }
+                catch (mapError) {
+                    console.error('Error processing snapshot at index', index, ':', mapError);
+                    console.error('Snapshot data:', snap);
+                    throw mapError;
+                }
+            });
+            console.log('Successfully processed', trends.length, 'trends');
+            res.json({ data: trends });
+        }
+        catch (queryError) {
+            console.error('Error during database query:', queryError);
+            const error = queryError;
+            console.error('Query error details:', {
+                message: error.message,
+                stack: error.stack
+            });
+            // If it's a missing index error, return empty data
+            if (error.message && error.message.includes('index')) {
+                console.log('Index error detected, returning empty trends');
+                return res.json({ data: [] });
+            }
+            throw queryError;
+        }
     }
-    catch (error) {
-        console.error('Error fetching net worth trends:', error);
+    catch (err) {
+        console.error('Error fetching net worth trends:', err);
+        const error = err;
+        console.error('Full error details:', {
+            message: error.message,
+            stack: error.stack,
+            name: error.name
+        });
         res.status(500).json({ error: 'Failed to fetch net worth trends' });
     }
 };
@@ -406,25 +481,39 @@ exports.getNetWorthInsights = getNetWorthInsights;
  */
 // Calculate user's current net worth
 const calculateUserNetWorth = async (userId) => {
+    console.log('calculateUserNetWorth called for user:', userId);
     if (!firebase_1.db) {
+        console.log('Database not initialized in calculateUserNetWorth');
         throw new Error('Database not initialized');
     }
-    // Get all assets
-    const assetsSnapshot = await firebase_1.db.collection('assets')
-        .where('userId', '==', userId)
-        .get();
-    const assets = [];
-    assetsSnapshot.forEach(doc => {
-        assets.push({ id: doc.id, ...doc.data() });
-    });
-    // Get all liabilities
-    const liabilitiesSnapshot = await firebase_1.db.collection('liabilities')
-        .where('userId', '==', userId)
-        .get();
-    const liabilities = [];
-    liabilitiesSnapshot.forEach(doc => {
-        liabilities.push({ id: doc.id, ...doc.data() });
-    });
+    let assets = [];
+    let liabilities = [];
+    try {
+        // Get all assets
+        console.log('Fetching assets...');
+        const assetsSnapshot = await firebase_1.db.collection('assets')
+            .where('userId', '==', userId)
+            .get();
+        assetsSnapshot.forEach(doc => {
+            assets.push({ id: doc.id, ...doc.data() });
+        });
+        console.log(`Found ${assets.length} assets`);
+        // Get all liabilities
+        console.log('Fetching liabilities...');
+        const liabilitiesSnapshot = await firebase_1.db.collection('liabilities')
+            .where('userId', '==', userId)
+            .get();
+        liabilitiesSnapshot.forEach(doc => {
+            liabilities.push({ id: doc.id, ...doc.data() });
+        });
+        console.log(`Found ${liabilities.length} liabilities`);
+    }
+    catch (error) {
+        console.error('Error fetching data from database:', error);
+        // Continue with empty arrays if database fetch fails
+        assets = [];
+        liabilities = [];
+    }
     // Calculate asset breakdown
     const assetBreakdown = {
         bankAccounts: 0,

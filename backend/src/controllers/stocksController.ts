@@ -3,13 +3,77 @@ import { StockData, MarketIndex, UserPortfolioStock, StockTransaction, StockHold
 import https from 'https'
 import http from 'http'
 import { db } from '../config/firebase'
+import cache from '../utils/cache'
 
-// Python yfinance service configuration
+// Finnhub API configuration
+const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY || 'd2lo1khr01qr27gk695gd2lo1khr01qr27gk6960'
+const FINNHUB_BASE_URL = 'https://finnhub.io/api/v1'
+
+// Python yfinance service configuration (fallback)
 const PYTHON_STOCK_SERVICE_URL = process.env.PYTHON_STOCK_SERVICE_URL || 'http://localhost:5000'
+
+// Cache durations for different data types (in seconds)
+const CACHE_DURATIONS = {
+  QUOTE: 30,           // Stock quotes - 30 seconds (aggressive caching for quotes)
+  PROFILE: 3600,       // Company profiles - 1 hour (rarely changes)
+  SEARCH: 300,         // Search results - 5 minutes
+  TRENDING: 60,        // Trending stocks - 1 minute
+  MARKET_INDICES: 30,  // Market indices - 30 seconds
+  CANDLES: 300,        // Historical data - 5 minutes
+}
+
+// Request batching to reduce concurrent API calls
+const REQUEST_BATCH_SIZE = 5  // Maximum concurrent requests to Finnhub
+
+/**
+ * Finnhub API response interfaces
+ */
+interface FinnhubQuote {
+  c: number  // Current price
+  h: number  // High price of the day
+  l: number  // Low price of the day
+  o: number  // Open price of the day
+  pc: number // Previous close price
+  t: number  // Timestamp
+}
+
+interface FinnhubProfile {
+  name: string
+  ticker: string
+  marketCapitalization: number
+  finnhubIndustry: string
+  weburl: string
+  logo: string
+  phone: string
+  exchange: string
+  ipo: string
+  country: string
+  currency: string
+}
+
+interface FinnhubCandle {
+  o: number[]  // Open prices
+  h: number[]  // High prices
+  l: number[]  // Low prices
+  c: number[]  // Close prices
+  v: number[]  // Volume
+  t: number[]  // Timestamps
+  s: string    // Status
+}
+
+interface FinnhubSymbolLookup {
+  count: number
+  result: Array<{
+    description: string
+    displaySymbol: string
+    symbol: string
+    type: string
+  }>
+}
 
 /**
  * StocksController handles all stock-related API endpoints
- * Interfaces with Python yfinance service for real-time stock data
+ * Uses Finnhub API as primary data source with yfinance service as fallback
  * 
  * @example
  * ```typescript
@@ -19,7 +83,140 @@ const PYTHON_STOCK_SERVICE_URL = process.env.PYTHON_STOCK_SERVICE_URL || 'http:/
  */
 class StocksController {
   /**
-   * Helper method to securely call Python yfinance service
+   * Helper method to call Finnhub API with aggressive caching and rate limiting
+   * 
+   * @template T - The expected response type
+   * @param endpoint - The API endpoint to call (e.g., '/quote?symbol=AAPL')
+   * @param cacheDuration - Optional cache duration in seconds
+   * @returns Promise with the parsed response data
+   * 
+   * @throws {Error} When Finnhub API is unavailable
+   * @throws {Error} When response parsing fails
+   * @throws {Error} When API key is missing
+   * 
+   * @example
+   * ```typescript
+   * const quote = await this.callFinnhubAPI<FinnhubQuote>('/quote?symbol=AAPL', CACHE_DURATIONS.QUOTE)
+   * ```
+   */
+  private async callFinnhubAPI<T>(endpoint: string, cacheDuration?: number): Promise<T> {
+    if (!FINNHUB_API_KEY) {
+      throw new Error('Finnhub API key not configured')
+    }
+
+    // Create a cache key from the endpoint
+    const cacheKey = `finnhub:${endpoint}`
+    
+    // Check cache first
+    const cachedData = cache.get<T>(cacheKey)
+    if (cachedData) {
+      console.log(`Cache hit for Finnhub endpoint: ${endpoint}`)
+      return cachedData
+    }
+
+    console.log(`Cache miss - calling Finnhub API: ${endpoint}`)
+
+    return new Promise((resolve, reject) => {
+      const url = `${FINNHUB_BASE_URL}${endpoint}&token=${FINNHUB_API_KEY}`
+      
+      const options = {
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'Sokin-Backend/1.0',
+        },
+        timeout: 10000, // 10 second timeout
+      }
+      
+      const request = https.get(url, options, (res) => {
+        let data = ''
+        
+        res.on('data', (chunk) => {
+          data += chunk
+        })
+        
+        res.on('end', () => {
+          try {
+            if (res.statusCode !== 200) {
+              const errorMsg = `Finnhub API error: ${res.statusCode} - ${res.statusMessage}`
+              console.error(errorMsg)
+              reject(new Error(errorMsg))
+              return
+            }
+            
+            const jsonData = JSON.parse(data)
+            
+            // Check for Finnhub API error responses
+            if (jsonData.error) {
+              console.error(`Finnhub API error: ${jsonData.error}`)
+              reject(new Error(`Finnhub API error: ${jsonData.error}`))
+              return
+            }
+            
+            // Cache the successful response
+            if (cacheDuration) {
+              cache.set(cacheKey, jsonData, cacheDuration)
+              console.log(`Cached Finnhub response for ${cacheDuration}s: ${endpoint}`)
+            }
+            
+            console.log(`Finnhub API response received successfully`)
+            resolve(jsonData)
+          } catch (error) {
+            console.error(`Failed to parse Finnhub API response:`, error)
+            reject(new Error('Invalid response from Finnhub API'))
+          }
+        })
+      })
+      
+      request.on('error', (error) => {
+        console.error(`Finnhub API call failed:`, error)
+        reject(new Error('Finnhub API unavailable'))
+      })
+      
+      request.on('timeout', () => {
+        console.error('Finnhub API request timeout')
+        request.destroy()
+        reject(new Error('Finnhub API timeout'))
+      })
+    })
+  }
+
+  /**
+   * Process requests in batches to avoid overwhelming Finnhub API
+   * 
+   * @template T - The expected response type
+   * @param requests - Array of request functions
+   * @param batchSize - Number of concurrent requests
+   * @returns Promise resolving to array of results
+   */
+  private async processBatchedRequests<T>(
+    requests: (() => Promise<T>)[],
+    batchSize: number = REQUEST_BATCH_SIZE
+  ): Promise<T[]> {
+    const results: T[] = []
+    
+    for (let i = 0; i < requests.length; i += batchSize) {
+      const batch = requests.slice(i, i + batchSize)
+      console.log(`Processing batch ${Math.floor(i / batchSize) + 1} of ${Math.ceil(requests.length / batchSize)} (${batch.length} requests)`)
+      
+      const batchResults = await Promise.allSettled(batch.map(request => request()))
+      
+      for (const result of batchResults) {
+        if (result.status === 'fulfilled') {
+          results.push(result.value)
+        }
+      }
+      
+      // Add small delay between batches to be respectful to the API
+      if (i + batchSize < requests.length) {
+        await new Promise(resolve => setTimeout(resolve, 100))
+      }
+    }
+    
+    return results
+  }
+
+  /**
+   * Helper method to securely call Python yfinance service (fallback)
    * Forwards authentication headers and implements timeout handling
    * 
    * @template T - The expected response type
@@ -99,7 +296,165 @@ class StocksController {
   }
 
   /**
+   * Convert Finnhub quote and profile data to our StockData format
+   * 
+   * @param symbol - Stock symbol
+   * @param quote - Finnhub quote data
+   * @param profile - Finnhub company profile (optional)
+   * @param candles - Historical candle data for volume and 52-week data (optional)
+   * @returns Converted StockData object
+   */
+  private convertFinnhubToStockData(
+    symbol: string, 
+    quote: FinnhubQuote, 
+    profile?: FinnhubProfile,
+    candles?: FinnhubCandle
+  ): StockData {
+    const change = quote.c - quote.pc
+    const changePercent = quote.pc !== 0 ? (change / quote.pc) * 100 : 0
+
+    // Calculate 52-week high/low and volume from candles if available
+    let weekHigh52 = quote.h
+    let weekLow52 = quote.l
+    let volume = 0
+    let avgVolume = 0
+    let weekChange52 = 0
+    let chart: number[] = []
+
+    if (candles && candles.s === 'ok' && candles.c.length > 0) {
+      weekHigh52 = Math.max(...candles.h)
+      weekLow52 = Math.min(...candles.l)
+      volume = candles.v[candles.v.length - 1] || 0
+      avgVolume = candles.v.reduce((sum, v) => sum + v, 0) / candles.v.length
+
+      // Calculate 52-week change
+      const yearAgoPrice = candles.c[0]
+      if (yearAgoPrice && yearAgoPrice > 0) {
+        weekChange52 = ((quote.c - yearAgoPrice) / yearAgoPrice) * 100
+      }
+
+      // Create chart data (last 30 data points)
+      chart = candles.c.slice(-30)
+    }
+
+    return {
+      symbol: symbol.toUpperCase(),
+      name: profile?.name || symbol.toUpperCase(),
+      price: Number(quote.c.toFixed(2)),
+      change: Number(change.toFixed(2)),
+      changePercent: Number(changePercent.toFixed(2)),
+      volume,
+      avgVolume: Math.round(avgVolume),
+      marketCap: 'N/A', // Removed to reduce API requests
+      peRatio: null, // Finnhub doesn't provide P/E in basic quote
+      weekHigh52: Number(weekHigh52.toFixed(2)),
+      weekLow52: Number(weekLow52.toFixed(2)),
+      weekChange52: Number(weekChange52.toFixed(2)),
+      chart
+    }
+  }
+
+  /**
+   * Get optimized stock data without historical data for trending stocks
+   * This method reduces API calls by only fetching quote and profile data
+   * 
+   * @param symbol - Stock symbol
+   * @returns Promise resolving to StockData
+   */
+  private async getOptimizedStockData(symbol: string): Promise<StockData | null> {
+    try {
+      console.log(`Fetching optimized ${symbol} data from Finnhub...`)
+      
+      const [quote, profile] = await Promise.allSettled([
+        this.callFinnhubAPI<FinnhubQuote>(`/quote?symbol=${symbol}`, CACHE_DURATIONS.QUOTE),
+        this.callFinnhubAPI<FinnhubProfile>(`/stock/profile2?symbol=${symbol}`, CACHE_DURATIONS.PROFILE)
+      ])
+
+      if (quote.status === 'fulfilled' && quote.value && quote.value.c > 0) {
+        const profileData = profile.status === 'fulfilled' ? profile.value : undefined
+        return this.convertFinnhubToStockData(symbol, quote.value, profileData)
+      }
+
+      throw new Error('Invalid Finnhub response or no data available')
+
+    } catch (finnhubError) {
+      console.warn(`Finnhub failed for ${symbol}, falling back to yfinance:`, finnhubError)
+      
+      // Fallback to yfinance service
+      try {
+        const stockData = await this.callPythonService<StockData>(`/api/stock/${symbol}`)
+        console.log(`Successfully fetched ${symbol} from yfinance fallback`)
+        return stockData
+      } catch (yfinanceError) {
+        console.error(`Both Finnhub and yfinance failed for ${symbol}:`, yfinanceError)
+        return null
+      }
+    }
+  }
+
+  /**
+   * Get stock data from Finnhub with fallback to yfinance
+   * 
+   * @param symbol - Stock symbol
+   * @param includeHistorical - Whether to include historical data for 52-week calculations
+   * @returns Promise resolving to StockData
+   */
+  private async getStockDataWithFallback(symbol: string, includeHistorical = true): Promise<StockData> {
+    try {
+      // Try Finnhub first
+      console.log(`Fetching ${symbol} data from Finnhub...`)
+      
+      const [quote, profile] = await Promise.allSettled([
+        this.callFinnhubAPI<FinnhubQuote>(`/quote?symbol=${symbol}`, CACHE_DURATIONS.QUOTE),
+        this.callFinnhubAPI<FinnhubProfile>(`/stock/profile2?symbol=${symbol}`, CACHE_DURATIONS.PROFILE)
+      ])
+
+      if (quote.status === 'fulfilled' && quote.value && quote.value.c > 0) {
+        let candles: FinnhubCandle | undefined
+
+        // Get historical data for better metrics if requested
+        if (includeHistorical) {
+          try {
+            const toTimestamp = Math.floor(Date.now() / 1000)
+            const fromTimestamp = toTimestamp - (365 * 24 * 60 * 60) // 1 year ago
+            
+            const candleResult = await this.callFinnhubAPI<FinnhubCandle>(
+              `/stock/candle?symbol=${symbol}&resolution=D&from=${fromTimestamp}&to=${toTimestamp}`,
+              CACHE_DURATIONS.CANDLES
+            )
+            
+            if (candleResult.s === 'ok') {
+              candles = candleResult
+            }
+          } catch (candleError) {
+            console.warn(`Failed to get historical data for ${symbol} from Finnhub:`, candleError)
+          }
+        }
+
+        const profileData = profile.status === 'fulfilled' ? profile.value : undefined
+        return this.convertFinnhubToStockData(symbol, quote.value, profileData, candles)
+      }
+
+      throw new Error('Invalid Finnhub response or no data available')
+
+    } catch (finnhubError) {
+      console.warn(`Finnhub failed for ${symbol}, falling back to yfinance:`, finnhubError)
+      
+      // Fallback to yfinance service
+      try {
+        const stockData = await this.callPythonService<StockData>(`/api/stock/${symbol}`)
+        console.log(`Successfully fetched ${symbol} from yfinance fallback`)
+        return stockData
+      } catch (yfinanceError) {
+        console.error(`Both Finnhub and yfinance failed for ${symbol}:`, yfinanceError)
+        throw new Error(`Failed to fetch stock data for ${symbol} from both APIs`)
+      }
+    }
+  }
+
+  /**
    * Get market indices (NASDAQ, S&P 500, Dow Jones)
+   * Uses Finnhub API with fallback to yfinance service
    * Public endpoint - no authentication required
    * 
    * @param req - Express request object
@@ -126,14 +481,80 @@ class StocksController {
    */
   async getMarketIndices(req: Request, res: Response): Promise<void> {
     try {
-      const indices = await this.callPythonService<MarketIndex[]>('/api/market-indices', req)
-      
-      res.json({
-        success: true,
-        data: indices,
-      })
+      // Major market indices ETF symbols for Finnhub (these are definitely supported)
+      const symbols = ['SPY', 'DIA', 'QQQ'] // SPDR S&P 500, SPDR Dow Jones, Invesco QQQ (NASDAQ)
+      const indices: MarketIndex[] = []
+
+      try {
+        // Try Finnhub first
+        console.log('Fetching market indices from Finnhub...')
+        
+        const quotePromises = symbols.map(symbol => 
+          this.callFinnhubAPI<FinnhubQuote>(`/quote?symbol=${symbol}`, CACHE_DURATIONS.MARKET_INDICES)
+            .catch(error => {
+              console.warn(`Failed to get ${symbol} from Finnhub:`, error)
+              return null
+            })
+        )
+
+        const quotes = await Promise.all(quotePromises)
+        
+        for (let i = 0; i < symbols.length; i++) {
+          const symbol = symbols[i]
+          const quote = quotes[i]
+          
+          if (quote && quote.c > 0) {
+            const change = quote.c - quote.pc
+            const changePercent = quote.pc !== 0 ? (change / quote.pc) * 100 : 0
+            
+            // Map ETF symbols to readable index names
+            const nameMapping: Record<string, string> = {
+              'SPY': 'S&P 500',
+              'DIA': 'Dow Jones Industrial Average',
+              'QQQ': 'NASDAQ Composite'
+            }
+            
+            // Map to traditional index symbols for consistency
+            const traditionalSymbols: Record<string, string> = {
+              'SPY': '^GSPC',
+              'DIA': '^DJI',
+              'QQQ': '^IXIC'
+            }
+            
+            indices.push({
+              symbol: traditionalSymbols[symbol] || symbol,
+              name: nameMapping[symbol] || symbol,
+              price: Number(quote.c.toFixed(2)),
+              change: Number(change.toFixed(2)),
+              changePercent: Number(changePercent.toFixed(2))
+            })
+          }
+        }
+
+        if (indices.length === symbols.length) {
+          console.log('Successfully fetched all market indices from Finnhub')
+          res.json({
+            success: true,
+            data: indices,
+          })
+          return
+        }
+
+        throw new Error('Some indices missing from Finnhub response')
+
+      } catch (finnhubError) {
+        console.warn('Finnhub failed for market indices, falling back to yfinance:', finnhubError)
+        
+        // Fallback to yfinance service
+        const indicesFromYfinance = await this.callPythonService<MarketIndex[]>('/api/market-indices', req)
+        
+        res.json({
+          success: true,
+          data: indicesFromYfinance,
+        })
+      }
     } catch (error) {
-      console.error('Error fetching market indices:', error)
+      console.error('Error fetching market indices from both APIs:', error)
       res.status(500).json({
         success: false,
         error: 'Failed to fetch market indices'
@@ -142,7 +563,8 @@ class StocksController {
   }
 
   /**
-   * Get trending stocks based on volume and price movement
+   * Get trending stocks based on popular symbols
+   * Uses predefined list of popular stocks with Finnhub data, fallback to yfinance
    * Public endpoint with optional limit parameter
    * 
    * @param req - Express request object
@@ -183,15 +605,68 @@ class StocksController {
         })
         return
       }
-      
-      const stocks = await this.callPythonService<StockData[]>(`/api/trending-stocks?limit=${parsedLimit}`, req)
-      
-      res.json({
-        success: true,
-        data: stocks,
-      })
+
+      try {
+        // Check cache for trending stocks first
+        const trendingCacheKey = `trending_stocks:${parsedLimit}`
+        const cachedTrending = cache.get<StockData[]>(trendingCacheKey)
+        
+        if (cachedTrending) {
+          console.log(`Cache hit for trending stocks (${parsedLimit} items)`)
+          res.json({
+            success: true,
+            data: cachedTrending,
+          })
+          return
+        }
+
+        // Popular trending stocks list
+        const trendingSymbols = [
+          'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'NVDA', 'META', 'NFLX', 'AMD', 'ORCL',
+          'BABA', 'V', 'MA', 'JPM', 'JNJ', 'WMT', 'PG', 'UNH', 'HD', 'DIS'
+        ]
+
+        // Limit symbols to requested amount
+        const symbolsToFetch = trendingSymbols.slice(0, parsedLimit)
+        
+        console.log(`Fetching trending stocks from Finnhub for ${symbolsToFetch.length} symbols...`)
+        
+        // Create request functions for batching
+        const requestFunctions = symbolsToFetch.map(symbol => 
+          () => this.getOptimizedStockData(symbol)
+        )
+
+        // Process requests in batches to avoid overwhelming the API
+        const stockResults = await this.processBatchedRequests(requestFunctions)
+        const validStocks = stockResults.filter((stock): stock is StockData => stock !== null)
+
+        if (validStocks.length > 0) {
+          // Cache the successful result
+          cache.set(trendingCacheKey, validStocks, CACHE_DURATIONS.TRENDING)
+          
+          console.log(`Successfully fetched ${validStocks.length} trending stocks`)
+          res.json({
+            success: true,
+            data: validStocks,
+          })
+          return
+        }
+
+        throw new Error('No trending stocks data available from Finnhub')
+
+      } catch (finnhubError) {
+        console.warn('Finnhub failed for trending stocks, falling back to yfinance:', finnhubError)
+        
+        // Fallback to yfinance service
+        const stocks = await this.callPythonService<StockData[]>(`/api/trending-stocks?limit=${parsedLimit}`, req)
+        
+        res.json({
+          success: true,
+          data: stocks,
+        })
+      }
     } catch (error) {
-      console.error('Error fetching trending stocks:', error)
+      console.error('Error fetching trending stocks from both APIs:', error)
       res.status(500).json({
         success: false,
         error: 'Failed to fetch trending stocks'
@@ -275,6 +750,7 @@ class StocksController {
 
   /**
    * Get detailed data for a specific stock symbol
+   * Uses Finnhub API with fallback to yfinance service
    * Public endpoint with input validation
    * 
    * @param req - Express request object
@@ -314,7 +790,8 @@ class StocksController {
         return
       }
       
-      const stock = await this.callPythonService<StockData>(`/api/stock/${symbol}`, req)
+      // Use our new method with Finnhub primary and yfinance fallback
+      const stock = await this.getStockDataWithFallback(symbol, true)
       
       res.json({
         success: true,
@@ -331,6 +808,7 @@ class StocksController {
 
   /**
    * Search for stocks by symbol or company name
+   * Uses Finnhub symbol lookup with fallback to yfinance service
    * Public endpoint with comprehensive input validation
    * 
    * @param req - Express request object
@@ -398,14 +876,77 @@ class StocksController {
         return
       }
 
-      const results = await this.callPythonService<StockData[]>(`/api/search?q=${encodeURIComponent(sanitizedQuery)}&limit=${parsedLimit}`, req)
-      
-      res.json({
-        success: true,
-        data: results,
-      })
+      try {
+        // Try Finnhub symbol lookup first
+        console.log(`Searching stocks with Finnhub for query: ${sanitizedQuery}`)
+        
+        const searchResult = await this.callFinnhubAPI<FinnhubSymbolLookup>(
+          `/search?q=${encodeURIComponent(sanitizedQuery)}`,
+          CACHE_DURATIONS.SEARCH
+        )
+
+        if (searchResult && searchResult.result && searchResult.result.length > 0) {
+          // Filter to US stocks and limit results
+          const usStocks = searchResult.result
+            .filter(item => item.type === 'Common Stock' && !item.symbol.includes('.'))
+            .slice(0, parsedLimit)
+
+          if (usStocks.length > 0) {
+            // Get current prices for the found symbols using batched requests
+            const requestFunctions = usStocks.map(stock => 
+              () => this.getOptimizedStockData(stock.symbol).catch(error => {
+                console.warn(`Failed to get price data for ${stock.symbol}:`, error)
+                // Return basic data without current price
+                return {
+                  symbol: stock.symbol,
+                  name: stock.description,
+                  price: 0,
+                  change: 0,
+                  changePercent: 0,
+                  volume: 0,
+                  avgVolume: 0,
+                  marketCap: 'N/A',
+                  peRatio: null,
+                  weekHigh52: 0,
+                  weekLow52: 0,
+                  weekChange52: 0,
+                  chart: []
+                } as StockData
+              })
+            )
+
+            const stockResults = await this.processBatchedRequests(requestFunctions)
+            const validResults = stockResults.filter(stock => stock && stock.price > 0)
+
+            if (validResults.length > 0) {
+              console.log(`Successfully found ${validResults.length} stocks via Finnhub search`)
+              res.json({
+                success: true,
+                data: validResults,
+              })
+              return
+            }
+          }
+        }
+
+        throw new Error('No valid search results from Finnhub')
+
+      } catch (finnhubError) {
+        console.warn('Finnhub search failed, falling back to yfinance:', finnhubError)
+        
+        // Fallback to yfinance service
+        const results = await this.callPythonService<StockData[]>(
+          `/api/search?q=${encodeURIComponent(sanitizedQuery)}&limit=${parsedLimit}`, 
+          req
+        )
+        
+        res.json({
+          success: true,
+          data: results,
+        })
+      }
     } catch (error) {
-      console.error('Error searching stocks:', error)
+      console.error('Error searching stocks from both APIs:', error)
       res.status(500).json({
         success: false,
         error: 'Stock search failed'
@@ -502,8 +1043,8 @@ class StocksController {
       
       for (const [symbol, holding] of holdings) {
         try {
-          // Get current stock data
-          const currentStockData = await this.callPythonService<StockData>(`/api/stock/${symbol}`)
+          // Get current stock data using our new fallback method
+          const currentStockData = await this.getStockDataWithFallback(symbol, false)
           
           const totalValue = holding.shares * currentStockData.price
           const gainLoss = totalValue - holding.totalInvested
@@ -796,9 +1337,9 @@ class StocksController {
           return
         }
         
-        // Get current stock price
+        // Get current stock price using our new fallback method
         try {
-          const stockData = await this.callPythonService<StockData>(`/api/stock/${sanitizedSymbol}`)
+          const stockData = await this.getStockDataWithFallback(sanitizedSymbol, false)
           res.json({
             success: true,
             data: {
