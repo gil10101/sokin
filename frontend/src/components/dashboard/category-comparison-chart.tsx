@@ -124,7 +124,7 @@ export function CategoryComparisonChart({ data }: CategoryComparisonChartProps) 
             <ChartTooltip 
               content={<ChartTooltipContent />} 
               cursor={<CustomCursor />}
-              formatter={(value: any) => [`$${value.toLocaleString()}`, 'Amount']}
+              formatter={(value: any) => [`$${value.toLocaleString()}`]}
               labelFormatter={(value) => `Category: ${value}`}
             />
             <Bar 

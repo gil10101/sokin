@@ -288,14 +288,20 @@ export function AdvancedAnalytics({ expenses, budgets, timeframe }: AdvancedAnal
                       tickLine={false}
                       width={isMobile ? 40 : 60}
                     />
-                    <Tooltip 
-                      formatter={(value: any) => [`$${value.toLocaleString()}`, 'Amount']}
-                      contentStyle={{ 
-                        backgroundColor: 'rgba(245, 245, 240, 0.95)', 
-                        border: '1px solid rgba(245, 245, 240, 0.2)',
-                        borderRadius: '12px',
-                        color: 'rgba(0, 0, 0, 0.8)',
-                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                    <Tooltip
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          return (
+                            <div className="bg-dark border border-cream/10 p-2 rounded-md shadow-md">
+                              <p className="text-cream font-medium">{payload[0].payload.month}</p>
+                              <div className="flex items-center mt-1">
+                                <div className="h-2 w-2 rounded-full bg-cream/80 mr-1"></div>
+                                <p className="text-cream text-sm">Amount: ${Number(payload[0].value).toLocaleString()}</p>
+                              </div>
+                            </div>
+                          )
+                        }
+                        return null
                       }}
                     />
                     <Area 
@@ -338,14 +344,20 @@ export function AdvancedAnalytics({ expenses, budgets, timeframe }: AdvancedAnal
                     tickLine={false}
                     width={isMobile ? 40 : 60}
                   />
-                  <Tooltip 
-                    formatter={(value: any) => [`$${value.toLocaleString()}`, 'Total Spent']}
-                    contentStyle={{ 
-                      backgroundColor: 'rgba(245, 245, 240, 0.95)', 
-                      border: '1px solid rgba(245, 245, 240, 0.2)',
-                      borderRadius: '12px',
-                      color: 'rgba(0, 0, 0, 0.8)',
-                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                  <Tooltip
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        return (
+                          <div className="bg-dark border border-cream/10 p-2 rounded-md shadow-md">
+                            <p className="text-cream font-medium">{payload[0].payload.month}</p>
+                            <div className="flex items-center mt-1">
+                              <div className="h-2 w-2 rounded-full bg-cream/80 mr-1"></div>
+                              <p className="text-cream text-sm">Total Spent: ${Number(payload[0].value).toLocaleString()}</p>
+                            </div>
+                          </div>
+                        )
+                      }
+                      return null
                     }}
                   />
                   <Bar 
@@ -385,14 +397,20 @@ export function AdvancedAnalytics({ expenses, budgets, timeframe }: AdvancedAnal
                     axisLine={false}
                     tickLine={false}
                   />
-                  <Tooltip 
-                    formatter={(value: any) => [`$${value.toLocaleString()}`, 'Amount']}
-                    contentStyle={{ 
-                      backgroundColor: 'rgba(245, 245, 240, 0.95)', 
-                      border: '1px solid rgba(245, 245, 240, 0.2)',
-                      borderRadius: '12px',
-                      color: 'rgba(0, 0, 0, 0.8)',
-                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                  <Tooltip
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        return (
+                          <div className="bg-dark border border-cream/10 p-2 rounded-md shadow-md">
+                            <p className="text-cream font-medium">{payload[0].payload.category}</p>
+                            <div className="flex items-center mt-1">
+                              <div className="h-2 w-2 rounded-full bg-cream/80 mr-1"></div>
+                              <p className="text-cream text-sm">Amount: ${Number(payload[0].value).toLocaleString()}</p>
+                            </div>
+                          </div>
+                        )
+                      }
+                      return null
                     }}
                   />
                   <Bar 

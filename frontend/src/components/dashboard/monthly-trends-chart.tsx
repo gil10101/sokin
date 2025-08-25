@@ -115,7 +115,7 @@ export function MonthlyTrendsChart({ data }: MonthlyTrendsChartProps) {
             <ChartTooltip 
               content={<ChartTooltipContent />}
               labelFormatter={(value) => `Month: ${value}`}
-              formatter={(value: any) => [`$${value.toLocaleString()}`, 'Amount']}
+              formatter={(value: any) => [`$${value.toLocaleString()}`]}
             />
             <Area
               type="monotone"
