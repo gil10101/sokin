@@ -48,5 +48,5 @@ gunicorn~=23.0.0
 
 # Additional financial data sources (alternatives to yfinance)
 # alpha-vantage~=2.3.0
-# finnhub-python~=2.4.0
+finnhub-python~=2.4.0
 # quandl~=3.7.0
