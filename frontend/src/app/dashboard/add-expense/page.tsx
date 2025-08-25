@@ -9,6 +9,7 @@ import { db } from "../../../lib/firebase"
 import { useAuth } from "../../../contexts/auth-context"
 import { format } from "date-fns"
 import { CalendarIcon, Check, ChevronsUpDown, Plus } from "lucide-react"
+import { cn } from "../../../lib/utils"
 import { DashboardSidebar } from "../../../components/dashboard/sidebar"
 import { Input } from "../../../components/ui/input"
 import { Button } from "../../../components/ui/button"
@@ -292,22 +293,27 @@ export default function AddExpensePage() {
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
-                        className="w-full justify-start text-left font-normal bg-cream/5 border-cream/10 text-cream hover:bg-cream/10 hover:text-cream"
+                        className={cn(
+                          "w-full justify-start text-left font-normal bg-cream/5 border-cream/10 text-cream hover:bg-cream/10 hover:text-cream",
+                          !date && "text-cream/60"
+                        )}
                       >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {date ? format(date, "PPP") : <span>Pick a date</span>}
+                        {date ? (
+                          format(date, "PPP")
+                        ) : (
+                          <span>{format(new Date(), "PPP")}</span>
+                        )}
+                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 bg-dark border-cream/10">
+                    <PopoverContent className="w-auto p-0 bg-dark border-cream/10" align="start">
                       <Calendar
                         mode="single"
                         selected={date}
-                        onSelect={(date) => {
-                          setDate(date || new Date())
+                        onSelect={(selectedDate) => {
+                          setDate(selectedDate || new Date())
                           setOpenDatePopover(false)
                         }}
-                        initialFocus
-                        className="bg-dark text-cream"
                       />
                     </PopoverContent>
                   </Popover>
