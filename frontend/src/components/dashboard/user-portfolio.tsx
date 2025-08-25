@@ -257,12 +257,18 @@ export const UserPortfolio: React.FC<UserPortfolioProps> = ({ className, onRefre
               <p className="text-xs text-cream/60">Total Gain/Loss</p>
               <div className="flex items-center space-x-2">
                 <p className={`text-lg font-semibold ${
-                  portfolioSummary.totalGainLoss >= 0 ? 'text-green-500' : 'text-red-500'
+                  portfolioSummary.totalGainLoss > 0 ? 'text-green-500' : 
+                  portfolioSummary.totalGainLoss < 0 ? 'text-red-500' : 
+                  'text-cream/60'
                 }`}>
                   {formatChange(portfolioSummary.totalGainLoss)}
                 </p>
                 <Badge 
-                  variant={portfolioSummary.totalGainLossPercent >= 0 ? "default" : "destructive"}
+                  variant={
+                    portfolioSummary.totalGainLossPercent > 0 ? "default" : 
+                    portfolioSummary.totalGainLossPercent < 0 ? "destructive" : 
+                    "secondary"
+                  }
                   className="text-xs"
                 >
                   {formatPercent(portfolioSummary.totalGainLossPercent)}
@@ -277,12 +283,16 @@ export const UserPortfolio: React.FC<UserPortfolioProps> = ({ className, onRefre
               <p className="text-xs text-cream/60">Day Change</p>
               <div className="flex items-center space-x-1">
                 <p className={`text-sm font-medium ${
-                  portfolioSummary.dayChange >= 0 ? 'text-green-500' : 'text-red-500'
+                  portfolioSummary.dayChange > 0 ? 'text-green-500' : 
+                  portfolioSummary.dayChange < 0 ? 'text-red-500' : 
+                  'text-cream/60'
                 }`}>
                   {formatChange(portfolioSummary.dayChange)}
                 </p>
                 <span className={`text-xs ${
-                  portfolioSummary.dayChangePercent >= 0 ? 'text-green-500' : 'text-red-500'
+                  portfolioSummary.dayChangePercent > 0 ? 'text-green-500' : 
+                  portfolioSummary.dayChangePercent < 0 ? 'text-red-500' : 
+                  'text-cream/60'
                 }`}>
                   ({formatPercent(portfolioSummary.dayChangePercent)})
                 </span>
@@ -313,20 +323,26 @@ export const UserPortfolio: React.FC<UserPortfolioProps> = ({ className, onRefre
                   <TableHeader>
                     <TableRow className="border-cream/10">
                       <TableHead 
-                        className="text-cream/80 cursor-pointer hover:text-cream w-16"
+                        className="text-cream/80 cursor-pointer hover:text-cream"
                         onClick={() => handleSort('symbol')}
                       >
                         <div className="flex items-center space-x-1">
-                          <span className="text-xs">Symbol</span>
+                          <span className="text-sm font-medium">Stock</span>
                           {getSortIcon('symbol')}
                         </div>
+                      </TableHead>
+                      <TableHead className="text-cream/80 text-center">
+                        <span className="text-sm font-medium">Shares</span>
+                      </TableHead>
+                      <TableHead className="text-cream/80 text-right">
+                        <span className="text-sm font-medium">Current Price</span>
                       </TableHead>
                       <TableHead 
                         className="text-cream/80 cursor-pointer hover:text-cream text-right"
                         onClick={() => handleSort('totalValue')}
                       >
                         <div className="flex items-center justify-end space-x-1">
-                          <span className="text-xs">Value</span>
+                          <span className="text-sm font-medium">Total Value</span>
                           {getSortIcon('totalValue')}
                         </div>
                       </TableHead>
@@ -335,8 +351,17 @@ export const UserPortfolio: React.FC<UserPortfolioProps> = ({ className, onRefre
                         onClick={() => handleSort('gainLoss')}
                       >
                         <div className="flex items-center justify-end space-x-1">
-                          <span className="text-xs">Gain/Loss</span>
+                          <span className="text-sm font-medium">Gain/Loss</span>
                           {getSortIcon('gainLoss')}
+                        </div>
+                      </TableHead>
+                      <TableHead 
+                        className="text-cream/80 cursor-pointer hover:text-cream text-right"
+                        onClick={() => handleSort('gainLossPercent')}
+                      >
+                        <div className="flex items-center justify-end space-x-1">
+                          <span className="text-sm font-medium">Return %</span>
+                          {getSortIcon('gainLossPercent')}
                         </div>
                       </TableHead>
                     </TableRow>
@@ -344,32 +369,41 @@ export const UserPortfolio: React.FC<UserPortfolioProps> = ({ className, onRefre
                   <TableBody>
                     {sortedPortfolio.map((stock) => (
                       <TableRow key={stock.symbol} className="border-cream/10 hover:bg-cream/5">
-                        <TableCell className="w-16">
+                        <TableCell>
                           <div>
-                            <p className="font-medium text-cream text-sm">{stock.symbol}</p>
-                            <p className="text-xs text-cream/60">{stock.shares} shares</p>
+                            <p className="font-semibold text-cream text-sm">{stock.symbol}</p>
+                            <p className="text-xs text-cream/60 truncate max-w-[100px]">{stock.name}</p>
                           </div>
                         </TableCell>
-                        <TableCell className="text-right">
-                          <div>
-                            <p className="font-semibold text-cream text-sm">{formatPrice(stock.totalValue)}</p>
-                            <p className="text-xs text-cream/60">{formatPrice(stock.price)}/share</p>
-                          </div>
+                        <TableCell className="text-center">
+                          <p className="font-medium text-cream text-sm">{stock.shares}</p>
                         </TableCell>
                         <TableCell className="text-right">
-                          <div>
-                            <p className={`font-medium text-sm ${
-                              stock.gainLoss >= 0 ? 'text-green-500' : 'text-red-500'
-                            }`}>
-                              {formatChange(stock.gainLoss)}
-                            </p>
-                            <Badge 
-                              variant={stock.gainLossPercent >= 0 ? "default" : "destructive"}
-                              className="text-xs"
-                            >
-                              {formatPercent(stock.gainLossPercent)}
-                            </Badge>
-                          </div>
+                          <p className="font-medium text-cream text-sm">{formatPrice(stock.price)}</p>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <p className="font-semibold text-cream text-sm">{formatPrice(stock.totalValue)}</p>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <p className={`font-medium text-sm ${
+                            stock.gainLoss > 0 ? 'text-green-500' : 
+                            stock.gainLoss < 0 ? 'text-red-500' : 
+                            'text-cream/60'
+                          }`}>
+                            {formatChange(stock.gainLoss)}
+                          </p>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Badge 
+                            variant={
+                              stock.gainLossPercent > 0 ? "default" : 
+                              stock.gainLossPercent < 0 ? "destructive" : 
+                              "secondary"
+                            }
+                            className="text-xs font-medium"
+                          >
+                            {formatPercent(stock.gainLossPercent)}
+                          </Badge>
                         </TableCell>
                       </TableRow>
                     ))}

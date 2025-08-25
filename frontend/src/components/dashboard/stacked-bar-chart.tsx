@@ -188,13 +188,13 @@ export function StackedBarChart({ timeframe = "year" }: StackedBarChartProps) {
 
   if (!mounted || loading) {
     return (
-      <div className={`${isMobile ? 'h-[450px]' : 'h-[500px]'} flex items-center justify-center`}>
+      <div className="h-full flex items-center justify-center">
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.3 }}
         >
-          <LoadingSpinner size="md" />
+          <LoadingSpinner size="sm" />
         </motion.div>
       </div>
     )
@@ -202,10 +202,10 @@ export function StackedBarChart({ timeframe = "year" }: StackedBarChartProps) {
 
   if (chartData.length === 0 || categories.length === 0) {
     return (
-      <div className={`${isMobile ? 'h-[450px]' : 'h-[500px]'} flex items-center justify-center`}>
+      <div className="h-full flex items-center justify-center">
         <div className="text-center">
-          <div className="text-cream/60 mb-2">No expense data available</div>
-          <div className="text-sm text-cream/40">Add some expenses to see category breakdown by month</div>
+          <div className="text-cream/60 mb-1 text-sm">No data available</div>
+          <div className="text-xs text-cream/40">Add expenses to see breakdown</div>
         </div>
       </div>
     )
@@ -218,10 +218,10 @@ export function StackedBarChart({ timeframe = "year" }: StackedBarChartProps) {
 
   if (!hasData) {
     return (
-      <div className={`${isMobile ? 'h-[450px]' : 'h-[500px]'} flex items-center justify-center`}>
+      <div className="h-full flex items-center justify-center">
         <div className="text-center">
-          <div className="text-cream/60 mb-2">No expense data for the selected period</div>
-          <div className="text-sm text-cream/40">Expenses will appear here once you add them</div>
+          <div className="text-cream/60 mb-1 text-sm">No data for period</div>
+          <div className="text-xs text-cream/40">Add expenses to view</div>
         </div>
       </div>
     )
@@ -230,12 +230,12 @@ export function StackedBarChart({ timeframe = "year" }: StackedBarChartProps) {
   return (
     <motion.div
       ref={chartRef}
-      className={`${isMobile ? 'h-[450px]' : 'h-[500px]'} w-full min-w-0 overflow-hidden`}
+      className="h-full w-full min-w-0 overflow-hidden"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
     >
-            <ChartContainer
+      <ChartContainer
         config={categories.reduce((config, category) => ({
           ...config,
           [category]: {
@@ -243,15 +243,15 @@ export function StackedBarChart({ timeframe = "year" }: StackedBarChartProps) {
             color: categoryColors[category] || `rgba(245, 245, 240, ${0.8 - (category.length * 0.1)})`,
           }
         }), {})}
-        className={`${isMobile ? 'h-[450px]' : 'h-[500px]'} w-full`}
+        className="h-full w-full"
       >
         <ResponsiveContainer width="100%" height="100%">
           <BarChart 
             data={chartData} 
             layout="vertical"
-            margin={isMobile ? { top: 5, right: 10, left: 50, bottom: 5 } : { top: 10, right: 20, left: 80, bottom: 10 }}
-            barCategoryGap="12%"
-            barSize={isMobile ? 30 : 40}
+            margin={isMobile ? { top: 8, right: 8, left: 45, bottom: 8 } : { top: 12, right: 12, left: 65, bottom: 12 }}
+            barCategoryGap="8%"
+            barSize={isMobile ? 24 : 32}
           >
             <defs>
               {categories.map((category, index) => {
@@ -278,8 +278,8 @@ export function StackedBarChart({ timeframe = "year" }: StackedBarChartProps) {
               dataKey="month"
               axisLine={false}
               tickLine={false}
-              tick={{ fill: "rgba(245, 245, 240, 0.6)", fontSize: isMobile ? 9 : 11 }}
-              width={isMobile ? 45 : 75}
+              tick={{ fill: "rgba(245, 245, 240, 0.6)", fontSize: isMobile ? 8 : 10 }}
+              width={isMobile ? 40 : 60}
               interval={0}
             />
             <Tooltip

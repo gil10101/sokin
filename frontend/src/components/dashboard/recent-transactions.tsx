@@ -86,7 +86,7 @@ export function RecentTransactions() {
         expensesRef,
         where("userId", "==", user.uid),
         orderBy("date", "desc"),
-        limit(5)
+        limit(7)
       )
 
       const querySnapshot = await getDocs(q)
