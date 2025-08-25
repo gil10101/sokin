@@ -78,14 +78,22 @@ const PortfolioSummary: React.FC<{ portfolio: UserPortfolioStock[]; connected?: 
       <Card className="bg-dark border-cream/10">
         <CardContent className="p-4">
           <div className="flex items-center space-x-2">
-            {totalGainLoss >= 0 ? (
+            {totalGainLoss > 0 ? (
               <TrendingUp className="h-5 w-5 text-green-500" />
-            ) : (
+            ) : totalGainLoss < 0 ? (
               <TrendingDown className="h-5 w-5 text-red-500" />
+            ) : (
+              <div className="h-5 w-5 flex items-center justify-center">
+                <div className="w-3 h-0.5 bg-cream/60 rounded"></div>
+              </div>
             )}
             <div>
               <p className="text-sm text-cream/60">Total Gain/Loss</p>
-              <p className={`text-lg font-semibold ${totalGainLoss >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+              <p className={`text-lg font-semibold ${
+                totalGainLoss > 0 ? 'text-green-500' : 
+                totalGainLoss < 0 ? 'text-red-500' : 
+                'text-cream/60'
+              }`}>
                 {formatChange(totalGainLoss)}
               </p>
             </div>
@@ -100,7 +108,11 @@ const PortfolioSummary: React.FC<{ portfolio: UserPortfolioStock[]; connected?: 
             <div>
               <p className="text-sm text-cream/60">Total Return</p>
               <Badge 
-                variant={totalGainLossPercent >= 0 ? "default" : "destructive"}
+                variant={
+                  totalGainLossPercent > 0 ? "default" : 
+                  totalGainLossPercent < 0 ? "destructive" : 
+                  "secondary"
+                }
                 className="text-sm font-semibold"
               >
                 {formatPercent(totalGainLossPercent)}
@@ -314,21 +326,31 @@ export function StockMarket() {
                     <p className="text-sm font-medium text-cream/80">{index.symbol}</p>
                     <p className="text-xs text-cream/60 truncate">{index.name}</p>
                   </div>
-                  {index.changePercent >= 0 ? (
+                  {index.changePercent > 0 ? (
                     <TrendingUp className="h-4 w-4 text-green-500" />
-                  ) : (
+                  ) : index.changePercent < 0 ? (
                     <TrendingDown className="h-4 w-4 text-red-500" />
+                  ) : (
+                    <div className="h-4 w-4 flex items-center justify-center">
+                      <div className="w-3 h-0.5 bg-cream/60 rounded"></div>
+                    </div>
                   )}
                 </div>
                 <div className="space-y-1">
                   <p className="text-lg font-semibold text-cream">{formatPrice(index.price)}</p>
                   <div className="flex items-center space-x-2">
                     <span className={`text-sm font-medium ${
-                      index.change >= 0 ? 'text-green-500' : 'text-red-500'
+                      index.change > 0 ? 'text-green-500' : 
+                      index.change < 0 ? 'text-red-500' : 
+                      'text-cream/60'
                     }`}>
                       {formatChange(index.change)}
                     </span>
-                    <Badge variant={index.changePercent >= 0 ? "default" : "destructive"} className="text-xs">
+                    <Badge variant={
+                      index.changePercent > 0 ? "default" : 
+                      index.changePercent < 0 ? "destructive" : 
+                      "secondary"
+                    } className="text-xs">
                       {formatPercent(index.changePercent)}
                     </Badge>
                   </div>
@@ -368,20 +390,33 @@ export function StockMarket() {
             </CardHeader>
             <CardContent className="pt-0">
               {userPortfolio.length > 0 ? (
-                <div className="space-y-3">
-                  {updatePortfolioWithRealTimePrices(userPortfolio).map((stock) => (
-                    <div key={stock.symbol} className="flex items-center justify-between p-3 rounded-lg bg-cream/5 border border-cream/10">
-                      <div className="flex items-center space-x-3">
+                <div className="overflow-x-auto">
+                  {/* Table Headers */}
+                  <div className="grid grid-cols-6 gap-4 p-3 text-xs font-medium text-cream/60 border-b border-cream/10 mb-3">
+                    <div>Stock</div>
+                    <div className="text-center">Shares</div>
+                    <div className="text-right">Current Price</div>
+                    <div className="text-right">Total Value</div>
+                    <div className="text-right">Gain/Loss</div>
+                    <div className="text-center">Trend</div>
+                  </div>
+                  
+                  {/* Portfolio Rows */}
+                  <div className="space-y-2">
+                    {updatePortfolioWithRealTimePrices(userPortfolio).map((stock) => (
+                      <div key={stock.symbol} className="grid grid-cols-6 gap-4 items-center p-3 rounded-lg bg-cream/5 border border-cream/10 hover:bg-cream/10 transition-colors">
+                        {/* Stock Info */}
                         <div>
-                          <p className="font-medium text-cream">{stock.symbol}</p>
-                          <p className="text-xs text-cream/60 truncate max-w-32">{stock.name}</p>
+                          <p className="font-medium text-cream text-sm">{stock.symbol}</p>
+                          <p className="text-xs text-cream/60 truncate">{stock.name}</p>
                         </div>
-                        <div className="text-sm text-cream/70">
-                          {stock.shares} shares
+                        
+                        {/* Shares */}
+                        <div className="text-center">
+                          <p className="text-sm font-medium text-cream">{stock.shares}</p>
                         </div>
-                      </div>
-                      
-                      <div className="flex items-center space-x-4">
+                        
+                        {/* Current Price */}
                         <div className="text-right">
                           <p className="text-sm font-medium text-cream">{formatPrice(stock.price)}</p>
                           <p className={`text-xs ${stock.changePercent >= 0 ? 'text-green-500' : 'text-red-500'}`}>
@@ -389,21 +424,44 @@ export function StockMarket() {
                           </p>
                         </div>
                         
+                        {/* Total Value */}
                         <div className="text-right">
                           <p className="text-sm font-semibold text-cream">{formatPrice(stock.totalValue)}</p>
-                          <p className={`text-xs ${stock.gainLoss >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                            {formatChange(stock.gainLoss)} ({formatPercent(stock.gainLossPercent)})
+                        </div>
+                        
+                        {/* Gain/Loss */}
+                        <div className="text-right">
+                          <p className={`text-sm font-medium ${
+                            stock.gainLoss > 0 ? 'text-green-500' : 
+                            stock.gainLoss < 0 ? 'text-red-500' : 
+                            'text-cream/60'
+                          }`}>
+                            {formatChange(stock.gainLoss)}
+                          </p>
+                          <p className={`text-xs ${
+                            stock.gainLoss > 0 ? 'text-green-500' : 
+                            stock.gainLoss < 0 ? 'text-red-500' : 
+                            'text-cream/60'
+                          }`}>
+                            {formatPercent(stock.gainLossPercent)}
                           </p>
                         </div>
                         
-                        {stock.gainLoss >= 0 ? (
-                          <TrendingUp className="h-4 w-4 text-green-500" />
-                        ) : (
-                          <TrendingDown className="h-4 w-4 text-red-500" />
-                        )}
+                        {/* Trend Icon */}
+                        <div className="text-center">
+                          {stock.gainLoss > 0 ? (
+                            <TrendingUp className="h-4 w-4 text-green-500 mx-auto" />
+                          ) : stock.gainLoss < 0 ? (
+                            <TrendingDown className="h-4 w-4 text-red-500 mx-auto" />
+                          ) : (
+                            <div className="h-4 w-4 mx-auto flex items-center justify-center">
+                              <div className="w-3 h-0.5 bg-cream/60 rounded"></div>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               ) : (
                 <div className="text-center py-8 text-cream/60">
