@@ -159,10 +159,10 @@ exports.createLiabilitySchema = joi_1.default.object({
     category: joi_1.default.string().required().valid('credit_cards', 'mortgages', 'student_loans', 'auto_loans', 'personal_loans', 'other_debts'),
     name: joi_1.default.string().required().trim().min(1).max(100),
     currentBalance: joi_1.default.number().required().min(0).max(1000000000),
-    originalAmount: joi_1.default.number().min(0).max(1000000000),
-    interestRate: joi_1.default.number().min(0).max(100),
-    minimumPayment: joi_1.default.number().min(0).max(100000),
-    dueDate: joi_1.default.string().isoDate(),
+    originalAmount: joi_1.default.number().optional().min(0).max(1000000000),
+    interestRate: joi_1.default.number().optional().min(0).max(100),
+    minimumPayment: joi_1.default.number().optional().min(0).max(100000),
+    dueDate: joi_1.default.string().optional().isoDate(),
     metadata: joi_1.default.object({
         // Credit Card specific
         creditLimit: joi_1.default.number().min(0),
@@ -179,7 +179,7 @@ exports.createLiabilitySchema = joi_1.default.object({
         notes: joi_1.default.string().allow('').max(1000),
         autoPayEnabled: joi_1.default.boolean(),
         linkedBankAccount: joi_1.default.string().trim().max(50)
-    }).allow(null)
+    }).allow(null).optional()
 });
 exports.updateLiabilitySchema = joi_1.default.object({
     name: joi_1.default.string().trim().min(1).max(100),
