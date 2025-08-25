@@ -59,7 +59,7 @@ const MobileStockCard: React.FC<{
   stock: StockData;
   watchlist: string[];
   onToggleWatchlist: (symbol: string) => void;
-  onTrade?: (stock: StockData) => void;
+  onTrade?: (stock: StockData, action?: 'trade' | 'add') => void;
   user?: any;
 }> = ({ stock, watchlist, onToggleWatchlist, onTrade, user }) => {
   return (
@@ -89,12 +89,18 @@ const MobileStockCard: React.FC<{
           <p className="font-bold text-xl text-cream">{formatPrice(stock.price)}</p>
           <div className="flex items-center justify-end space-x-2 mt-1">
             <span className={`text-sm font-medium ${
-              stock.change >= 0 ? 'text-green-500' : 'text-red-500'
+              stock.change > 0 ? 'text-green-500' : 
+              stock.change < 0 ? 'text-red-500' : 
+              'text-cream/60'
             }`}>
               {formatChange(stock.change)}
             </span>
             <Badge 
-              variant={stock.changePercent >= 0 ? "default" : "destructive"}
+              variant={
+                stock.changePercent > 0 ? "default" : 
+                stock.changePercent < 0 ? "destructive" : 
+                "secondary"
+              }
               className="text-xs"
             >
               {formatPercent(stock.changePercent)}
@@ -112,20 +118,31 @@ const MobileStockCard: React.FC<{
           {stock.chart && stock.chart.length > 0 && (
             <Sparkline 
               data={stock.chart} 
-              positive={stock.changePercent >= 0} 
+              positive={stock.changePercent > 0} 
             />
           )}
         </div>
         {user && onTrade && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onTrade(stock)}
-            className="text-xs h-8"
-          >
-            <DollarSign className="h-3 w-3 mr-1" />
-            Trade
-          </Button>
+          <div className="flex space-x-1">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onTrade(stock, 'add')}
+              className="text-xs h-8 px-2"
+            >
+              <Plus className="h-3 w-3 mr-1" />
+              Add
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onTrade(stock, 'trade')}
+              className="text-xs h-8 px-2"
+            >
+              <DollarSign className="h-3 w-3 mr-1" />
+              Trade
+            </Button>
+          </div>
         )}
       </div>
     </Card>
@@ -139,11 +156,12 @@ interface TransactionDialogProps {
   onClose: () => void;
   onSubmit: (transaction: CurrencyTransaction) => void;
   user?: any;
+  mode?: 'trade' | 'add';
 }
 
-const TransactionDialog: React.FC<TransactionDialogProps> = ({ stock, isOpen, onClose, onSubmit, user }) => {
+const TransactionDialog: React.FC<TransactionDialogProps> = ({ stock, isOpen, onClose, onSubmit, user, mode = 'trade' }) => {
   const [amount, setAmount] = useState<number>(0)
-  const [transactionType, setTransactionType] = useState<'buy' | 'sell'>('buy')
+  const [transactionType, setTransactionType] = useState<'buy' | 'sell'>(mode === 'add' ? 'buy' : 'buy')
   const [inputMode, setInputMode] = useState<'currency' | 'shares'>('currency')
   const [maxSellInfo, setMaxSellInfo] = useState<{ shares: number; value: number; price: number } | null>(null)
   const [loading, setLoading] = useState(false)
@@ -238,7 +256,10 @@ const TransactionDialog: React.FC<TransactionDialogProps> = ({ stock, isOpen, on
       <DialogContent className="bg-dark border-cream/10 text-cream max-w-sm mx-4 sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-cream flex items-center space-x-2">
-            <span>{transactionType === 'buy' ? 'Buy' : 'Sell'} {stock.symbol}</span>
+            <span>
+              {mode === 'add' ? 'Add' : (transactionType === 'buy' ? 'Buy' : 'Sell')} {stock.symbol}
+              {mode === 'add' ? ' to Portfolio' : ''}
+            </span>
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
@@ -249,30 +270,36 @@ const TransactionDialog: React.FC<TransactionDialogProps> = ({ stock, isOpen, on
             </div>
             <div className="text-right">
               <p className="font-semibold text-cream">{formatPrice(stock.price)}</p>
-              <p className={`text-sm ${stock.changePercent >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+              <p className={`text-sm ${
+                stock.changePercent > 0 ? 'text-green-500' : 
+                stock.changePercent < 0 ? 'text-red-500' : 
+                'text-cream/60'
+              }`}>
                 {formatPercent(stock.changePercent)}
               </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
-            <Button
-              variant={transactionType === 'buy' ? 'default' : 'outline'}
-              onClick={() => setTransactionType('buy')}
-              className="flex items-center justify-center"
-            >
-              <Plus className="h-4 w-4 mr-1" />
-              Buy
-            </Button>
-            <Button
-              variant={transactionType === 'sell' ? 'default' : 'outline'}
-              onClick={() => setTransactionType('sell')}
-              className="flex items-center justify-center"
-            >
-              <Minus className="h-4 w-4 mr-1" />
-              Sell
-            </Button>
-          </div>
+          {mode !== 'add' && (
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                variant={transactionType === 'buy' ? 'default' : 'outline'}
+                onClick={() => setTransactionType('buy')}
+                className="flex items-center justify-center"
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Buy
+              </Button>
+              <Button
+                variant={transactionType === 'sell' ? 'default' : 'outline'}
+                onClick={() => setTransactionType('sell')}
+                className="flex items-center justify-center"
+              >
+                <Minus className="h-4 w-4 mr-1" />
+                Sell
+              </Button>
+            </div>
+          )}
 
           {/* Input Mode Toggle */}
           <div className="grid grid-cols-2 gap-2">
@@ -403,7 +430,7 @@ const TransactionDialog: React.FC<TransactionDialogProps> = ({ stock, isOpen, on
   )
 }
 
-type SortField = 'symbol' | 'price' | 'change' | 'changePercent' | 'volume' | 'marketCap'
+type SortField = 'symbol' | 'price' | 'change' | 'changePercent' | 'volume' | 'weekHigh52' | 'weekLow52'
 type SortDirection = 'asc' | 'desc'
 type TabType = 'trending-now' | 'search-results' | 'watchlist' | 'most-active' | 'top-gainers' | 'top-losers'
 
@@ -423,6 +450,7 @@ export default function StocksPage() {
   const [activeTab, setActiveTab] = useState<TabType>('trending-now')
   const [selectedStock, setSelectedStock] = useState<StockData | null>(null)
   const [transactionDialogOpen, setTransactionDialogOpen] = useState(false)
+  const [transactionDialogMode, setTransactionDialogMode] = useState<'trade' | 'add'>('trade')
   const [portfolioRefreshKey, setPortfolioRefreshKey] = useState(0)
 
   // Real-time price updates
@@ -671,16 +699,13 @@ export default function StocksPage() {
           aValue = a.volume
           bValue = b.volume
           break
-        case 'marketCap':
-          // Handle market cap parsing
-          const parseMarketCap = (cap: string) => {
-            if (typeof cap === 'number') return cap
-            if (cap === 'N/A' || !cap) return 0
-            const num = parseFloat(cap.toString().replace(/[^0-9.-]+/g, ''))
-            return isNaN(num) ? 0 : num
-          }
-          aValue = parseMarketCap(a.marketCap)
-          bValue = parseMarketCap(b.marketCap)
+        case 'weekHigh52':
+          aValue = a.weekHigh52
+          bValue = b.weekHigh52
+          break
+        case 'weekLow52':
+          aValue = a.weekLow52
+          bValue = b.weekLow52
           break
         default:
           aValue = a.changePercent
@@ -715,8 +740,9 @@ export default function StocksPage() {
     return sortDirection === 'asc' ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />
   }
 
-  const openTransactionDialog = (stock: StockData) => {
+  const openTransactionDialog = (stock: StockData, action: 'trade' | 'add' = 'trade') => {
     setSelectedStock(stock)
+    setTransactionDialogMode(action)
     setTransactionDialogOpen(true)
   }
 
@@ -758,8 +784,8 @@ export default function StocksPage() {
     <div className="flex h-screen bg-dark text-cream overflow-hidden">
       <DashboardSidebar collapsed={collapsed} setCollapsed={setCollapsed} />
       
-      <main className="flex-1 overflow-auto p-4 sm:p-6 md:p-8 lg:p-10">
-        <div className="max-w-7xl mx-auto">
+      <main className="flex-1 overflow-auto p-4 sm:p-6 md:p-8 lg:p-6 xl:p-8 2xl:p-12">
+        <div className="w-full">
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 sm:mb-6">
             <div>
@@ -770,29 +796,9 @@ export default function StocksPage() {
               {priceConnected && (
                 <div className="flex items-center space-x-1 text-green-500 text-sm">
                   <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                  <span className="hidden sm:inline">Live</span>
+                  <span className="hidden sm:inline">Live Updates</span>
                 </div>
               )}
-              <div className="flex space-x-2">
-                <Button variant="outline" size="sm" onClick={() => StockAPI.clearCache()}>
-                  <span className="hidden sm:inline">Refresh Data</span>
-                  <span className="sm:hidden">Refresh</span>
-                </Button>
-                {!priceConnected && (
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => {
-                      StockAPI.resetConnectionState()
-                      window.location.reload()
-                    }}
-                    className="text-orange-400 hover:text-orange-300"
-                  >
-                    <span className="hidden sm:inline">Reconnect</span>
-                    <span className="sm:hidden">Reconnect</span>
-                  </Button>
-                )}
-              </div>
             </div>
           </div>
 
@@ -849,13 +855,15 @@ export default function StocksPage() {
               {/* Desktop Table View */}
               <Card className="bg-dark border-cream/10">
                 <CardContent className="p-0">
-                  <div className="overflow-x-auto">
-                    <Table className="min-w-[900px]">
+                  <div className="w-full">
+                    <Table className="w-full table-fixed">
                       <TableHeader>
                         <TableRow className="border-cream/10 hover:bg-cream/5">
-                          <TableHead className="text-cream/80 w-16">Actions</TableHead>
+                          <TableHead className="text-cream/80 w-[6%]">
+                            <Star className="h-4 w-4 mx-auto" />
+                          </TableHead>
                           <TableHead 
-                            className="text-cream/80 cursor-pointer hover:text-cream w-20"
+                            className="text-cream/80 cursor-pointer hover:text-cream w-[10%]"
                             onClick={() => handleSort('symbol')}
                           >
                             <div className="flex items-center space-x-1">
@@ -863,9 +871,11 @@ export default function StocksPage() {
                               {getSortIcon('symbol')}
                             </div>
                           </TableHead>
-                          <TableHead className="text-cream/80 min-w-40">Name</TableHead>
+                          <TableHead className="text-cream/80 w-[24%]">
+                            Company Name
+                          </TableHead>
                           <TableHead 
-                            className="text-cream/80 cursor-pointer hover:text-cream text-right w-24"
+                            className="text-cream/80 cursor-pointer hover:text-cream text-right w-[12%]"
                             onClick={() => handleSort('price')}
                           >
                             <div className="flex items-center justify-end space-x-1">
@@ -874,7 +884,7 @@ export default function StocksPage() {
                             </div>
                           </TableHead>
                           <TableHead 
-                            className="text-cream/80 cursor-pointer hover:text-cream text-right w-20"
+                            className="text-cream/80 cursor-pointer hover:text-cream text-right w-[10%]"
                             onClick={() => handleSort('change')}
                           >
                             <div className="flex items-center justify-end space-x-1">
@@ -883,7 +893,7 @@ export default function StocksPage() {
                             </div>
                           </TableHead>
                           <TableHead 
-                            className="text-cream/80 cursor-pointer hover:text-cream text-right w-24"
+                            className="text-cream/80 cursor-pointer hover:text-cream text-right w-[10%]"
                             onClick={() => handleSort('changePercent')}
                           >
                             <div className="flex items-center justify-end space-x-1">
@@ -892,7 +902,7 @@ export default function StocksPage() {
                             </div>
                           </TableHead>
                           <TableHead 
-                            className="text-cream/80 cursor-pointer hover:text-cream text-right w-20"
+                            className="text-cream/80 cursor-pointer hover:text-cream text-right w-[12%]"
                             onClick={() => handleSort('volume')}
                           >
                             <div className="flex items-center justify-end space-x-1">
@@ -900,8 +910,19 @@ export default function StocksPage() {
                               {getSortIcon('volume')}
                             </div>
                           </TableHead>
-                          <TableHead className="text-cream/80 text-right w-20">Chart</TableHead>
-                          {user && <TableHead className="text-cream/80 w-20">Trade</TableHead>}
+                          <TableHead 
+                            className="text-cream/80 cursor-pointer hover:text-cream text-right w-[14%]"
+                            onClick={() => handleSort('weekHigh52')}
+                          >
+                            <div className="flex items-center justify-end space-x-1">
+                              <span>52W High/Low</span>
+                              {getSortIcon('weekHigh52')}
+                            </div>
+                          </TableHead>
+                          <TableHead className="text-cream/80 text-center w-[10%]">
+                            Chart
+                          </TableHead>
+                          {user && <TableHead className="text-cream/80 text-center w-[12%]">Actions</TableHead>}
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -910,7 +931,7 @@ export default function StocksPage() {
                             key={stock.symbol} 
                             className="border-cream/10 hover:bg-cream/5"
                           >
-                            <TableCell className="w-16">
+                            <TableCell className="text-center">
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -926,50 +947,79 @@ export default function StocksPage() {
                                 />
                               </Button>
                             </TableCell>
-                            <TableCell className="font-medium text-cream w-20">
+                            <TableCell className="font-bold text-cream">
                               {stock.symbol}
                             </TableCell>
-                            <TableCell className="text-cream/70 min-w-40">
-                              <div className="truncate">{stock.name}</div>
+                            <TableCell className="text-cream/90">
+                              <div className="truncate" title={stock.name}>
+                                {stock.name}
+                              </div>
                             </TableCell>
-                            <TableCell className="text-right font-semibold text-cream w-24">
+                            <TableCell className="text-right font-semibold text-cream">
                               {formatPrice(stock.price)}
                             </TableCell>
-                            <TableCell className={`text-right font-medium w-20 ${
-                              stock.change >= 0 ? 'text-green-500' : 'text-red-500'
+                            <TableCell className={`text-right font-medium ${
+                              stock.change > 0 ? 'text-green-500' : 
+                              stock.change < 0 ? 'text-red-500' : 
+                              'text-cream/60'
                             }`}>
                               {formatChange(stock.change)}
                             </TableCell>
-                            <TableCell className="text-right w-24">
+                            <TableCell className="text-right">
                               <Badge 
-                                variant={stock.changePercent >= 0 ? "default" : "destructive"}
+                                variant={
+                                  stock.changePercent > 0 ? "default" : 
+                                  stock.changePercent < 0 ? "destructive" : 
+                                  "secondary"
+                                }
                                 className="font-medium"
                               >
                                 {formatPercent(stock.changePercent)}
                               </Badge>
                             </TableCell>
-                            <TableCell className="text-right text-cream/70 w-20">
-                              <div className="text-xs">{formatVolume(stock.volume)}</div>
+                            <TableCell className="text-right text-cream/70">
+                              <div className="text-sm">{formatVolume(stock.volume)}</div>
                             </TableCell>
-                            <TableCell className="text-right w-20">
+                            <TableCell className="text-right text-cream/70">
+                              <div className="text-xs space-y-1">
+                                <div className="text-green-500">
+                                  {formatPrice(stock.weekHigh52)}
+                                </div>
+                                <div className="text-red-500">
+                                  {formatPrice(stock.weekLow52)}
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-center">
                               {stock.chart && stock.chart.length > 0 && (
                                 <Sparkline 
                                   data={stock.chart} 
-                                  positive={stock.changePercent >= 0} 
+                                  positive={stock.changePercent > 0} 
                                 />
                               )}
                             </TableCell>
                             {user && (
-                              <TableCell className="w-20">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => openTransactionDialog(stock)}
-                                  className="text-xs h-8"
-                                >
-                                  <DollarSign className="h-3 w-3 mr-1" />
-                                  Trade
-                                </Button>
+                              <TableCell className="text-center">
+                                <div className="flex space-x-1 justify-center">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => openTransactionDialog(stock, 'add')}
+                                    className="text-xs h-8 px-2"
+                                  >
+                                    <Plus className="h-3 w-3 mr-1" />
+                                    Add
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => openTransactionDialog(stock, 'trade')}
+                                    className="text-xs h-8 px-2"
+                                  >
+                                    <DollarSign className="h-3 w-3 mr-1" />
+                                    Trade
+                                  </Button>
+                                </div>
                               </TableCell>
                             )}
                           </TableRow>
@@ -994,6 +1044,7 @@ export default function StocksPage() {
                 onClose={() => setTransactionDialogOpen(false)}
                 onSubmit={handleTransaction}
                 user={user}
+                mode={transactionDialogMode}
               />
             </div>
 
@@ -1147,13 +1198,19 @@ export default function StocksPage() {
                                 {formatPrice(stock.price)}
                               </TableCell>
                               <TableCell className={`text-right font-medium w-20 ${
-                                stock.change >= 0 ? 'text-green-500' : 'text-red-500'
+                                stock.change > 0 ? 'text-green-500' : 
+                                stock.change < 0 ? 'text-red-500' : 
+                                'text-cream/60'
                               }`}>
                                 {formatChange(stock.change)}
                               </TableCell>
                               <TableCell className="text-right w-24">
                                 <Badge 
-                                  variant={stock.changePercent >= 0 ? "default" : "destructive"}
+                                  variant={
+                                    stock.changePercent > 0 ? "default" : 
+                                    stock.changePercent < 0 ? "destructive" : 
+                                    "secondary"
+                                  }
                                   className="font-medium"
                                 >
                                   {formatPercent(stock.changePercent)}
@@ -1166,21 +1223,32 @@ export default function StocksPage() {
                                 {stock.chart && stock.chart.length > 0 && (
                                   <Sparkline 
                                     data={stock.chart} 
-                                    positive={stock.changePercent >= 0} 
+                                    positive={stock.changePercent > 0} 
                                   />
                                 )}
                               </TableCell>
                               {user && (
-                                <TableCell className="w-20">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => openTransactionDialog(stock)}
-                                    className="text-xs h-8"
-                                  >
-                                    <DollarSign className="h-3 w-3 mr-1" />
-                                    Trade
-                                  </Button>
+                                <TableCell className="w-32">
+                                  <div className="flex space-x-1">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => openTransactionDialog(stock, 'add')}
+                                      className="text-xs h-8 px-2"
+                                    >
+                                      <Plus className="h-3 w-3 mr-1" />
+                                      Add
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => openTransactionDialog(stock, 'trade')}
+                                      className="text-xs h-8 px-2"
+                                    >
+                                      <DollarSign className="h-3 w-3 mr-1" />
+                                      Trade
+                                    </Button>
+                                  </div>
                                 </TableCell>
                               )}
                             </TableRow>
@@ -1227,6 +1295,7 @@ export default function StocksPage() {
                 onClose={() => setTransactionDialogOpen(false)}
                 onSubmit={handleTransaction}
                 user={user}
+                mode={transactionDialogMode}
               />
             </div>
 

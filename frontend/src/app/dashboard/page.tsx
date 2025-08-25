@@ -9,7 +9,7 @@ import { ExpenseChart } from "../../components/dashboard/expense-chart"
 import { CategoryBreakdown } from "../../components/dashboard/category-breakdown"
 import { RecentTransactions } from "../../components/dashboard/recent-transactions"
 import { MetricCard } from "../../components/dashboard/metric-card"
-import { ReceiptScanner } from "../../components/dashboard/receipt-scanner"
+
 import { SavingsGoals } from "../../components/dashboard/savings-goals"
 import { AdvancedAnalytics } from "../../components/dashboard/advanced-analytics"
 import { BillReminders } from "../../components/dashboard/bill-reminders"
@@ -210,10 +210,7 @@ export default function DashboardPage() {
     )
   }
 
-  const handleReceiptDataExtracted = (data: any) => {
-    // Handle receipt data extraction
-    console.log("Receipt data extracted:", data)
-  }
+
 
   // Helper function to format currency
   const formatCurrency = (amount: number): string => {
@@ -260,7 +257,7 @@ export default function DashboardPage() {
     <div className="flex h-screen bg-dark text-cream overflow-hidden">
       <DashboardSidebar collapsed={collapsed} setCollapsed={setCollapsed} />
 
-      <main className="flex-1 overflow-auto p-4 sm:p-6 md:p-8 lg:p-10">
+      <main className="flex-1 overflow-auto p-4 sm:p-6 md:p-8 lg:p-10 xl:p-12">
         <div className="w-full">
           <header className="flex flex-col gap-4 mb-6 sm:mb-8">
             <div className="flex items-center justify-between">
@@ -338,8 +335,8 @@ export default function DashboardPage() {
             </div>
           </header>
 
-          {/* Metrics Cards - Full Width */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 sm:mb-8">
+          {/* Row 1: 4 Equal Metric Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-6 lg:mb-8">
             <MotionContainer delay={0.1}>
               <MetricCard
                 title="Total Expenses"
@@ -382,14 +379,13 @@ export default function DashboardPage() {
             </MotionContainer>
           </div>
 
-          {/* Main Content Area - Responsive Grid for Larger Screens */}
-          <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 sm:gap-6">
-            {/* Left Column - Charts */}
-            <div className="xl:col-span-7 space-y-4 sm:space-y-6">
-              {/* Spending Trends */}
-              <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-4 sm:p-6" delay={0.5}>
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-lg font-medium font-outfit">Spending Trends</h2>
+          {/* Row 2: 3 Containers - Spending Trends (Large), Category Breakdown (Medium), Bill Reminders (Small) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-4 lg:gap-6 mb-6 lg:mb-8">
+            {/* Spending Trends - Large (6 columns on lg+, full width on md) */}
+            <div className="md:col-span-2 lg:col-span-6">
+              <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-4 lg:p-6 h-full min-h-[420px]" delay={0.5}>
+                <div className="flex items-center justify-between mb-4 lg:mb-6">
+                  <h2 className="text-lg lg:text-xl font-medium font-outfit">Spending Trends</h2>
                   <DropdownMenu>
                     <DropdownMenuTrigger className="flex items-center text-cream/60 text-sm hover:text-cream bg-cream/5 px-3 py-1.5 rounded-md border border-cream/10">
                       {timeframe === "30days" ? "Last 30 Days" : timeframe === "90days" ? "Last 90 Days" : "This Year"}
@@ -417,40 +413,17 @@ export default function DashboardPage() {
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
-                <ExpenseChart timeframe={timeframe} />
-              </MotionContainer>
-
-              {/* Monthly Category Breakdown */}
-              <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-4 sm:p-6" delay={0.7}>
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-lg font-medium font-outfit">Monthly Category Breakdown</h2>
-                  <span className="text-xs bg-cream/10 text-cream/80 px-2 py-1 rounded-full">Last 6 Months</span>
+                <div className="h-80 lg:h-96">
+                  <ExpenseChart timeframe={timeframe} />
                 </div>
-                <StackedBarChart timeframe={timeframe} />
-              </MotionContainer>
-
-              {/* Stock Market Section */}
-              <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-4 sm:p-6" delay={0.8}>
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-lg font-medium font-outfit">Stock Market</h2>
-                  <button
-                    onClick={() => router.push("/dashboard/stocks")}
-                    className="text-cream/60 text-sm hover:text-cream transition-colors flex items-center group"
-                  >
-                    View All Stocks
-                    <ChevronRight className="h-4 w-4 ml-1 transform group-hover:translate-x-1 transition-transform duration-300" />
-                  </button>
-                </div>
-                <StockMarket />
               </MotionContainer>
             </div>
 
-            {/* Right Column - Sidebar-like layout */}
-            <div className="xl:col-span-5 space-y-4 sm:space-y-6">
-              {/* Category Breakdown */}
-              <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-4 sm:p-6" delay={0.6}>
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6">
-                  <h2 className="text-base sm:text-lg font-medium font-outfit">Spending by Category</h2>
+            {/* Category Breakdown - Medium (4 columns on lg+, half width on md) */}
+            <div className="md:col-span-1 lg:col-span-4">
+              <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-4 lg:p-6 h-full min-h-[320px]" delay={0.6}>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4 lg:mb-6">
+                  <h2 className="text-base lg:text-lg font-medium font-outfit">Spending by Category</h2>
                   <button 
                     className="text-cream/60 text-sm hover:text-cream transition-colors flex items-center group self-start sm:self-auto"
                     onClick={() => router.push("/dashboard/analytics")}
@@ -461,26 +434,49 @@ export default function DashboardPage() {
                 </div>
                 <CategoryBreakdown />
               </MotionContainer>
+            </div>
 
-              {/* Bill Reminders */}
-              <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-4 sm:p-6" delay={0.9}>
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-lg font-medium font-outfit">Bill Reminders</h2>
+            {/* Bill Reminders - Small (2 columns on lg+, half width on md) */}
+            <div className="md:col-span-1 lg:col-span-2">
+              <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-4 lg:p-6 h-full min-h-[280px]" delay={0.7}>
+                <div className="flex flex-col gap-2 mb-4">
+                  <h2 className="text-base lg:text-lg font-medium font-outfit">Bills</h2>
                   <button
                     onClick={() => router.push("/dashboard/bills")}
-                    className="text-cream/60 text-sm hover:text-cream transition-colors flex items-center group"
+                    className="text-cream/60 text-xs hover:text-cream transition-colors flex items-center group self-start"
                   >
                     View All
-                    <ChevronRight className="h-4 w-4 ml-1 transform group-hover:translate-x-1 transition-transform duration-300" />
+                    <ChevronRight className="h-3 w-3 ml-1 transform group-hover:translate-x-1 transition-transform duration-300" />
                   </button>
                 </div>
                 <BillReminders />
               </MotionContainer>
+            </div>
+          </div>
 
+          {/* Row 3: 2 Containers - Stock Market (Left), Savings & Analytics (Right) */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 mb-6 lg:mb-8">
+            {/* Stock Market - Left Half */}
+            <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-4 lg:p-6 min-h-[400px]" delay={0.8}>
+              <div className="flex items-center justify-between mb-4 lg:mb-6">
+                <h2 className="text-lg lg:text-xl font-medium font-outfit">Stock Market</h2>
+                <button
+                  onClick={() => router.push("/dashboard/stocks")}
+                  className="text-cream/60 text-sm hover:text-cream transition-colors flex items-center group"
+                >
+                  View All Stocks
+                  <ChevronRight className="h-4 w-4 ml-1 transform group-hover:translate-x-1 transition-transform duration-300" />
+                </button>
+              </div>
+              <StockMarket />
+            </MotionContainer>
+
+            {/* Combined Savings Goals & Analytics - Right Half */}
+            <div className="space-y-4 lg:space-y-6">
               {/* Savings Goals */}
-              <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-4 sm:p-6" delay={0.8}>
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-lg font-medium font-outfit">Savings Goals</h2>
+              <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-4 lg:p-6 min-h-[180px]" delay={0.9}>
+                <div className="flex items-center justify-between mb-4 lg:mb-6">
+                  <h2 className="text-lg lg:text-xl font-medium font-outfit">Savings Goals</h2>
                   <button
                     onClick={() => router.push("/dashboard/goals")}
                     className="text-cream/60 text-sm hover:text-cream transition-colors flex items-center group"
@@ -491,48 +487,58 @@ export default function DashboardPage() {
                 </div>
                 <SavingsGoals />
               </MotionContainer>
+
+              {/* Advanced Analytics */}
+              <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-4 lg:p-6 min-h-[180px]" delay={1.0}>
+                <div className="flex items-center justify-between mb-4 lg:mb-6">
+                  <h2 className="text-lg lg:text-xl font-medium font-outfit">Analytics Overview</h2>
+                  <button
+                    onClick={() => router.push("/dashboard/analytics")}
+                    className="text-cream/60 text-sm hover:text-cream transition-colors flex items-center group"
+                  >
+                    View Details
+                    <ChevronRight className="h-4 w-4 ml-1 transform group-hover:translate-x-1 transition-transform duration-300" />
+                  </button>
+                </div>
+                <AdvancedAnalytics expenses={expenses} budgets={budgets} timeframe={timeframe} />
+              </MotionContainer>
             </div>
           </div>
 
-          {/* Bottom Section - Two Column Layout */}
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6 mt-6 sm:mt-8">
-            <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-4 sm:p-6" delay={0.7}>
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-medium font-outfit">Receipt Scanner</h2>
-                <span className="text-xs bg-cream/10 text-cream/80 px-2 py-1 rounded-full">Smart OCR</span>
-              </div>
-              <ReceiptScanner onDataExtracted={handleReceiptDataExtracted} />
-            </MotionContainer>
-            
-            <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-4 sm:p-6" delay={1.0}>
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-medium font-outfit">Advanced Analytics</h2>
+          {/* Bottom Row: Recent Transactions and Monthly Category Breakdown */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 mb-6 lg:mb-8">
+            {/* Recent Transactions - Left */}
+            <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-4 lg:p-6 min-h-[350px] flex flex-col" delay={1.1}>
+              <div className="flex items-center justify-between mb-4 lg:mb-6">
+                <h2 className="text-lg lg:text-xl font-medium font-outfit">Recent Transactions</h2>
                 <button
-                  onClick={() => router.push("/dashboard/analytics")}
+                  onClick={() => router.push("/dashboard/expenses")}
                   className="text-cream/60 text-sm hover:text-cream transition-colors flex items-center group"
                 >
-                  View Details
+                  View All
                   <ChevronRight className="h-4 w-4 ml-1 transform group-hover:translate-x-1 transition-transform duration-300" />
                 </button>
               </div>
-              <AdvancedAnalytics expenses={expenses} budgets={budgets} timeframe={timeframe} />
+              <div className="flex-1 min-h-0">
+                <RecentTransactions />
+              </div>
+            </MotionContainer>
+
+            {/* Monthly Category Breakdown - Right */}
+            <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-4 lg:p-6 min-h-[350px]" delay={1.2}>
+              <div className="flex items-center justify-between mb-4 lg:mb-6">
+                <h2 className="text-lg lg:text-xl font-medium font-outfit">Monthly Category Breakdown</h2>
+                <span className="text-xs bg-cream/10 text-cream/80 px-2 py-1 rounded-full">Last 6 Months</span>
+              </div>
+              <div className="flex-1 min-h-0">
+                <StackedBarChart timeframe={timeframe} />
+              </div>
             </MotionContainer>
           </div>
 
-          {/* Recent Transactions - Full Width */}
-          <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-4 sm:p-6 mt-6 sm:mt-8" delay={1.1}>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-medium font-outfit">Recent Transactions</h2>
-              <button
-                onClick={() => router.push("/dashboard/expenses")}
-                className="text-cream/60 text-sm hover:text-cream transition-colors flex items-center group"
-              >
-                View All
-                <ChevronRight className="h-4 w-4 ml-1 transform group-hover:translate-x-1 transition-transform duration-300" />
-              </button>
-            </div>
-            <RecentTransactions />
-          </MotionContainer>
+
+
+
         </div>
       </main>
     </div>
