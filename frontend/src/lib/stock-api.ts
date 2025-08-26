@@ -232,7 +232,7 @@ export class StockAPI {
     
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
-        console.log(`API Request: ${url} (attempt ${attempt + 1}/${maxRetries + 1})`)
+
         
         // Add timeout to request
         const controller = new AbortController()
@@ -251,7 +251,7 @@ export class StockAPI {
           const retryAfter = errorData.retryAfter || Math.pow(2, attempt) // Use exponential backoff if no retryAfter
           
           if (attempt < maxRetries) {
-            console.warn(`Rate limited. Retrying in ${retryAfter} seconds... (attempt ${attempt + 1}/${maxRetries + 1})`)
+
             await new Promise(resolve => setTimeout(resolve, retryAfter * 1000))
             continue
           }
@@ -264,17 +264,17 @@ export class StockAPI {
           throw new Error(`HTTP ${response.status}: ${errorText}`)
         }
         
-        console.log(`API Response: ${url} - Success`)
+
         return response
       } catch (error) {
         lastError = error as Error
-        console.error(`API Request failed (attempt ${attempt + 1}):`, error)
+
         
         // Handle abort error (timeout)
         if (error instanceof Error && error.name === 'AbortError') {
           if (attempt < maxRetries) {
             const delay = Math.pow(2, attempt) * 1000 // Exponential backoff
-            console.warn(`Request timeout. Retrying in ${delay/1000} seconds... (attempt ${attempt + 1}/${maxRetries + 1})`)
+
             await new Promise(resolve => setTimeout(resolve, delay))
             continue
           }
@@ -289,7 +289,7 @@ export class StockAPI {
         // Network error - retry with exponential backoff
         if (attempt < maxRetries) {
           const delay = Math.pow(2, attempt) * 1000 // Exponential backoff
-          console.warn(`Network error. Retrying in ${delay/1000} seconds... (attempt ${attempt + 1}/${maxRetries + 1})`)
+
           await new Promise(resolve => setTimeout(resolve, delay))
           continue
         }
@@ -360,7 +360,7 @@ export class StockAPI {
    * @example
    * ```typescript
    * const trending = await StockAPI.getTrendingStocks(5)
-   * console.log(trending[0].symbol) // 'AAPL'
+   * (trending[0].symbol) // 'AAPL'
    * ```
    */
   static async getTrendingStocks(limit: number = 10): Promise<StockData[]> {
@@ -442,7 +442,7 @@ export class StockAPI {
    * @example
    * ```typescript
    * const apple = await StockAPI.getStockData('AAPL')
-   * console.log(`AAPL: $${apple.price} (${apple.changePercent}%)`)
+   * (`AAPL: $${apple.price} (${apple.changePercent}%)`)
    * ```
    */
   static async getStockData(symbol: string): Promise<StockData> {
@@ -711,7 +711,7 @@ export class StockAPI {
   // Clear cache (useful for debugging or force refresh)
   static clearCache(): void {
     this.cache.clear()
-    console.log('Stock API cache cleared')
+
   }
 
   // Reset connection state (useful for debugging or reconnection)
@@ -723,7 +723,7 @@ export class StockAPI {
       this.socket = null
     }
     this.priceUpdateCallbacks.clear()
-    console.log('Stock API connection state reset')
+
   }
 
   // WebSocket connection management
@@ -744,7 +744,7 @@ export class StockAPI {
         })
         
         if (!healthResponse.ok) {
-          console.warn('Stock service health check failed - WebSocket disabled')
+
           this.connectionFailed = true
           return null
         }
@@ -753,7 +753,7 @@ export class StockAPI {
         
         // Check if the service indicates WebSocket support
         if (healthData.status !== 'healthy') {
-          console.warn('Stock service not healthy - WebSocket disabled')
+
           this.connectionFailed = true
           return null
         }
@@ -767,12 +767,12 @@ export class StockAPI {
         })
 
         this.socket.on('connect', () => {
-          console.log('Connected to stock price WebSocket')
+
           this.connectionFailed = false
         })
 
         this.socket.on('disconnect', () => {
-          console.log('Disconnected from stock price WebSocket')
+
         })
 
         this.socket.on('price_updates', (data: Record<string, any>) => {
@@ -786,7 +786,7 @@ export class StockAPI {
         })
 
         this.socket.on('connect_error', (error) => {
-          console.warn('WebSocket service not available - real-time updates disabled')
+
           this.connectionFailed = true
           this.socket = null
         })
@@ -794,14 +794,14 @@ export class StockAPI {
         // Set a timeout to mark connection as failed if not connected within 5 seconds
         setTimeout(() => {
           if (this.socket && !this.socket.connected) {
-            console.warn('WebSocket connection timeout - real-time updates disabled')
+
             this.connectionFailed = true
             this.socket.disconnect()
             this.socket = null
           }
         }, 5000)
       } catch (error) {
-        console.warn('Stock service not available - WebSocket disabled')
+
         this.connectionFailed = true
         this.socket = null
       }
@@ -828,7 +828,7 @@ export class StockAPI {
         socket.emit('subscribe_prices', { symbols })
       }
     }).catch(error => {
-      console.warn('Failed to initialize WebSocket for subscription:', error)
+
     })
 
     // Return unsubscribe function
@@ -850,7 +850,7 @@ export class StockAPI {
           socket.emit('unsubscribe_prices', { symbols })
         }
       }).catch(error => {
-        console.warn('Failed to unsubscribe from WebSocket:', error)
+
       })
     }
   }

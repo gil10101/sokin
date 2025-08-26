@@ -69,7 +69,7 @@ const enhancedFetch = async (
       const retryAfter = errorData.retryAfter || Math.pow(2, MAX_RETRIES - retries) // Exponential backoff
       
       if (retries > 0) {
-        console.warn(`Rate limited. Retrying in ${retryAfter} seconds... (attempt ${MAX_RETRIES - retries + 1}/${MAX_RETRIES})`)
+        (`Rate limited. Retrying in ${retryAfter} seconds... (attempt ${MAX_RETRIES - retries + 1}/${MAX_RETRIES})`)
         await new Promise(resolve => setTimeout(resolve, retryAfter * 1000))
         return enhancedFetch(url, options, retries - 1)
       } else {
@@ -88,7 +88,7 @@ const enhancedFetch = async (
     
     // For non-rate-limit errors, use the original retry logic
     if (retries > 0 && error instanceof Error && error.name !== 'AbortError' && !error.message.includes('Rate limited')) {
-      console.warn(`API request failed, retrying... (${MAX_RETRIES - retries + 1}/${MAX_RETRIES})`)
+      (`API request failed, retrying... (${MAX_RETRIES - retries + 1}/${MAX_RETRIES})`)
       await new Promise(resolve => setTimeout(resolve, 1000 * (MAX_RETRIES - retries + 1)))
       return enhancedFetch(url, options, retries - 1)
     }
