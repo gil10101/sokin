@@ -34,7 +34,6 @@ const safeParseDate = (dateValue: any): Date => {
     
     return new Date()
   } catch (error) {
-    console.error("Error parsing date:", error, "Input:", dateValue)
     return new Date()
   }
 }
@@ -193,7 +192,7 @@ export function BudgetProgressChart() {
 
       setData(budgetProgress.slice(0, 5)) // Show top 5
     } catch (error) {
-      console.error("Error fetching budget data:", error)
+
       setError("Failed to load budget data")
       setData([])
     } finally {

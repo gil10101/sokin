@@ -71,7 +71,7 @@ export function NetWorthTrends({
       const processedData = generateTrendData(trends, months)
       setTrendData(processedData)
     } catch (error) {
-      console.error('Error fetching trend data:', error)
+
       // Generate sample data for demo
       const months = timeframe === '6months' ? 6 : timeframe === '12months' ? 12 : 24
       const processedData = generateSampleTrendData(months)

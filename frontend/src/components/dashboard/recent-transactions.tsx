@@ -32,7 +32,7 @@ const safeParseDate = (dateValue: any): Date => {
     
     return new Date()
   } catch (error) {
-    console.error("Error parsing date:", error, "Input:", dateValue)
+
     return new Date()
   }
 }
@@ -97,7 +97,7 @@ export function RecentTransactions() {
 
       setTransactions(transactionsData)
     } catch (error) {
-      console.error("Error fetching recent transactions:", error)
+
       setTransactions([])
     } finally {
       setLoading(false)

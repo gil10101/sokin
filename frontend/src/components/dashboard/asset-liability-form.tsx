@@ -260,7 +260,7 @@ export function AssetLiabilityForm({ type, editItem, onSuccess, onCancel }: Asse
 
       onSuccess()
     } catch (error) {
-      console.error('Error saving:', error)
+
       setErrors({ submit: 'An error occurred while saving' })
     } finally {
       setLoading(false)

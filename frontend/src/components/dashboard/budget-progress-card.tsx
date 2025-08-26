@@ -88,7 +88,7 @@ export function BudgetProgressCard() {
 
         setData(progressData)
       } catch (error) {
-        console.error("Error fetching budget progress:", error)
+
         setError("Failed to load budget data")
         setData([])
       } finally {

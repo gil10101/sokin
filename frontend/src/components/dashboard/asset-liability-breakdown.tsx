@@ -175,7 +175,7 @@ export function AssetLiabilityBreakdown({
       try {
         onDeleteAsset(assetId)
       } catch (error) {
-        console.error('Error deleting asset:', error)
+
       }
     }
   }
@@ -185,7 +185,7 @@ export function AssetLiabilityBreakdown({
       try {
         onDeleteLiability(liabilityId)
       } catch (error) {
-        console.error('Error deleting liability:', error)
+
       }
     }
   }

@@ -131,7 +131,7 @@ export function SavingsGoals() {
 
       setGoals(goalsData)
     } catch (error: any) {
-      console.error('Error fetching goals:', error)
+
       setError('Failed to load savings goals. Please try again.')
       toast({
         title: "Error loading goals",
@@ -184,7 +184,7 @@ export function SavingsGoals() {
         description: `Your goal "${goalData.name}" has been created successfully.`
       })
     } catch (error: any) {
-      console.error('Error creating goal:', error)
+
       toast({
         title: "Error",
         description: error.message || "Failed to create savings goal",
@@ -248,7 +248,7 @@ export function SavingsGoals() {
         description: `$${amount.toLocaleString()} has been added to your goal.`
       })
     } catch (error: any) {
-      console.error('Error adding contribution:', error)
+
       toast({
         title: "Error",
         description: error.message || "Failed to add contribution",

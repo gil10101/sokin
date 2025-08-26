@@ -103,7 +103,7 @@ export function ReceiptScanner({ onDataExtracted, onExpenseCreated }: ReceiptSca
         throw new Error(result.error || 'Failed to extract data')
       }
     } catch (error: any) {
-      console.error('Receipt processing error:', error)
+
       toast({
         title: "Error processing receipt",
         description: error.message || "Please try again or enter the expense manually",
@@ -219,7 +219,7 @@ export function ReceiptScanner({ onDataExtracted, onExpenseCreated }: ReceiptSca
 
       onExpenseCreated?.()
     } catch (error: any) {
-      console.error('Error creating expense:', error)
+
       toast({
         title: "Error creating expense",
         description: error.message || "Please try again",

@@ -49,7 +49,7 @@ export function AppInitializer() {
         // Only initialize FCM if user is authenticated and component is still mounted
         if (user && mounted) {
           await initializeMessaging()
-          console.log('Firebase Cloud Messaging initialized successfully')
+
         }
       } catch (error) {
         console.error('Failed to initialize Firebase Cloud Messaging:', error)

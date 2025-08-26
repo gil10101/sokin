@@ -76,7 +76,7 @@ export const UserPortfolio: React.FC<UserPortfolioProps> = ({ className, onRefre
       setPortfolioHoldings(holdings || [])
       setRecentTransactions(transactions?.slice(0, 10) || [])
     } catch (err) {
-      console.error('Error loading portfolio data:', err)
+
       setError('Failed to load portfolio data. Please try again.')
     } finally {
       setLoading(false)

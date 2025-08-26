@@ -108,7 +108,7 @@ export function BillReminders() {
       const bills = await API.billReminders.getBillReminders()
       setBills(bills)
     } catch (error) {
-      console.error('Error fetching bill reminders:', error)
+
       toast({
         title: "Error",
         description: "Failed to load bill reminders",
@@ -184,7 +184,7 @@ export function BillReminders() {
         description: `Reminder for "${billData.name}" has been set up.`
       })
     } catch (error) {
-      console.error('Error creating bill reminder:', error)
+
       toast({
         title: "Error",
         description: "Failed to create bill reminder",
@@ -203,7 +203,7 @@ export function BillReminders() {
         description: "The bill has been marked as paid."
       })
     } catch (error) {
-      console.error('Error marking bill as paid:', error)
+
       toast({
         title: "Error",
         description: "Failed to mark bill as paid",

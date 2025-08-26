@@ -154,10 +154,10 @@ export function StockMarket() {
       setLoading(true)
       setError(null)
       
-      console.log('Loading stock market data...')
+
       
       // Load market indices (always available)
-      console.log('Fetching market indices...')
+
       const indicesPromise = StockAPI.getMarketIndices()
       
       // Load user-specific data if authenticated
@@ -166,12 +166,12 @@ export function StockMarket() {
       let transactionsPromise: Promise<StockTransaction[]> = Promise.resolve([])
       
       if (user) {
-        console.log('User authenticated, fetching portfolio data for:', user.uid)
+
         portfolioPromise = StockAPI.getUserPortfolio(user.uid)
         holdingsPromise = StockAPI.getPortfolioHoldings(user.uid)
         transactionsPromise = StockAPI.getTransactionHistory(user.uid)
       } else {
-        console.log('User not authenticated, skipping portfolio data')
+
       }
 
       const [indices, portfolio, holdings, transactions] = await Promise.all([
@@ -181,10 +181,7 @@ export function StockMarket() {
         transactionsPromise
       ])
 
-      console.log('Market indices loaded:', indices.length, 'items')
-      console.log('Portfolio loaded:', portfolio.length, 'items')
-      console.log('Holdings loaded:', holdings.length, 'items')
-      console.log('Transactions loaded:', transactions.length, 'items')
+
 
       setMarketIndices(indices)
       setUserPortfolio(portfolio)
@@ -193,7 +190,7 @@ export function StockMarket() {
 
 
     } catch (err) {
-      console.error('Error loading stock data:', err)
+
       const errorMessage = err instanceof Error ? err.message : 'Unknown error'
       
       // Check if it's a rate limiting error

@@ -86,7 +86,7 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
         createdAt: new Date().toISOString(),
       })
     } catch (error) {
-      console.error("Error adding notification:", error)
+
     }
   }
 
@@ -98,7 +98,7 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
         read: true,
       })
     } catch (error) {
-      console.error("Error marking notification as read:", error)
+
     }
   }
 
@@ -112,7 +112,7 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
 
       await Promise.all(promises)
     } catch (error) {
-      console.error("Error marking all notifications as read:", error)
+
     }
   }
 
@@ -124,7 +124,7 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
         dismissed: true,
       })
     } catch (error) {
-      console.error("Error dismissing notification:", error)
+
     }
   }
 
@@ -136,7 +136,7 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
 
       await Promise.all(promises)
     } catch (error) {
-      console.error("Error dismissing all notifications:", error)
+
     }
   }
 
@@ -146,7 +146,7 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
     try {
       await deleteDoc(doc(db, "notifications", id))
     } catch (error) {
-      console.error("Error deleting notification:", error)
+
     }
   }
 
