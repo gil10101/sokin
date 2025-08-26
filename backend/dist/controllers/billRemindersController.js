@@ -23,7 +23,6 @@ class BillRemindersController {
             res.json({ bills });
         }
         catch (error) {
-            console.error('Error fetching bill reminders:', error);
             res.status(500).json({ error: 'Failed to fetch bill reminders' });
         }
     }
@@ -57,7 +56,6 @@ class BillRemindersController {
             res.status(201).json({ bill: newBill });
         }
         catch (error) {
-            console.error('Error creating bill reminder:', error);
             res.status(500).json({ error: 'Failed to create bill reminder' });
         }
     }
@@ -91,7 +89,6 @@ class BillRemindersController {
             res.json({ success: true });
         }
         catch (error) {
-            console.error('Error marking bill as paid:', error);
             res.status(500).json({ error: 'Failed to mark bill as paid' });
         }
     }
@@ -124,7 +121,6 @@ class BillRemindersController {
             res.json({ success: true });
         }
         catch (error) {
-            console.error('Error updating bill reminder:', error);
             res.status(500).json({ error: 'Failed to update bill reminder' });
         }
     }
@@ -153,7 +149,6 @@ class BillRemindersController {
             res.json({ success: true });
         }
         catch (error) {
-            console.error('Error deleting bill reminder:', error);
             res.status(500).json({ error: 'Failed to delete bill reminder' });
         }
     }

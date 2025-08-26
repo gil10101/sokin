@@ -19,10 +19,8 @@ const configureFirestore = () => {
     };
     try {
         db.settings(settings);
-        console.log('Firestore connection pool configured successfully');
     }
     catch (error) {
-        console.error('Error configuring Firestore settings:', error);
     }
     return db;
 };

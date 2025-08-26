@@ -23,7 +23,6 @@ class GoalsController {
             res.json({ goals });
         }
         catch (error) {
-            console.error('Error fetching goals:', error);
             res.status(500).json({ error: 'Failed to fetch goals' });
         }
     }
@@ -62,7 +61,6 @@ class GoalsController {
             res.status(201).json({ goal: newGoal });
         }
         catch (error) {
-            console.error('Error creating goal:', error);
             res.status(500).json({ error: 'Failed to create goal' });
         }
     }
@@ -120,7 +118,6 @@ class GoalsController {
             });
         }
         catch (error) {
-            console.error('Error adding contribution:', error);
             res.status(500).json({ error: 'Failed to add contribution' });
         }
     }
@@ -153,7 +150,6 @@ class GoalsController {
             res.json({ success: true });
         }
         catch (error) {
-            console.error('Error updating goal:', error);
             res.status(500).json({ error: 'Failed to update goal' });
         }
     }
@@ -182,7 +178,6 @@ class GoalsController {
             res.json({ success: true });
         }
         catch (error) {
-            console.error('Error deleting goal:', error);
             res.status(500).json({ error: 'Failed to delete goal' });
         }
     }

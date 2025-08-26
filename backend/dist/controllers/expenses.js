@@ -22,7 +22,6 @@ const getAllExpenses = async (req, res) => {
         res.status(200).json({ data: expenses });
     }
     catch (error) {
-        console.error('Error fetching expenses:', error);
         res.status(500).json({ error: 'Failed to fetch expenses' });
     }
 };
@@ -62,7 +61,6 @@ const getExpenseById = async (req, res) => {
         });
     }
     catch (error) {
-        console.error('Error fetching expense:', error);
         res.status(500).json({ error: 'Failed to fetch expense' });
     }
 };
@@ -106,7 +104,6 @@ const createExpense = async (req, res) => {
         });
     }
     catch (error) {
-        console.error('Error creating expense:', error);
         res.status(500).json({ error: 'Failed to create expense' });
     }
 };
@@ -169,7 +166,6 @@ const updateExpense = async (req, res) => {
         });
     }
     catch (error) {
-        console.error('Error updating expense:', error);
         res.status(500).json({ error: 'Failed to update expense' });
     }
 };
@@ -207,7 +203,6 @@ const deleteExpense = async (req, res) => {
         });
     }
     catch (error) {
-        console.error('Error deleting expense:', error);
         res.status(500).json({ error: 'Failed to delete expense' });
     }
 };

@@ -60,10 +60,8 @@ class StocksController {
         // Check cache first
         const cachedData = cache_1.default.get(cacheKey);
         if (cachedData) {
-            console.log(`Cache hit for Finnhub endpoint: ${endpoint}`);
             return cachedData;
         }
-        console.log(`Cache miss - calling Finnhub API: ${endpoint}`);
         return new Promise((resolve, reject) => {
             const url = `${FINNHUB_BASE_URL}${endpoint}&token=${FINNHUB_API_KEY}`;
             const options = {
@@ -82,37 +80,30 @@ class StocksController {
                     try {
                         if (res.statusCode !== 200) {
                             const errorMsg = `Finnhub API error: ${res.statusCode} - ${res.statusMessage}`;
-                            console.error(errorMsg);
                             reject(new Error(errorMsg));
                             return;
                         }
                         const jsonData = JSON.parse(data);
                         // Check for Finnhub API error responses
                         if (jsonData.error) {
-                            console.error(`Finnhub API error: ${jsonData.error}`);
                             reject(new Error(`Finnhub API error: ${jsonData.error}`));
                             return;
                         }
                         // Cache the successful response
                         if (cacheDuration) {
                             cache_1.default.set(cacheKey, jsonData, cacheDuration);
-                            console.log(`Cached Finnhub response for ${cacheDuration}s: ${endpoint}`);
                         }
-                        console.log(`Finnhub API response received successfully`);
                         resolve(jsonData);
                     }
                     catch (error) {
-                        console.error(`Failed to parse Finnhub API response:`, error);
                         reject(new Error('Invalid response from Finnhub API'));
                     }
                 });
             });
             request.on('error', (error) => {
-                console.error(`Finnhub API call failed:`, error);
                 reject(new Error('Finnhub API unavailable'));
             });
             request.on('timeout', () => {
-                console.error('Finnhub API request timeout');
                 request.destroy();
                 reject(new Error('Finnhub API timeout'));
             });
@@ -130,7 +121,6 @@ class StocksController {
         const results = [];
         for (let i = 0; i < requests.length; i += batchSize) {
             const batch = requests.slice(i, i + batchSize);
-            console.log(`Processing batch ${Math.floor(i / batchSize) + 1} of ${Math.ceil(requests.length / batchSize)} (${batch.length} requests)`);
             const batchResults = await Promise.allSettled(batch.map(request => request()));
             for (const result of batchResults) {
                 if (result.status === 'fulfilled') {
@@ -165,7 +155,6 @@ class StocksController {
     async callPythonService(endpoint, req) {
         return new Promise((resolve, reject) => {
             const url = `${PYTHON_STOCK_SERVICE_URL}${endpoint}`;
-            console.log(`Calling Python service: ${url}`);
             const client = url.startsWith('https') ? https_1.default : http_1.default;
             // Set up headers with proper security
             const headers = {
@@ -189,26 +178,21 @@ class StocksController {
                     try {
                         if (res.statusCode !== 200) {
                             const errorMsg = `Python service error: ${res.statusCode} - ${res.statusMessage}`;
-                            console.error(errorMsg);
                             reject(new Error(errorMsg));
                             return;
                         }
                         const jsonData = JSON.parse(data);
-                        console.log(`Python service response received successfully`);
                         resolve(jsonData);
                     }
                     catch (error) {
-                        console.error(`Failed to parse Python service response:`, error);
                         reject(new Error('Invalid response from stock service'));
                     }
                 });
             });
             request.on('error', (error) => {
-                console.error(`Python service call failed:`, error);
                 reject(new Error('Stock service unavailable'));
             });
             request.on('timeout', () => {
-                console.error('Python service request timeout');
                 request.destroy();
                 reject(new Error('Stock service timeout'));
             });
@@ -271,7 +255,6 @@ class StocksController {
      */
     async getOptimizedStockData(symbol) {
         try {
-            console.log(`Fetching optimized ${symbol} data from Finnhub...`);
             const [quote, profile] = await Promise.allSettled([
                 this.callFinnhubAPI(`/quote?symbol=${symbol}`, CACHE_DURATIONS.QUOTE),
                 this.callFinnhubAPI(`/stock/profile2?symbol=${symbol}`, CACHE_DURATIONS.PROFILE)
@@ -283,15 +266,12 @@ class StocksController {
             throw new Error('Invalid Finnhub response or no data available');
         }
         catch (finnhubError) {
-            console.warn(`Finnhub failed for ${symbol}, falling back to yfinance:`, finnhubError);
             // Fallback to yfinance service
             try {
                 const stockData = await this.callPythonService(`/api/stock/${symbol}`);
-                console.log(`Successfully fetched ${symbol} from yfinance fallback`);
                 return stockData;
             }
             catch (yfinanceError) {
-                console.error(`Both Finnhub and yfinance failed for ${symbol}:`, yfinanceError);
                 return null;
             }
         }
@@ -306,7 +286,6 @@ class StocksController {
     async getStockDataWithFallback(symbol, includeHistorical = true) {
         try {
             // Try Finnhub first
-            console.log(`Fetching ${symbol} data from Finnhub...`);
             const [quote, profile] = await Promise.allSettled([
                 this.callFinnhubAPI(`/quote?symbol=${symbol}`, CACHE_DURATIONS.QUOTE),
                 this.callFinnhubAPI(`/stock/profile2?symbol=${symbol}`, CACHE_DURATIONS.PROFILE)
@@ -324,7 +303,6 @@ class StocksController {
                         }
                     }
                     catch (candleError) {
-                        console.warn(`Failed to get historical data for ${symbol} from Finnhub:`, candleError);
                     }
                 }
                 const profileData = profile.status === 'fulfilled' ? profile.value : undefined;
@@ -333,15 +311,12 @@ class StocksController {
             throw new Error('Invalid Finnhub response or no data available');
         }
         catch (finnhubError) {
-            console.warn(`Finnhub failed for ${symbol}, falling back to yfinance:`, finnhubError);
             // Fallback to yfinance service
             try {
                 const stockData = await this.callPythonService(`/api/stock/${symbol}`);
-                console.log(`Successfully fetched ${symbol} from yfinance fallback`);
                 return stockData;
             }
             catch (yfinanceError) {
-                console.error(`Both Finnhub and yfinance failed for ${symbol}:`, yfinanceError);
                 throw new Error(`Failed to fetch stock data for ${symbol} from both APIs`);
             }
         }
@@ -380,10 +355,8 @@ class StocksController {
             const indices = [];
             try {
                 // Try Finnhub first
-                console.log('Fetching market indices from Finnhub...');
                 const quotePromises = symbols.map(symbol => this.callFinnhubAPI(`/quote?symbol=${symbol}`, CACHE_DURATIONS.MARKET_INDICES)
                     .catch(error => {
-                    console.warn(`Failed to get ${symbol} from Finnhub:`, error);
                     return null;
                 }));
                 const quotes = await Promise.all(quotePromises);
@@ -415,7 +388,6 @@ class StocksController {
                     }
                 }
                 if (indices.length === symbols.length) {
-                    console.log('Successfully fetched all market indices from Finnhub');
                     res.json({
                         success: true,
                         data: indices,
@@ -425,7 +397,6 @@ class StocksController {
                 throw new Error('Some indices missing from Finnhub response');
             }
             catch (finnhubError) {
-                console.warn('Finnhub failed for market indices, falling back to yfinance:', finnhubError);
                 // Fallback to yfinance service
                 const indicesFromYfinance = await this.callPythonService('/api/market-indices', req);
                 res.json({
@@ -435,7 +406,6 @@ class StocksController {
             }
         }
         catch (error) {
-            console.error('Error fetching market indices from both APIs:', error);
             res.status(500).json({
                 success: false,
                 error: 'Failed to fetch market indices'
@@ -489,7 +459,6 @@ class StocksController {
                 const trendingCacheKey = `trending_stocks:${parsedLimit}`;
                 const cachedTrending = cache_1.default.get(trendingCacheKey);
                 if (cachedTrending) {
-                    console.log(`Cache hit for trending stocks (${parsedLimit} items)`);
                     res.json({
                         success: true,
                         data: cachedTrending,
@@ -503,7 +472,6 @@ class StocksController {
                 ];
                 // Limit symbols to requested amount
                 const symbolsToFetch = trendingSymbols.slice(0, parsedLimit);
-                console.log(`Fetching trending stocks from Finnhub for ${symbolsToFetch.length} symbols...`);
                 // Create request functions for batching
                 const requestFunctions = symbolsToFetch.map(symbol => () => this.getOptimizedStockData(symbol));
                 // Process requests in batches to avoid overwhelming the API
@@ -512,7 +480,6 @@ class StocksController {
                 if (validStocks.length > 0) {
                     // Cache the successful result
                     cache_1.default.set(trendingCacheKey, validStocks, CACHE_DURATIONS.TRENDING);
-                    console.log(`Successfully fetched ${validStocks.length} trending stocks`);
                     res.json({
                         success: true,
                         data: validStocks,
@@ -522,7 +489,6 @@ class StocksController {
                 throw new Error('No trending stocks data available from Finnhub');
             }
             catch (finnhubError) {
-                console.warn('Finnhub failed for trending stocks, falling back to yfinance:', finnhubError);
                 // Fallback to yfinance service
                 const stocks = await this.callPythonService(`/api/trending-stocks?limit=${parsedLimit}`, req);
                 res.json({
@@ -532,7 +498,6 @@ class StocksController {
             }
         }
         catch (error) {
-            console.error('Error fetching trending stocks from both APIs:', error);
             res.status(500).json({
                 success: false,
                 error: 'Failed to fetch trending stocks'
@@ -597,7 +562,6 @@ class StocksController {
             });
         }
         catch (error) {
-            console.error('Error fetching user portfolio:', error);
             this.logSecurityEvent(req, 'PORTFOLIO_ACCESS_FAILED', {
                 userId,
                 error: error instanceof Error ? error.message : 'Unknown error'
@@ -656,7 +620,6 @@ class StocksController {
             });
         }
         catch (error) {
-            console.error('Error fetching stock data:', error);
             res.status(500).json({
                 success: false,
                 error: `Failed to fetch data for ${req.params.symbol}`
@@ -730,7 +693,6 @@ class StocksController {
             }
             try {
                 // Try Finnhub symbol lookup first
-                console.log(`Searching stocks with Finnhub for query: ${sanitizedQuery}`);
                 const searchResult = await this.callFinnhubAPI(`/search?q=${encodeURIComponent(sanitizedQuery)}`, CACHE_DURATIONS.SEARCH);
                 if (searchResult && searchResult.result && searchResult.result.length > 0) {
                     // Filter to US stocks and limit results
@@ -740,7 +702,6 @@ class StocksController {
                     if (usStocks.length > 0) {
                         // Get current prices for the found symbols using batched requests
                         const requestFunctions = usStocks.map(stock => () => this.getOptimizedStockData(stock.symbol).catch(error => {
-                            console.warn(`Failed to get price data for ${stock.symbol}:`, error);
                             // Return basic data without current price
                             return {
                                 symbol: stock.symbol,
@@ -761,7 +722,6 @@ class StocksController {
                         const stockResults = await this.processBatchedRequests(requestFunctions);
                         const validResults = stockResults.filter(stock => stock && stock.price > 0);
                         if (validResults.length > 0) {
-                            console.log(`Successfully found ${validResults.length} stocks via Finnhub search`);
                             res.json({
                                 success: true,
                                 data: validResults,
@@ -773,7 +733,6 @@ class StocksController {
                 throw new Error('No valid search results from Finnhub');
             }
             catch (finnhubError) {
-                console.warn('Finnhub search failed, falling back to yfinance:', finnhubError);
                 // Fallback to yfinance service
                 const results = await this.callPythonService(`/api/search?q=${encodeURIComponent(sanitizedQuery)}&limit=${parsedLimit}`, req);
                 res.json({
@@ -783,7 +742,6 @@ class StocksController {
             }
         }
         catch (error) {
-            console.error('Error searching stocks from both APIs:', error);
             res.status(500).json({
                 success: false,
                 error: 'Stock search failed'
@@ -887,7 +845,6 @@ class StocksController {
                     });
                 }
                 catch (stockError) {
-                    console.error(`Failed to get current price for ${symbol}:`, stockError);
                     // Include holding with last known data if stock service fails
                     portfolioStocks.push({
                         symbol,
@@ -906,7 +863,6 @@ class StocksController {
             return portfolioStocks.sort((a, b) => b.totalValue - a.totalValue); // Sort by total value descending
         }
         catch (error) {
-            console.error('Error calculating portfolio from Firebase:', error);
             throw new Error('Failed to calculate portfolio');
         }
     }
@@ -925,10 +881,8 @@ class StocksController {
                 ...transaction,
                 timestamp: new Date()
             });
-            console.log(`Transaction saved to Firebase: ${transaction.transactionType} ${transaction.shares} shares of ${transaction.symbol}`);
         }
         catch (error) {
-            console.error('Failed to save transaction to Firebase:', error);
             throw new Error('Failed to save transaction');
         }
     }
@@ -951,7 +905,6 @@ class StocksController {
             method: req.method,
             ...details
         };
-        console.log('SECURITY_EVENT:', JSON.stringify(securityLog));
     }
     /**
      * Execute a stock transaction (buy/sell) with validation
@@ -1039,7 +992,6 @@ class StocksController {
                     }
                 }
                 catch (portfolioError) {
-                    console.error('Error validating portfolio for sell transaction:', portfolioError);
                     res.status(500).json({
                         success: false,
                         error: 'Failed to validate portfolio holdings'
@@ -1080,7 +1032,6 @@ class StocksController {
                 });
             }
             catch (transactionError) {
-                console.error('Transaction execution failed:', transactionError);
                 res.status(500).json({
                     success: false,
                     error: 'Failed to execute transaction'
@@ -1088,7 +1039,6 @@ class StocksController {
             }
         }
         catch (error) {
-            console.error('Error in executeTransaction:', error);
             res.status(500).json({
                 success: false,
                 error: 'Transaction failed'
@@ -1165,7 +1115,6 @@ class StocksController {
                 }
             }
             catch (portfolioError) {
-                console.error('Error getting portfolio for max sell amount:', portfolioError);
                 res.status(500).json({
                     success: false,
                     error: 'Failed to retrieve portfolio information'
@@ -1173,7 +1122,6 @@ class StocksController {
             }
         }
         catch (error) {
-            console.error('Error in getMaxSellAmount:', error);
             res.status(500).json({
                 success: false,
                 error: 'Failed to get maximum sell amount'
@@ -1234,7 +1182,6 @@ class StocksController {
                 });
             }
             catch (serviceError) {
-                console.error('Error getting transaction history from Firebase:', serviceError);
                 res.status(500).json({
                     success: false,
                     error: 'Failed to retrieve transaction history'
@@ -1242,7 +1189,6 @@ class StocksController {
             }
         }
         catch (error) {
-            console.error('Error in getTransactionHistory:', error);
             res.status(500).json({
                 success: false,
                 error: 'Failed to get transaction history'

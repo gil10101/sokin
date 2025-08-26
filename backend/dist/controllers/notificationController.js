@@ -25,7 +25,6 @@ class NotificationController {
             res.json({ notifications });
         }
         catch (error) {
-            console.error('Error fetching notifications:', error);
             res.status(500).json({ error: 'Failed to fetch notifications' });
         }
     }
@@ -48,7 +47,6 @@ class NotificationController {
             res.json({ success: true });
         }
         catch (error) {
-            console.error('Error marking notification as read:', error);
             res.status(500).json({ error: 'Failed to update notification' });
         }
     }
@@ -82,7 +80,6 @@ class NotificationController {
             res.json({ preferences });
         }
         catch (error) {
-            console.error('Error updating preferences:', error);
             res.status(500).json({ error: 'Failed to update preferences' });
         }
     }
@@ -113,7 +110,6 @@ class NotificationController {
             res.json({ success: true });
         }
         catch (error) {
-            console.error('Error registering FCM token:', error);
             res.status(500).json({ error: 'Failed to register token' });
         }
     }
@@ -128,7 +124,6 @@ class NotificationController {
             res.json({ alerts });
         }
         catch (error) {
-            console.error('Error checking budget alerts:', error);
             res.status(500).json({ error: 'Failed to check budget alerts' });
         }
     }
@@ -137,7 +132,6 @@ class NotificationController {
         const alerts = [];
         try {
             if (!firebase_1.db) {
-                console.error('Database not initialized');
                 return alerts;
             }
             // Get user's active budgets
@@ -192,14 +186,12 @@ class NotificationController {
             }
         }
         catch (error) {
-            console.error('Error generating budget alerts:', error);
         }
         return alerts;
     }
     // Calculate current spending for a budget
     static async calculateBudgetSpending(userId, budget) {
         if (!firebase_1.db) {
-            console.error('Database not initialized');
             return 0;
         }
         const now = new Date();
@@ -246,7 +238,6 @@ class NotificationController {
     static async sendPushNotification(userId, notification) {
         try {
             if (!firebase_1.db) {
-                console.error('Database not initialized');
                 return;
             }
             const userDoc = await firebase_1.db.doc(`users/${userId}`).get();
@@ -286,7 +277,6 @@ class NotificationController {
             }
         }
         catch (error) {
-            console.error('Error sending push notification:', error);
         }
     }
 }
