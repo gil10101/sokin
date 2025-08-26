@@ -36,7 +36,6 @@ const safeParseDate = (dateValue: any): Date => {
     
     return new Date()
   } catch (error) {
-    console.error("Error parsing date:", error, "Input:", dateValue)
     return new Date()
   }
 }
@@ -210,7 +209,7 @@ export function CategoryBreakdown() {
       setCategoryData(categoryArray)
       setTransactionsByCategory(transactionsByCategory)
     } catch (error) {
-      console.error("Error fetching category data:", error)
+
       setCategoryData([])
       setTransactionsByCategory({})
     } finally {

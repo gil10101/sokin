@@ -74,7 +74,7 @@ interface UseStockPricesReturn {
  * })
  * 
  * if (error) {
- *   console.error('Price updates failed:', error)
+ *   ('Price updates failed:', error)
  * }
  * 
  * if (connected) {
@@ -123,7 +123,7 @@ export function useStockPrices({
     try {
       // Validate incoming data
       if (!data || typeof data.price !== 'number') {
-        console.warn(`Invalid price data received for ${symbol}:`, data)
+
         return
       }
 
@@ -145,7 +145,7 @@ export function useStockPrices({
         onConnectionChange?.(true)
       }
     } catch (err) {
-      console.error('Error processing price update:', err)
+
       setError('Failed to process price update')
       onError?.('Failed to process price update')
     }
@@ -360,7 +360,7 @@ export function useStockPrices({
  * }
  * 
  * if (error) {
- *   console.error('Failed to get AAPL price:', error)
+ *   ('Failed to get AAPL price:', error)
  * }
  * ```
  */

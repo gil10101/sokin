@@ -52,7 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Set a timeout to prevent infinite loading
     timeoutRef.current = setTimeout(() => {
       if (loading) {
-        console.log("Auth loading timeout reached, forcing loading state to false")
+
         setLoading(false)
       }
     }, 5000) // 5 second timeout
@@ -68,7 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUserData(userDoc.data())
           }
         } catch (error) {
-          console.error("Error fetching user data:", error)
+
         }
       } else {
         setUserData(null)
@@ -140,7 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await firebaseSignOut(auth)
       router.push("/")
     } catch (error) {
-      console.error("Error signing out:", error)
+
     }
   }
 
