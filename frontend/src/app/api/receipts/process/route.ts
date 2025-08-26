@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json(data, { status: response.status })
   } catch (error: any) {
-    console.error('Receipt processing proxy error:', error)
+
     return NextResponse.json(
       { 
         error: 'Internal server error',
