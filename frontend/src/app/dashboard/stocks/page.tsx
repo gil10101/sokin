@@ -185,7 +185,7 @@ const TransactionDialog: React.FC<TransactionDialogProps> = ({ stock, isOpen, on
       const maxInfo = await StockAPI.getMaxSellAmount(user.uid, stock.symbol)
       setMaxSellInfo(maxInfo)
     } catch (error) {
-      console.error('Error loading max sell info:', error)
+
     } finally {
       setLoading(false)
     }
@@ -512,7 +512,7 @@ export default function StocksPage() {
       const stocks = await StockAPI.getTrendingStocks()
       setTrendingStocks(stocks)
     } catch (err) {
-      console.error('Error loading stock data:', err)
+
       setError('Failed to load stock data. Please try again.')
     } finally {
       setLoading(false)
@@ -534,7 +534,7 @@ export default function StocksPage() {
       const firestoreWatchlist = await StockAPI.getUserWatchlist(user.uid)
       setWatchlist(firestoreWatchlist)
     } catch (error) {
-      console.error('Error loading watchlist from Firestore:', error)
+
       // Fallback to localStorage
       const saved = localStorage.getItem(`watchlist_${user.uid}`)
       if (saved) {
@@ -552,7 +552,7 @@ export default function StocksPage() {
         setActiveTab('search-results')
       }
     } catch (err) {
-      console.error('Error searching stocks:', err)
+
       toast({
         title: "Search Error",
         description: "Failed to search stocks. Please try again.",
@@ -589,7 +589,7 @@ export default function StocksPage() {
         description: `${symbol} ${isRemoving ? 'removed from' : 'added to'} your watchlist`,
       })
     } catch (error) {
-      console.error('Error updating watchlist:', error)
+
       // Revert the optimistic update
       setWatchlist(watchlist)
       
@@ -638,7 +638,7 @@ export default function StocksPage() {
       await loadStockData()
       setPortfolioRefreshKey(prev => prev + 1)
     } catch (error) {
-      console.error('Transaction failed:', error)
+
       toast({
         title: "Transaction Failed",
         description: error instanceof Error ? error.message : "Failed to execute transaction. Please try again.",

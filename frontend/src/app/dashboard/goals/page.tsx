@@ -179,7 +179,7 @@ export default function GoalsPage() {
 
       setGoals(goalsData)
     } catch (error: any) {
-      console.error('Error fetching goals:', error)
+
       toast({
         title: "Error loading goals",
         description: error.message || "There was an error loading your savings goals",
@@ -276,7 +276,6 @@ export default function GoalsPage() {
       setEditingGoal(null)
       resetForm()
     } catch (error: any) {
-      console.error('Error saving goal:', error)
       toast({
         title: "Error",
         description: error.message || "Failed to save goal",
@@ -296,7 +295,7 @@ export default function GoalsPage() {
         description: "Your goal has been deleted successfully."
       })
     } catch (error: any) {
-      console.error('Error deleting goal:', error)
+
       toast({
         title: "Error",
         description: error.message || "Failed to delete goal",
@@ -377,7 +376,6 @@ export default function GoalsPage() {
         description: `$${amount.toLocaleString()} has been added to your goal.`
       })
     } catch (error: any) {
-      console.error('Error adding contribution:', error)
       toast({
         title: "Error",
         description: error.message || "Failed to add contribution",

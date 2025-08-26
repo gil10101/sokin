@@ -40,7 +40,7 @@ const safeParseDate = (dateValue: any): Date => {
     
     return new Date()
   } catch (error) {
-    console.error("Error parsing date:", error, "Input:", dateValue)
+
     return new Date()
   }
 }
@@ -96,7 +96,7 @@ export default function AnalyticsPage() {
           ...doc.data(),
         }))
 
-        console.log("Fetched expenses:", expenses.length)
+
 
         // Process data for monthly trends
         const monthlyTrends: any = {}
@@ -137,7 +137,7 @@ export default function AnalyticsPage() {
             const dateB = parse(b.month, "MMM yyyy", new Date())
             return dateA.getTime() - dateB.getTime()
           } catch (error) {
-            console.error("Error sorting monthly data:", error)
+
             return 0
           }
         })
@@ -145,13 +145,12 @@ export default function AnalyticsPage() {
         // Sort category data by amount (descending)
         categoryDataArray.sort((a, b) => (b.amount as number) - (a.amount as number))
 
-        console.log("Processed monthly data:", monthlyDataArray)
-        console.log("Processed category data:", categoryDataArray)
+
 
         setMonthlyData(monthlyDataArray)
         setCategoryData(categoryDataArray)
       } catch (error: any) {
-        console.error("Analytics fetch error:", error)
+
         toast({
           title: "Error loading analytics",
           description: error.message || "There was an error loading your analytics data",

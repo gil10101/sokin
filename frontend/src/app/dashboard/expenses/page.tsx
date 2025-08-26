@@ -90,7 +90,7 @@ const safeFormatDate = (dateValue: any, formatStr: string): string => {
     
     return format(date, formatStr)
   } catch (error) {
-    console.error("Error formatting date:", error, "Input:", dateValue)
+
     return "Invalid date"
   }
 }

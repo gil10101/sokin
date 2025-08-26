@@ -89,7 +89,7 @@ export default function AddExpensePage() {
         // If we couldn't fetch any categories, use the defaults
         setCategories(DEFAULT_CATEGORIES)
       } catch (error) {
-        console.error("Error fetching categories:", error)
+
         // Use default categories if there's an error
         setCategories(DEFAULT_CATEGORIES)
       }

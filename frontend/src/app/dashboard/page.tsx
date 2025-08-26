@@ -103,7 +103,7 @@ export default function DashboardPage() {
 
       setNotifications(notificationsData)
     } catch (error) {
-      console.error("Error fetching notifications:", error)
+
       // Fallback to empty notifications if there's an error
       setNotifications([])
     }
@@ -125,7 +125,7 @@ export default function DashboardPage() {
       })) as Expense[]
       setExpenses(expensesData)
     } catch (error) {
-      console.error("Error fetching expenses:", error)
+
     }
   }
 
@@ -135,7 +135,7 @@ export default function DashboardPage() {
       const data = await api.get('net-worth/calculate', { token })
       setNetWorth(data.data)
     } catch (error) {
-      console.error('Error fetching net worth:', error)
+
     }
   }
 
@@ -171,7 +171,7 @@ export default function DashboardPage() {
 
       setSearchResults(filtered)
     } catch (error) {
-      console.error("Error searching expenses:", error)
+
       setSearchResults([])
     } finally {
       setShowSearchResults(true)
@@ -500,7 +500,7 @@ export default function DashboardPage() {
                     <ChevronRight className="h-4 w-4 ml-1 transform group-hover:translate-x-1 transition-transform duration-300" />
                   </button>
                 </div>
-                <AdvancedAnalytics expenses={expenses} budgets={budgets} timeframe={timeframe} />
+                <AdvancedAnalytics budgets={budgets} timeframe={timeframe} />
               </MotionContainer>
             </div>
           </div>

@@ -91,7 +91,7 @@ export default function BillsPage() {
       const billsData = await API.billReminders.getBillReminders()
       setBills(billsData)
     } catch (error) {
-      console.error('Error fetching bills:', error)
+
       toast({
         title: "Error",
         description: "Failed to load bill reminders",

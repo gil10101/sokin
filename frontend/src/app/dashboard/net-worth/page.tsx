@@ -195,7 +195,7 @@ export default function NetWorthPage() {
       setAssets(netWorthData.data.assets || [])
       setLiabilities(netWorthData.data.liabilities || [])
     } catch (error) {
-      console.error('Error fetching net worth data:', error)
+
     } finally {
       setLoading(false)
     }
@@ -225,7 +225,7 @@ export default function NetWorthPage() {
       await api.delete(`net-worth/assets/${assetId}`, { token })
       fetchNetWorthData() // Refresh data
     } catch (error) {
-      console.error('Error deleting asset:', error)
+
     }
   }
 
@@ -235,7 +235,7 @@ export default function NetWorthPage() {
       await api.delete(`net-worth/liabilities/${liabilityId}`, { token })
       fetchNetWorthData() // Refresh data
     } catch (error) {
-      console.error('Error deleting liability:', error)
+
     }
   }
 

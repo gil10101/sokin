@@ -115,7 +115,6 @@ const safeParseDateToTimestamp = (dateValue: any): number => {
     
     return 0
   } catch (error) {
-    console.error("Error parsing date:", error, "Input:", dateValue)
     return 0
   }
 }
@@ -145,7 +144,6 @@ const safeParseDate = (dateValue: any): Date | null => {
     
     return null
   } catch (error) {
-    console.error("Error parsing date:", error, "Input:", dateValue)
     return null
   }
 }
@@ -222,7 +220,6 @@ export default function BudgetsPage() {
 
       setExpenses(expensesData)
     } catch (error: any) {
-      console.error("Error loading expenses:", error)
       // Don't show toast for expenses error since it's secondary data
     }
   }
@@ -252,7 +249,6 @@ export default function BudgetsPage() {
         }
       }
     } catch (error) {
-      console.error("Error fetching categories:", error)
     }
   }
 
@@ -305,19 +301,12 @@ export default function BudgetsPage() {
     const budgetEndDate = budget.endDate ? safeParseDate(budget.endDate) : null
 
     if (!budgetStartDate) {
-      console.log(`Invalid budget start date for ${budget.category}:`, budget.startDate)
       return { spent: 0, progress: 0 }
     }
 
-    console.log(`Calculating progress for budget: ${budget.category}`)
-    console.log(`Budget start date: ${budgetStartDate}`)
-    console.log(`Budget end date: ${budgetEndDate}`)
-    console.log(`Budget period: ${budget.period}`)
-    console.log(`Total expenses available: ${expenses.length}`)
-
     // Calculate the effective end date based on period
     let effectiveEndDate = budgetEndDate
-    if (!effectiveEndDate) {
+    if (!effectiveEndDate && budgetStartDate) {
       const startDate = new Date(budgetStartDate)
       switch (budget.period) {
         case "monthly":
@@ -341,37 +330,25 @@ export default function BudgetsPage() {
       }
     }
 
-    console.log(`Effective end date: ${effectiveEndDate}`)
-
     // Filter expenses that match this budget's category and date range
     const relevantExpenses = expenses.filter((expense) => {
       const expenseDate = safeParseDate(expense.date)
       
       if (!expenseDate) {
-        console.log(`Invalid expense date for ${expense.name}:`, expense.date)
         return false
       }
       
       const matchesCategory = expense.category === budget.category
-      const isInDateRange = expenseDate >= budgetStartDate && expenseDate <= effectiveEndDate
-      
-      console.log(`Checking expense: ${expense.name}`)
-      console.log(`  - Category: ${expense.category} (matches: ${matchesCategory})`)
-      console.log(`  - Date: ${expenseDate} (in range: ${isInDateRange})`)
-      console.log(`  - Amount: ${expense.amount}`)
-      
+      const isInDateRange = expenseDate >= budgetStartDate && (!effectiveEndDate || expenseDate <= effectiveEndDate)
+
       return matchesCategory && isInDateRange
     })
-
-    console.log(`Found ${relevantExpenses.length} relevant expenses for ${budget.category}`)
 
     // Calculate total spent
     const totalSpent = relevantExpenses.reduce((total, expense) => total + expense.amount, 0)
     
     // Calculate progress percentage
     const progress = budget.amount > 0 ? Math.round((totalSpent / budget.amount) * 100) : 0
-
-    console.log(`Total spent: ${totalSpent}, Progress: ${progress}%`)
 
     return { spent: totalSpent, progress }
   }
@@ -801,7 +778,6 @@ function BudgetCard({ budget, onEdit, onDelete, calculateProgress }: BudgetCardP
       
       return null
     } catch (error) {
-      console.error("Error parsing date:", error, "Input:", dateValue)
       return null
     }
   }
