@@ -44,7 +44,7 @@ export const getUserAssets = async (req: Request, res: Response) => {
 
     res.json({ data: assets });
   } catch (error) {
-    console.error('Error fetching assets:', error);
+
     res.status(500).json({ error: 'Failed to fetch assets' });
   }
 };
@@ -84,7 +84,6 @@ export const createAsset = async (req: Request, res: Response) => {
 
     res.status(201).json({ data: createdAsset });
   } catch (error) {
-    console.error('Error creating asset:', error);
     res.status(500).json({ error: 'Failed to create asset' });
   }
 };
@@ -131,7 +130,6 @@ export const updateAsset = async (req: Request, res: Response) => {
     const updatedAsset = { id: assetId, ...assetData, ...updatedFields };
     res.json({ data: updatedAsset });
   } catch (error) {
-    console.error('Error updating asset:', error);
     res.status(500).json({ error: 'Failed to update asset' });
   }
 };
@@ -168,7 +166,6 @@ export const deleteAsset = async (req: Request, res: Response) => {
 
     res.json({ message: 'Asset deleted successfully' });
   } catch (error) {
-    console.error('Error deleting asset:', error);
     res.status(500).json({ error: 'Failed to delete asset' });
   }
 };
@@ -202,7 +199,6 @@ export const getUserLiabilities = async (req: Request, res: Response) => {
 
     res.json({ data: liabilities });
   } catch (error) {
-    console.error('Error fetching liabilities:', error);
     res.status(500).json({ error: 'Failed to fetch liabilities' });
   }
 };
@@ -244,7 +240,6 @@ export const createLiability = async (req: Request, res: Response) => {
 
     res.status(201).json({ data: createdLiability });
   } catch (error) {
-    console.error('Error creating liability:', error);
     res.status(500).json({ error: 'Failed to create liability' });
   }
 };
@@ -290,7 +285,6 @@ export const updateLiability = async (req: Request, res: Response) => {
     const updatedLiability = { id: liabilityId, ...liabilityData, ...updatedFields };
     res.json({ data: updatedLiability });
   } catch (error) {
-    console.error('Error updating liability:', error);
     res.status(500).json({ error: 'Failed to update liability' });
   }
 };
@@ -327,7 +321,6 @@ export const deleteLiability = async (req: Request, res: Response) => {
 
     res.json({ message: 'Liability deleted successfully' });
   } catch (error) {
-    console.error('Error deleting liability:', error);
     res.status(500).json({ error: 'Failed to delete liability' });
   }
 };
@@ -344,10 +337,9 @@ export const calculateNetWorth = async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    console.log('Calculating net worth for user:', userId);
 
     if (!db) {
-      console.log('Database not initialized, returning empty calculation');
+      ('Database not initialized, returning empty calculation');
       // Return empty calculation for development mode
       const emptyCalculation: NetWorthCalculation = {
         userId,
@@ -381,8 +373,6 @@ export const calculateNetWorth = async (req: Request, res: Response) => {
     const calculation = await calculateUserNetWorth(userId);
     res.json({ data: calculation });
   } catch (error) {
-    console.error('Error calculating net worth:', error);
-    console.error('Error details:', error);
     res.status(500).json({ error: 'Failed to calculate net worth' });
   }
 };
@@ -415,7 +405,6 @@ export const getNetWorthHistory = async (req: Request, res: Response) => {
 
     res.json({ data: snapshots.reverse() }); // Return in chronological order
   } catch (error) {
-    console.error('Error fetching net worth history:', error);
     res.status(500).json({ error: 'Failed to fetch net worth history' });
   }
 };
@@ -428,20 +417,16 @@ export const getNetWorthTrends = async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    console.log('Getting net worth trends for user:', userId);
 
     if (!db) {
-      console.log('Database not initialized, returning empty trends');
       // Return empty trends for development mode
       return res.json({ data: [] });
     }
 
     const months = parseInt(req.query.months as string) || 12;
-    console.log('Requesting trends for months:', months);
     
     try {
       const snapshotsRef = db.collection('netWorthSnapshots');
-      console.log('Querying netWorthSnapshots collection...');
       
       const snapshot = await snapshotsRef
         .where('userId', '==', userId)
@@ -449,19 +434,15 @@ export const getNetWorthTrends = async (req: Request, res: Response) => {
         .limit(months)
         .get();
 
-      console.log('Query executed successfully. Found', snapshot.size, 'snapshots');
 
       const snapshots: NetWorthSnapshot[] = [];
       snapshot.forEach(doc => {
         const data = doc.data() as NetWorthSnapshot;
-        console.log('Processing snapshot:', doc.id, 'with date:', data.date);
         snapshots.push(data);
       });
 
-      console.log('Total snapshots processed:', snapshots.length);
 
       if (snapshots.length === 0) {
-        console.log('No snapshots found, returning empty trends');
         return res.json({ data: [] });
       }
 
@@ -487,27 +468,18 @@ export const getNetWorthTrends = async (req: Request, res: Response) => {
             monthlyChangePercent,
           };
         } catch (mapError) {
-          console.error('Error processing snapshot at index', index, ':', mapError);
-          console.error('Snapshot data:', snap);
           throw mapError;
         }
       });
 
-      console.log('Successfully processed', trends.length, 'trends');
       res.json({ data: trends });
       
     } catch (queryError) {
-      console.error('Error during database query:', queryError);
       
       const error = queryError as Error;
-      console.error('Query error details:', {
-        message: error.message,
-        stack: error.stack
-      });
       
       // If it's a missing index error, return empty data
       if (error.message && error.message.includes('index')) {
-        console.log('Index error detected, returning empty trends');
         return res.json({ data: [] });
       }
       
@@ -515,14 +487,8 @@ export const getNetWorthTrends = async (req: Request, res: Response) => {
     }
     
   } catch (err) {
-    console.error('Error fetching net worth trends:', err);
     
     const error = err as Error;
-    console.error('Full error details:', {
-      message: error.message,
-      stack: error.stack,
-      name: error.name
-    });
     res.status(500).json({ error: 'Failed to fetch net worth trends' });
   }
 };
@@ -544,7 +510,6 @@ export const getNetWorthInsights = async (req: Request, res: Response) => {
 
     res.json({ data: insights });
   } catch (error) {
-    console.error('Error generating net worth insights:', error);
     res.status(500).json({ error: 'Failed to generate insights' });
   }
 };
@@ -555,10 +520,10 @@ export const getNetWorthInsights = async (req: Request, res: Response) => {
 
 // Calculate user's current net worth
 export const calculateUserNetWorth = async (userId: string): Promise<NetWorthCalculation> => {
-  console.log('calculateUserNetWorth called for user:', userId);
+  
   
   if (!db) {
-    console.log('Database not initialized in calculateUserNetWorth');
+    
     throw new Error('Database not initialized');
   }
 
@@ -567,7 +532,7 @@ export const calculateUserNetWorth = async (userId: string): Promise<NetWorthCal
 
   try {
     // Get all assets
-    console.log('Fetching assets...');
+    
     const assetsSnapshot = await db.collection('assets')
       .where('userId', '==', userId)
       .get();
@@ -575,10 +540,8 @@ export const calculateUserNetWorth = async (userId: string): Promise<NetWorthCal
     assetsSnapshot.forEach(doc => {
       assets.push({ id: doc.id, ...doc.data() } as Asset);
     });
-    console.log(`Found ${assets.length} assets`);
 
     // Get all liabilities
-    console.log('Fetching liabilities...');
     const liabilitiesSnapshot = await db.collection('liabilities')
       .where('userId', '==', userId)
       .get();
@@ -586,9 +549,9 @@ export const calculateUserNetWorth = async (userId: string): Promise<NetWorthCal
     liabilitiesSnapshot.forEach(doc => {
       liabilities.push({ id: doc.id, ...doc.data() } as Liability);
     });
-    console.log(`Found ${liabilities.length} liabilities`);
+
   } catch (error) {
-    console.error('Error fetching data from database:', error);
+
     // Continue with empty arrays if database fetch fails
     assets = [];
     liabilities = [];
@@ -741,7 +704,6 @@ export const updateNetWorthSnapshot = async (userId: string): Promise<void> => {
       await existingSnapshot.docs[0].ref.update(snapshotData);
     }
   } catch (error) {
-    console.error('Error updating net worth snapshot:', error);
   }
 };
 

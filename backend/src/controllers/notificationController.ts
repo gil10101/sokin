@@ -28,7 +28,6 @@ export class NotificationController {
 
       res.json({ notifications });
     } catch (error: any) {
-      console.error('Error fetching notifications:', error);
       res.status(500).json({ error: 'Failed to fetch notifications' });
     }
   }
@@ -54,7 +53,6 @@ export class NotificationController {
 
       res.json({ success: true });
     } catch (error: any) {
-      console.error('Error marking notification as read:', error);
       res.status(500).json({ error: 'Failed to update notification' });
     }
   }
@@ -91,7 +89,7 @@ export class NotificationController {
 
       res.json({ preferences });
     } catch (error: any) {
-      console.error('Error updating preferences:', error);
+      
       res.status(500).json({ error: 'Failed to update preferences' });
     }
   }
@@ -126,8 +124,7 @@ export class NotificationController {
       }
 
       res.json({ success: true });
-    } catch (error: any) {
-      console.error('Error registering FCM token:', error);
+    } catch (error: any) { 
       res.status(500).json({ error: 'Failed to register token' });
     }
   }
@@ -145,7 +142,7 @@ export class NotificationController {
       
       res.json({ alerts });
     } catch (error: any) {
-      console.error('Error checking budget alerts:', error);
+      
       res.status(500).json({ error: 'Failed to check budget alerts' });
     }
   }
@@ -156,7 +153,7 @@ export class NotificationController {
 
     try {
       if (!db) {
-        console.error('Database not initialized');
+        
         return alerts;
       }
 
@@ -219,7 +216,7 @@ export class NotificationController {
         });
       }
     } catch (error) {
-      console.error('Error generating budget alerts:', error);
+      
     }
 
     return alerts;
@@ -228,7 +225,7 @@ export class NotificationController {
   // Calculate current spending for a budget
   static async calculateBudgetSpending(userId: string, budget: Budget): Promise<number> {
     if (!db) {
-      console.error('Database not initialized');
+      
       return 0;
     }
 
@@ -282,7 +279,6 @@ export class NotificationController {
   static async sendPushNotification(userId: string, notification: Notification) {
     try {
       if (!db) {
-        console.error('Database not initialized');
         return;
       }
 
@@ -326,7 +322,7 @@ export class NotificationController {
       }
 
     } catch (error) {
-      console.error('Error sending push notification:', error);
+      
     }
   }
 } 

@@ -25,7 +25,6 @@ export const getAllExpenses = async (req: Request, res: Response): Promise<void>
 
     res.status(200).json({ data: expenses });
   } catch (error) {
-    console.error('Error fetching expenses:', error);
     res.status(500).json({ error: 'Failed to fetch expenses' });
   }
 };
@@ -71,7 +70,6 @@ export const getExpenseById = async (req: Request, res: Response): Promise<void>
       }
     });
   } catch (error) {
-    console.error('Error fetching expense:', error);
     res.status(500).json({ error: 'Failed to fetch expense' });
   }
 };
@@ -120,7 +118,6 @@ export const createExpense = async (req: Request, res: Response): Promise<void> 
       message: 'Expense created successfully'
     });
   } catch (error) {
-    console.error('Error creating expense:', error);
     res.status(500).json({ error: 'Failed to create expense' });
   }
 };
@@ -184,7 +181,6 @@ export const updateExpense = async (req: Request, res: Response): Promise<void> 
       message: 'Expense updated successfully'
     });
   } catch (error) {
-    console.error('Error updating expense:', error);
     res.status(500).json({ error: 'Failed to update expense' });
   }
 };
@@ -229,7 +225,6 @@ export const deleteExpense = async (req: Request, res: Response): Promise<void> 
       message: 'Expense deleted successfully'
     });
   } catch (error) {
-    console.error('Error deleting expense:', error);
     res.status(500).json({ error: 'Failed to delete expense' });
   }
 }; 

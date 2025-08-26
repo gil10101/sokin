@@ -86,7 +86,7 @@ export class ReceiptController {
       });
 
     } catch (error: any) {
-      console.error('Receipt processing error:', error);
+     
       res.status(500).json({ 
         error: 'Failed to process receipt',
         details: error.message 
@@ -129,12 +129,6 @@ export class ReceiptController {
       // Return the public URL
       return `https://storage.googleapis.com/${bucketName}/${fileName}`;
     } catch (error: any) {
-      console.error('Error uploading image to storage:', error);
-      console.error('Error details:', {
-        message: error.message,
-        code: error.code,
-        details: error.details
-      });
       throw new Error(`Failed to upload receipt image: ${error.message}`);
     }
   }

@@ -39,11 +39,11 @@ function logWithLevel(level: string, message: string, metadata?: any) {
   
   // In production, might want to format differently or send to a logging service
   if (NODE_ENV === 'production') {
-    console.log(JSON.stringify(logObject));
+    (JSON.stringify(logObject));
   } else {
-    console.log(`[${timestamp}] [${level}] ${message}`);
+    (`[${timestamp}] [${level}] ${message}`);
     if (metadata) {
-      console.log(metadata);
+      (metadata);
     }
   }
 }
