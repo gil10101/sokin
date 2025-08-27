@@ -36,7 +36,7 @@ const safeParseDate = (dateValue: any): Date => {
     
     return new Date()
   } catch (error) {
-    console.error("Error parsing date:", error, "Input:", dateValue)
+
     return new Date()
   }
 }
@@ -59,21 +59,21 @@ interface StackedBarChartProps {
   timeframe?: string
 }
 
-// Category colors - enhanced visual appeal with better contrast
+// Category colors - solid colors for better visibility
 const categoryColors: Record<string, string> = {
-  "Food & Dining": "rgba(245, 245, 240, 0.85)",
-  "Dining": "rgba(245, 245, 240, 0.85)",
-  "Transportation": "rgba(225, 225, 215, 0.85)",
-  "Shopping": "rgba(205, 205, 195, 0.85)",
-  "Entertainment": "rgba(185, 185, 175, 0.85)",
-  "Bills & Utilities": "rgba(165, 165, 155, 0.85)",
-  "Healthcare": "rgba(145, 145, 135, 0.85)",
-  "Travel": "rgba(125, 125, 115, 0.85)",
-  "Education": "rgba(105, 105, 95, 0.85)",
-  "Personal Care": "rgba(85, 85, 75, 0.85)",
-  "Business": "rgba(210, 210, 200, 0.85)",
-  "Gifts & Donations": "rgba(190, 190, 180, 0.85)",
-  "Other": "rgba(65, 65, 55, 0.85)",
+  "Food & Dining": "#f5f5f0",
+  "Dining": "#f5f5f0", 
+  "Transportation": "#e1e1d7",
+  "Shopping": "#cdcdc3",
+  "Entertainment": "#b9b9af",
+  "Bills & Utilities": "#a5a59b",
+  "Healthcare": "#919187",
+  "Travel": "#7d7d73",
+  "Education": "#69695f",
+  "Personal Care": "#55554b",
+  "Business": "#d2d2c8",
+  "Gifts & Donations": "#bebebc",
+  "Other": "#414137",
 }
 
 export function StackedBarChart({ timeframe = "year" }: StackedBarChartProps) {
@@ -159,10 +159,9 @@ export function StackedBarChart({ timeframe = "year" }: StackedBarChartProps) {
       )
       const reversedData = dataWithValues.reverse()
       setChartData(reversedData)
-      console.log("Chart data:", reversedData) // Debug log
-      console.log("Categories:", uniqueCategories) // Debug log
+
     } catch (error) {
-      console.error("Error fetching expense data:", error)
+
       setChartData([])
       setCategories([])
     } finally {
@@ -240,7 +239,7 @@ export function StackedBarChart({ timeframe = "year" }: StackedBarChartProps) {
           ...config,
           [category]: {
             label: category,
-            color: categoryColors[category] || `rgba(245, 245, 240, ${0.8 - (category.length * 0.1)})`,
+            color: categoryColors[category] || "#f5f5f0",
           }
         }), {})}
         className="h-full w-full"
@@ -255,12 +254,12 @@ export function StackedBarChart({ timeframe = "year" }: StackedBarChartProps) {
           >
             <defs>
               {categories.map((category, index) => {
-                const baseColor = categoryColors[category] || `rgba(245, 245, 240, ${0.8 - (index * 0.1)})`
+                const baseColor = categoryColors[category] || "#f5f5f0"
                 const gradientId = `gradient-${category.replace(/\s+/g, '-').toLowerCase()}`
                 return (
                   <linearGradient key={gradientId} id={gradientId} x1="0" y1="0" x2="1" y2="0">
-                    <stop offset="0%" stopColor={baseColor} stopOpacity={0.9} />
-                    <stop offset="100%" stopColor={baseColor} stopOpacity={0.7} />
+                    <stop offset="0%" stopColor={baseColor} stopOpacity={1} />
+                    <stop offset="100%" stopColor={baseColor} stopOpacity={0.9} />
                   </linearGradient>
                 )
               })}
@@ -299,7 +298,7 @@ export function StackedBarChart({ timeframe = "year" }: StackedBarChartProps) {
                           .sort((a, b) => (b.value as number) - (a.value as number))
                           .map((entry, index) => {
                             const categoryName = entry.dataKey as string
-                            const categoryColor = categoryColors[categoryName] || `rgba(245, 245, 240, ${0.85 - (index * 0.1)})`
+                            const categoryColor = categoryColors[categoryName] || "#f5f5f0"
                             const value = entry.value as number
                             const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0'
                             
@@ -327,9 +326,9 @@ export function StackedBarChart({ timeframe = "year" }: StackedBarChartProps) {
               }}
             />
             {categories.map((category, index) => {
-              const color = categoryColors[category] || `rgba(245, 245, 240, ${0.8 - (index * 0.1)})`
+              const color = categoryColors[category] || "#f5f5f0"
               const gradientId = `gradient-${category.replace(/\s+/g, '-').toLowerCase()}`
-              console.log(`Bar ${category}:`, color, chartData[0]?.[category]) // Debug log
+
               return (
                 <Bar
                   key={category}

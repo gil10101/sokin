@@ -13,16 +13,21 @@ interface CategoryComparisonChartProps {
 export function CategoryComparisonChart({ data }: CategoryComparisonChartProps) {
   const { isMobile, isTablet } = useViewport()
   
-  // Limit to top categories based on screen size
-  const topCategories = data.slice(0, isMobile ? 4 : 5)
+  // Show all categories (no limit)
+  const topCategories = data
   const [animatedData, setAnimatedData] = useState<any[]>([])
   const [hoverIndex, setHoverIndex] = useState<number | null>(null)
 
-  // Responsive chart configuration
+  // Responsive chart configuration - adjust height based on number of categories
   const chartConfig = useMemo(() => {
+    const categoryCount = topCategories.length
+    const baseHeight = isMobile ? 40 : 50 // Height per category
+    const minHeight = isMobile ? 200 : 250 // Minimum height
+    const calculatedHeight = Math.max(minHeight, categoryCount * baseHeight + 60) // +60 for margins
+    
     if (isMobile) {
       return {
-        height: 250,
+        height: calculatedHeight,
         margin: { top: 10, right: 5, left: 60, bottom: 20 },
         tickFontSize: 10,
         yAxisWidth: 60,
@@ -30,7 +35,7 @@ export function CategoryComparisonChart({ data }: CategoryComparisonChartProps) 
       }
     } else if (isTablet) {
       return {
-        height: 280,
+        height: calculatedHeight,
         margin: { top: 10, right: 8, left: 70, bottom: 20 },
         tickFontSize: 11,
         yAxisWidth: 70,
@@ -38,14 +43,14 @@ export function CategoryComparisonChart({ data }: CategoryComparisonChartProps) 
       }
     } else {
       return {
-        height: 300,
+        height: calculatedHeight,
         margin: { top: 10, right: 10, left: 80, bottom: 20 },
         tickFontSize: 12,
         yAxisWidth: 80,
         showLabels: true,
       }
     }
-  }, [isMobile, isTablet])
+  }, [isMobile, isTablet, topCategories.length])
 
   useEffect(() => {
     // Start with zero values for animation
@@ -134,12 +139,21 @@ export function CategoryComparisonChart({ data }: CategoryComparisonChartProps) 
               animationEasing="ease-out"
             >
               {animatedData.map((entry, index) => {
-                const opacity = 1 - index * 0.15;
+                // Create a more visible opacity gradient that doesn't go below 0.3
+                const minOpacity = 0.3;
+                const maxOpacity = 1;
+                const opacityRange = maxOpacity - minOpacity;
+                const totalCategories = animatedData.length;
+                
+                // Calculate opacity to ensure all bars are visible
+                const opacity = totalCategories === 1 
+                  ? maxOpacity 
+                  : maxOpacity - (index / (totalCategories - 1)) * opacityRange;
                 
                 return (
                   <Cell 
                     key={`cell-${index}`} 
-                    fill={`rgba(245, 245, 240, ${opacity})`}
+                    fill={`rgba(245, 245, 240, ${Math.max(opacity, minOpacity)})`}
                     onMouseEnter={() => setHoverIndex(index)}
                   />
                 )

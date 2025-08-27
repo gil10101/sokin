@@ -4,32 +4,28 @@ import { useState, useEffect, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { useIsMobile } from '../../hooks/use-mobile'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
-import { Badge } from '../ui/badge'
-import { TrendingUp, TrendingDown, DollarSign, Calendar, Target, AlertTriangle } from 'lucide-react'
-import { 
-  ResponsiveContainer, 
-  LineChart, 
-  Line, 
-  AreaChart, 
-  Area, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  Legend,
-  PieChart,
-  Pie,
-  Cell,
-  BarChart,
-  Bar
-} from 'recharts'
-import { format, subMonths, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns'
+import { TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react'
+import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns'
+import { collection, query, where, getDocs } from "firebase/firestore"
+import { db } from "../../lib/firebase"
+import { useAuth } from "../../contexts/auth-context"
+import { OverviewAnalytics } from './overview-analytics'
+import { TrendsAnalytics } from './trends-analytics'
+import { SpendingHeatmapAnalytics } from './spending-heatmap-analytics'
+import { CategoryComparisonChart } from './category-comparison-chart'
 
 interface AdvancedAnalyticsProps {
-  expenses: any[]
   budgets: any[]
-  timeframe: string
+  timeframe?: string
+}
+
+interface Expense {
+  id: string
+  name: string
+  amount: number
+  date: string
+  category: string
+  userId: string
 }
 
 interface SpendingInsight {
@@ -41,105 +37,132 @@ interface SpendingInsight {
   change?: number
 }
 
-export function AdvancedAnalytics({ expenses, budgets, timeframe }: AdvancedAnalyticsProps) {
+// Helper function to safely parse dates including Firebase Timestamps
+const safeParseDate = (dateValue: any): Date => {
+  if (!dateValue) return new Date()
+  
+  try {
+    // If it's already a Date object
+    if (dateValue instanceof Date) {
+      return dateValue
+    }
+    // If it's a Firebase Timestamp object
+    else if (dateValue && typeof dateValue === 'object' && 'toDate' in dateValue) {
+      return dateValue.toDate()
+    }
+    // If it's a numeric timestamp (milliseconds)
+    else if (typeof dateValue === 'number') {
+      return new Date(dateValue)
+    }
+    // If it's a string
+    else if (typeof dateValue === 'string') {
+      const parsedDate = new Date(dateValue)
+      return isNaN(parsedDate.getTime()) ? new Date() : parsedDate
+    }
+    
+    return new Date()
+  } catch (error) {
+
+    return new Date()
+  }
+}
+
+export function AdvancedAnalytics({ budgets, timeframe = "6months" }: AdvancedAnalyticsProps) {
+  const { user } = useAuth()
   const [insights, setInsights] = useState<SpendingInsight[]>([])
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [loading, setLoading] = useState(true)
+  const [expenses, setExpenses] = useState<Expense[]>([])
+  const [mounted, setMounted] = useState(false)
   const isMobile = useIsMobile()
 
-  // Process spending data for heatmap
-  const spendingHeatmapData = useMemo(() => {
-    const endDate = new Date()
-    const startDate = subMonths(endDate, 12)
-    const dateRange = eachDayOfInterval({ start: startDate, end: endDate })
-    
-    const dailySpending = dateRange.map(date => {
-      const dayExpenses = expenses.filter(expense => {
-        // Validate and sanitize the expense date
-        if (!expense.date) return false
-        
-        const expenseDate = new Date(expense.date)
-        // Check if the date is valid
-        if (isNaN(expenseDate.getTime())) return false
-        
-        try {
-          return format(expenseDate, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')
-        } catch (error) {
-          console.warn('Invalid date format for expense:', expense.id, expense.date)
-          return false
-        }
-      })
-      
-      const totalSpent = dayExpenses.reduce((sum, expense) => sum + (expense.amount || 0), 0)
-      
-      return {
-        date: format(date, 'yyyy-MM-dd'),
-        day: format(date, 'dd'),
-        month: format(date, 'MMM'),
-        year: format(date, 'yyyy'),
-        amount: totalSpent,
-        count: dayExpenses.length
-      }
-    })
-    
-    return dailySpending
-  }, [expenses])
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
-  // Category comparison data
+  useEffect(() => {
+    if (user && mounted) {
+      fetchExpenseData()
+    }
+  }, [user, mounted, timeframe])
+
+  const fetchExpenseData = async () => {
+    if (!user) return
+
+    setLoading(true)
+    try {
+      // Fetch expenses from Firebase
+      const expensesRef = collection(db, "expenses")
+      const q = query(expensesRef, where("userId", "==", user.uid))
+
+      const querySnapshot = await getDocs(q)
+      const allExpenses = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Expense[]
+
+      setExpenses(allExpenses)
+
+    } catch (error) {
+
+      setExpenses([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Category comparison data - include all categories with expenses
   const categoryComparisonData = useMemo(() => {
     const categoryTotals = expenses.reduce((acc, expense) => {
       if (!expense.category || !expense.amount) return acc
-      acc[expense.category] = (acc[expense.category] || 0) + (expense.amount || 0)
+      acc[expense.category] = (acc[expense.category] || 0) + Math.abs(expense.amount || 0)
       return acc
     }, {} as Record<string, number>)
 
-    return Object.entries(categoryTotals)
-      .map(([category, amount]) => ({ category, amount: amount as number, percentage: 0 }))
-      .sort((a, b) => b.amount - a.amount)
-      .slice(0, 10)
-  }, [expenses])
-
-  // Trend analysis data
-  const trendData = useMemo(() => {
-    const monthlyData = Array.from({ length: 12 }, (_, i) => {
-      const date = subMonths(new Date(), 11 - i)
-      const monthStart = startOfMonth(date)
-      const monthEnd = endOfMonth(date)
-      
-      const monthExpenses = expenses.filter(expense => {
-        if (!expense.date) return false
-        
-        const expenseDate = new Date(expense.date)
-        // Check if the date is valid
-        if (isNaN(expenseDate.getTime())) return false
-        
-        return expenseDate >= monthStart && expenseDate <= monthEnd
-      })
-      
-      const totalSpent = monthExpenses.reduce((sum, expense) => sum + (expense.amount || 0), 0)
-      const avgDaily = totalSpent / date.getDate()
-      
-      return {
-        month: format(date, 'MMM yyyy'),
-        totalSpent,
-        avgDaily,
-        transactionCount: monthExpenses.length
-      }
-    })
+    const result = Object.entries(categoryTotals)
+      .filter(([_, amount]) => amount > 0) // Only include categories with actual spending
+      .map(([category, amount]) => ({ category, amount: amount as number }))
+      .sort((a, b) => b.amount - a.amount) // Sort by highest spending first
     
-    return monthlyData
+
+    return result
   }, [expenses])
 
-  // Generate insights
+  // Generate insights based on expenses and budgets
   useEffect(() => {
+    if (expenses.length === 0) return
+
     const generateInsights = () => {
       const newInsights: SpendingInsight[] = []
       
+      // Calculate basic monthly data
+      const monthlyData = Array.from({ length: 12 }, (_, i) => {
+        const date = subMonths(new Date(), 11 - i)
+        const monthStart = startOfMonth(date)
+        const monthEnd = endOfMonth(date)
+        
+        const monthExpenses = expenses.filter(expense => {
+          if (!expense.date) return false
+          
+          const expenseDate = safeParseDate(expense.date)
+          if (isNaN(expenseDate.getTime())) return false
+          
+          return expenseDate >= monthStart && expenseDate <= monthEnd
+        })
+        
+        return {
+          month: format(date, 'MMM yyyy'),
+          totalSpent: monthExpenses.reduce((sum, expense) => sum + Math.abs(expense.amount || 0), 0)
+        }
+      })
+      
       // Calculate month-over-month change
-      if (trendData.length >= 2) {
-        const currentMonth = trendData[trendData.length - 1]
-        const previousMonth = trendData[trendData.length - 2]
-        const change = ((currentMonth.totalSpent - previousMonth.totalSpent) / previousMonth.totalSpent) * 100
+      if (monthlyData.length >= 2) {
+        const currentMonth = monthlyData[monthlyData.length - 1]
+        const previousMonth = monthlyData[monthlyData.length - 2]
+        const change = previousMonth.totalSpent > 0 
+          ? ((currentMonth.totalSpent - previousMonth.totalSpent) / previousMonth.totalSpent) * 100 
+          : 0
         
         newInsights.push({
           type: 'trend',
@@ -151,8 +174,8 @@ export function AdvancedAnalytics({ expenses, budgets, timeframe }: AdvancedAnal
       }
       
       // Detect spending anomalies
-      const avgMonthlySpending = trendData.reduce((sum, month) => sum + month.totalSpent, 0) / trendData.length
-      const currentSpending = trendData[trendData.length - 1]?.totalSpent || 0
+      const avgMonthlySpending = monthlyData.reduce((sum, month) => sum + month.totalSpent, 0) / monthlyData.length
+      const currentSpending = monthlyData[monthlyData.length - 1]?.totalSpent || 0
       
       if (currentSpending > avgMonthlySpending * 1.5) {
         newInsights.push({
@@ -165,7 +188,7 @@ export function AdvancedAnalytics({ expenses, budgets, timeframe }: AdvancedAnal
       }
       
       // Budget variance analysis
-      budgets.forEach(budget => {
+      budgets?.forEach(budget => {
         if (budget.currentSpent > budget.amount * 0.9) {
           newInsights.push({
             type: 'pattern',
@@ -178,7 +201,8 @@ export function AdvancedAnalytics({ expenses, budgets, timeframe }: AdvancedAnal
       })
       
       // Forecast next month
-      const trend = trendData.slice(-3).reduce((acc, month, index) => {
+      const recentMonths = monthlyData.slice(-3)
+      const trend = recentMonths.reduce((acc, month, index) => {
         return acc + month.totalSpent * (index + 1)
       }, 0) / 6
       
@@ -191,11 +215,10 @@ export function AdvancedAnalytics({ expenses, budgets, timeframe }: AdvancedAnal
       })
       
       setInsights(newInsights)
-      setLoading(false)
     }
     
     generateInsights()
-  }, [expenses, budgets, trendData])
+  }, [expenses, budgets])
 
   const getSeverityIcon = (severity: string) => {
     switch (severity) {
@@ -206,7 +229,7 @@ export function AdvancedAnalytics({ expenses, budgets, timeframe }: AdvancedAnal
   }
 
   // Show loading state until mobile detection is initialized
-  if (typeof isMobile === 'undefined' || loading) {
+  if (!mounted || typeof isMobile === 'undefined' || loading) {
     return (
       <div className="space-y-8 max-w-7xl mx-auto">
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
@@ -256,121 +279,11 @@ export function AdvancedAnalytics({ expenses, budgets, timeframe }: AdvancedAnal
         </TabsList>
 
         <TabsContent value="overview" className="space-y-8">
-          <div className="grid grid-cols-1 gap-8">
-            {/* Spending Trend */}
-            <Card className="bg-cream/5 border-cream/20">
-              <CardHeader className="pb-6">
-                <CardTitle className="text-xl text-cream/90">Spending Trend</CardTitle>
-                <p className="text-sm text-cream/60">Monthly spending over the last 12 months</p>
-              </CardHeader>
-              <CardContent className="pb-6">
-                <ResponsiveContainer width="100%" height={isMobile ? 300 : 400}>
-                  <AreaChart data={trendData}>
-                    <defs>
-                      <linearGradient id="colorSpending" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="rgba(245, 245, 240, 0.3)" stopOpacity={0.8} />
-                        <stop offset="95%" stopColor="rgba(245, 245, 240, 0.1)" stopOpacity={0.2} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(245, 245, 240, 0.1)" />
-                    <XAxis 
-                      dataKey="month" 
-                      tick={{ fill: "rgba(245, 245, 240, 0.6)", fontSize: isMobile ? 10 : 12 }}
-                      axisLine={false}
-                      tickLine={false}
-                      interval={isMobile ? 1 : 0}
-                      angle={isMobile ? -45 : 0}
-                      textAnchor={isMobile ? "end" : "middle"}
-                    />
-                    <YAxis 
-                      tick={{ fill: "rgba(245, 245, 240, 0.6)", fontSize: isMobile ? 10 : 12 }}
-                      axisLine={false}
-                      tickLine={false}
-                      width={isMobile ? 40 : 60}
-                    />
-                    <Tooltip
-                      content={({ active, payload }) => {
-                        if (active && payload && payload.length) {
-                          return (
-                            <div className="bg-dark border border-cream/10 p-2 rounded-md shadow-md">
-                              <p className="text-cream font-medium">{payload[0].payload.month}</p>
-                              <div className="flex items-center mt-1">
-                                <div className="h-2 w-2 rounded-full bg-cream/80 mr-1"></div>
-                                <p className="text-cream text-sm">Amount: ${Number(payload[0].value).toLocaleString()}</p>
-                              </div>
-                            </div>
-                          )
-                        }
-                        return null
-                      }}
-                    />
-                    <Area 
-                      type="monotone" 
-                      dataKey="totalSpent" 
-                      stroke="rgba(245, 245, 240, 0.8)" 
-                      fill="url(#colorSpending)" 
-                      strokeWidth={2}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </div>
+          <OverviewAnalytics expenses={expenses} />
         </TabsContent>
 
         <TabsContent value="trends" className="space-y-6">
-          <Card className="bg-cream/5 border-cream/20">
-            <CardHeader className="pb-6">
-              <CardTitle className="text-xl text-cream/90">Monthly Spending Analysis</CardTitle>
-              <p className="text-sm text-cream/60">Detailed monthly breakdown and trends</p>
-            </CardHeader>
-            <CardContent className="pb-6">
-              <ResponsiveContainer width="100%" height={isMobile ? 350 : 500}>
-                <BarChart data={trendData} margin={{ top: 20, right: 30, left: 20, bottom: isMobile ? 40 : 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(245, 245, 240, 0.1)" />
-                  <XAxis 
-                    dataKey="month" 
-                    tick={{ fill: "rgba(245, 245, 240, 0.6)", fontSize: isMobile ? 10 : 12 }}
-                    axisLine={false}
-                    tickLine={false}
-                    interval={isMobile ? 1 : 0}
-                    angle={isMobile ? -45 : 0}
-                    textAnchor={isMobile ? "end" : "middle"}
-                    height={isMobile ? 60 : 30}
-                  />
-                  <YAxis 
-                    tick={{ fill: "rgba(245, 245, 240, 0.6)", fontSize: isMobile ? 10 : 12 }}
-                    axisLine={false}
-                    tickLine={false}
-                    width={isMobile ? 40 : 60}
-                  />
-                  <Tooltip
-                    content={({ active, payload }) => {
-                      if (active && payload && payload.length) {
-                        return (
-                          <div className="bg-dark border border-cream/10 p-2 rounded-md shadow-md">
-                            <p className="text-cream font-medium">{payload[0].payload.month}</p>
-                            <div className="flex items-center mt-1">
-                              <div className="h-2 w-2 rounded-full bg-cream/80 mr-1"></div>
-                              <p className="text-cream text-sm">Total Spent: ${Number(payload[0].value).toLocaleString()}</p>
-                            </div>
-                          </div>
-                        )
-                      }
-                      return null
-                    }}
-                  />
-                  <Bar 
-                    dataKey="totalSpent" 
-                    fill="rgba(245, 245, 240, 0.6)" 
-                    stroke="rgba(245, 245, 240, 0.8)" 
-                    strokeWidth={1}
-                    radius={[4, 4, 0, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+          <TrendsAnalytics expenses={expenses} />
         </TabsContent>
 
         <TabsContent value="categories" className="space-y-6">
@@ -380,102 +293,22 @@ export function AdvancedAnalytics({ expenses, budgets, timeframe }: AdvancedAnal
               <p className="text-sm text-cream/60">Compare spending across different categories</p>
             </CardHeader>
             <CardContent className="pb-6">
-              <ResponsiveContainer width="100%" height={isMobile ? 350 : 500}>
-                <BarChart data={categoryComparisonData} layout="horizontal" margin={{ top: 20, right: 30, left: isMobile ? 80 : 120, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(245, 245, 240, 0.1)" />
-                  <XAxis 
-                    type="number" 
-                    tick={{ fill: "rgba(245, 245, 240, 0.6)", fontSize: isMobile ? 10 : 12 }}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <YAxis 
-                    dataKey="category" 
-                    type="category" 
-                    width={isMobile ? 80 : 120} 
-                    tick={{ fill: "rgba(245, 245, 240, 0.6)", fontSize: isMobile ? 10 : 12 }}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <Tooltip
-                    content={({ active, payload }) => {
-                      if (active && payload && payload.length) {
-                        return (
-                          <div className="bg-dark border border-cream/10 p-2 rounded-md shadow-md">
-                            <p className="text-cream font-medium">{payload[0].payload.category}</p>
-                            <div className="flex items-center mt-1">
-                              <div className="h-2 w-2 rounded-full bg-cream/80 mr-1"></div>
-                              <p className="text-cream text-sm">Amount: ${Number(payload[0].value).toLocaleString()}</p>
-                            </div>
-                          </div>
-                        )
-                      }
-                      return null
-                    }}
-                  />
-                  <Bar 
-                    dataKey="amount" 
-                    fill="rgba(245, 245, 240, 0.6)" 
-                    stroke="rgba(245, 245, 240, 0.8)" 
-                    strokeWidth={1}
-                    radius={[0, 4, 4, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
+              {categoryComparisonData.length === 0 ? (
+                <div className="h-96 flex items-center justify-center">
+                  <div className="text-center">
+                    <div className="text-cream/60 mb-1 text-sm">No category data available</div>
+                    <div className="text-xs text-cream/40">Add expenses to see breakdown</div>
+                  </div>
+                </div>
+              ) : (
+                <CategoryComparisonChart data={categoryComparisonData} />
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="patterns" className="space-y-6">
-          {/* Spending Heatmap Calendar */}
-          <Card className="bg-cream/5 border-cream/20">
-            <CardHeader className="pb-6">
-              <CardTitle className="text-xl text-cream/90">Spending Heatmap</CardTitle>
-              <p className="text-sm text-cream/60">Daily spending patterns over the last {isMobile ? '5 weeks' : '7 weeks'}</p>
-            </CardHeader>
-            <CardContent className="pb-6">
-              <div className="space-y-4">
-                <div className={`grid grid-cols-7 gap-3 ${isMobile ? 'text-xs' : 'text-sm'} max-w-4xl mx-auto`}>
-                  {(isMobile ? ['S', 'M', 'T', 'W', 'T', 'F', 'S'] : ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']).map((day, index) => (
-                    <div key={index} className={`text-center font-medium text-cream/60 ${isMobile ? 'p-2' : 'p-3'}`}>{day}</div>
-                  ))}
-                  {spendingHeatmapData.slice(isMobile ? -35 : -49).map((day, index) => {
-                    const intensity = Math.min(day.amount / 100, 1) // Normalize intensity
-                    return (
-                      <div
-                        key={index}
-                        className={`aspect-square rounded-lg flex items-center justify-center ${isMobile ? 'text-xs' : 'text-sm'} cursor-pointer hover:scale-105 transition-all duration-200 font-medium`}
-                        style={{
-                          backgroundColor: `rgba(245, 245, 240, ${intensity * 0.6 + 0.1})`,
-                          color: intensity > 0.3 ? 'rgba(0, 0, 0, 0.8)' : 'rgba(245, 245, 240, 0.7)',
-                          border: '1px solid rgba(245, 245, 240, 0.2)',
-                          minHeight: isMobile ? '32px' : '48px'
-                        }}
-                        title={`${day.date}: $${day.amount.toFixed(2)} (${day.count} transactions)`}
-                      >
-                        {isMobile ? day.day.slice(-1) : day.day}
-                      </div>
-                    )
-                  })}
-                </div>
-                
-                {/* Legend */}
-                <div className="flex items-center justify-center space-x-4 pt-4 max-w-md mx-auto">
-                  <span className="text-xs text-cream/60">Less</span>
-                  <div className="flex space-x-1">
-                    {[0.1, 0.3, 0.5, 0.7, 0.9].map((intensity, index) => (
-                      <div 
-                        key={index}
-                        className={`${isMobile ? 'w-3 h-3' : 'w-4 h-4'} rounded-sm border border-cream/20`}
-                        style={{ backgroundColor: `rgba(245, 245, 240, ${intensity * 0.6 + 0.1})` }}
-                      />
-                    ))}
-                  </div>
-                  <span className="text-xs text-cream/60">More</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <SpendingHeatmapAnalytics expenses={expenses} />
         </TabsContent>
       </Tabs>
     </div>
