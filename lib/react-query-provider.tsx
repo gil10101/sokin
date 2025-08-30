@@ -13,10 +13,13 @@ export function ReactQueryClientProvider({ children }: ReactQueryClientProviderP
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 5 * 60 * 1000, // 5 minutes
-            gcTime: 30 * 60 * 1000, // 30 minutes
-            retry: 1,
+            staleTime: 10 * 60 * 1000, // 10 minutes
+            gcTime: 60 * 60 * 1000, // 60 minutes
+            retry: 2,
             refetchOnWindowFocus: false,
+            refetchOnReconnect: true,
+            refetchInterval: false,
+            networkMode: 'offlineFirst',
           },
         },
       })
