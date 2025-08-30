@@ -1,7 +1,9 @@
 "use client"
 
 import dynamic from "next/dynamic"
-import { Suspense } from "react"
+import React, { Suspense, useEffect, useState } from "react"
+import { useThree } from "@react-three/fiber"
+import * as THREE from "three"
 
 // Dynamically import Canvas to avoid SSR issues
 const Canvas = dynamic(() => import("@react-three/fiber").then(mod => ({ default: mod.Canvas })), {
@@ -15,17 +17,73 @@ const TwistedTorus = dynamic(() => import("./twisted-torus"), {
 })
 
 function MobileHero3DScene() {
-  const cameraSettings = { 
-    position: [0, 0, 10] as [number, number, number], // Moved camera closer for bigger model
-    fov: 85 // Increased field of view for more dramatic effect
+  const [viewportHeight, setViewportHeight] = useState(0)
+  const [isMac, setIsMac] = useState(false)
+
+  useEffect(() => {
+    const updateDevice = () => {
+      setViewportHeight(window.innerHeight)
+
+      // Detect Mac devices for special handling
+      const userAgent = navigator.userAgent.toLowerCase()
+      const isMacDevice = userAgent.includes('mac') && !userAgent.includes('iphone') && !userAgent.includes('ipad')
+      setIsMac(isMacDevice)
+    }
+
+    updateDevice()
+    window.addEventListener('resize', updateDevice)
+    return () => window.removeEventListener('resize', updateDevice)
+  }, [])
+
+  // Responsive camera settings based on viewport
+  const getCameraSettings = () => {
+    if (!viewportHeight) {
+      return {
+        position: [0, 0, 10] as [number, number, number],
+        fov: 85
+      }
+    }
+
+    // Adjust camera distance based on screen height
+    const cameraDistance = viewportHeight < 600 ? 8 : viewportHeight < 800 ? 9 : 10
+    const fov = viewportHeight < 600 ? 90 : viewportHeight < 800 ? 87 : 85
+
+    return {
+      position: [0, 0, cameraDistance] as [number, number, number],
+      fov
+    }
+  }
+
+  const cameraSettings = getCameraSettings()
+
+  // Responsive height calculation with Mac adjustments
+  const getResponsiveHeight = () => {
+    if (!viewportHeight) return "300px"
+
+    // Mac devices often need slightly different proportions due to menu bar and different aspect ratios
+    const heightPercent = isMac
+      ? (viewportHeight < 600 ? 33 : viewportHeight < 800 ? 30 : 28) // Slightly smaller on Mac for better proportion
+      : (viewportHeight < 600 ? 35 : viewportHeight < 800 ? 32 : 30)
+
+    const minHeight = isMac
+      ? (viewportHeight < 600 ? 240 : viewportHeight < 800 ? 270 : 290) // Adjusted for Mac proportions
+      : (viewportHeight < 600 ? 250 : viewportHeight < 800 ? 280 : 300)
+
+    const maxHeight = isMac
+      ? (viewportHeight < 600 ? 310 : viewportHeight < 800 ? 340 : 360) // Adjusted for Mac proportions
+      : (viewportHeight < 600 ? 320 : viewportHeight < 800 ? 350 : 380)
+
+    return `clamp(${minHeight}px, ${heightPercent}vh, ${maxHeight}px)`
   }
 
   return (
     <div
       className="relative w-full pointer-events-none"
       style={{
-        height: "300px", // Increased height for bigger scene
-        overflow: "hidden"
+        height: getResponsiveHeight(),
+        overflow: "hidden",
+        // Mac-specific positioning adjustment
+        marginTop: isMac ? "8px" : "0px" // Slight top margin on Mac to account for menu bar
       }}
     >
       <Suspense fallback={null}>
@@ -46,19 +104,10 @@ function MobileHero3DScene() {
             alpha: true,
             preserveDrawingBuffer: true
           }}
-          dpr={[1, 1.5]} // Lower DPR for mobile performance
+          dpr={viewportHeight < 600 ? [1, 1.2] : [1, 1.5]} // Responsive DPR based on viewport height
           resize={{ scroll: false, debounce: { scroll: 50, resize: 0 } }}
-        >
-          <ambientLight intensity={0.5} />
-          <directionalLight 
-            position={[5, 5, 5]} 
-            intensity={0.6}
-            castShadow
-            shadow-mapSize-width={512}
-            shadow-mapSize-height={512}
-          />
-          <pointLight position={[-5, -5, -5]} intensity={0.2} />
-          
+                  >
+          <Lights />
           <Suspense fallback={null}>
             <TwistedTorus isMobile={true} />
           </Suspense>
@@ -66,6 +115,38 @@ function MobileHero3DScene() {
       </Suspense>
     </div>
   )
+}
+
+// Lights component to avoid JSX type issues
+function Lights() {
+  const { scene } = useThree()
+
+  useEffect(() => {
+    // Ambient light
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5)
+    scene.add(ambientLight)
+
+    // Directional light
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6)
+    directionalLight.position.set(5, 5, 5)
+    directionalLight.castShadow = true
+    directionalLight.shadow.mapSize.width = 512
+    directionalLight.shadow.mapSize.height = 512
+    scene.add(directionalLight)
+
+    // Point light
+    const pointLight = new THREE.PointLight(0xffffff, 0.2)
+    pointLight.position.set(-5, -5, -5)
+    scene.add(pointLight)
+
+    return () => {
+      scene.remove(ambientLight)
+      scene.remove(directionalLight)
+      scene.remove(pointLight)
+    }
+  }, [scene])
+
+  return null
 }
 
 export default MobileHero3DScene

@@ -65,8 +65,8 @@ export function AppInitializer() {
 
         }
       } catch (error) {
-        console.error('Failed to initialize Firebase Cloud Messaging:', error)
-        // Continue silently - FCM is not critical for core app functionality
+        // Failed to initialize Firebase Cloud Messaging, continuing silently
+        // FCM is not critical for core app functionality
       }
     }
 

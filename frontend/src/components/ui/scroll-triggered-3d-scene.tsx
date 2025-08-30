@@ -1,9 +1,11 @@
 "use client"
 
 import dynamic from "next/dynamic"
-import { Suspense, useEffect, useRef, useState } from "react"
+import React, { Suspense, useEffect, useRef, useState } from "react"
+import { useThree } from "@react-three/fiber"
 import { gsap } from "gsap"
 import { ScrollTrigger } from "gsap/ScrollTrigger"
+import * as THREE from "three"
 
 // Register ScrollTrigger plugin
 if (typeof window !== "undefined") {
@@ -24,15 +26,26 @@ const TwistedTorus = dynamic(() => import("./twisted-torus"), {
 function ScrollTriggered3DScene() {
   const canvasRef = useRef<HTMLDivElement>(null)
   const [isMobile, setIsMobile] = useState(false)
+  const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 })
+  const [isMac, setIsMac] = useState(false)
 
   useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768) // Use consistent mobile breakpoint
+    const checkDevice = () => {
+      const width = window.innerWidth
+      const height = window.innerHeight
+
+      // Detect Mac devices for better positioning
+      const userAgent = navigator.userAgent.toLowerCase()
+      const isMacDevice = userAgent.includes('mac') && !userAgent.includes('iphone') && !userAgent.includes('ipad')
+
+      setIsMobile(width < 768)
+      setIsMac(isMacDevice)
+      setViewportSize({ width, height })
     }
-    
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-    return () => window.removeEventListener('resize', checkMobile)
+
+    checkDevice()
+    window.addEventListener('resize', checkDevice)
+    return () => window.removeEventListener('resize', checkDevice)
   }, [])
 
   useEffect(() => {
@@ -42,29 +55,31 @@ function ScrollTriggered3DScene() {
 
     const canvas = canvasRef.current
 
-    // Desktop only - initial positioning
+    // Desktop only - initial positioning with Mac adjustments
+    // Since we start from Mac-adjusted center (15% top), we need relative positioning
     gsap.set(canvas, {
-      x: "25%",
-      y: "0%",
+      x: "25%", // Move right from center
+      y: isMac ? "18%" : "0%", // Adjust Y relative to Mac-adjusted center (35% higher)
       scale: 1,
       rotation: 0,
       opacity: 1
     })
 
-    // Desktop only - section-based animations
+    // Desktop only - section-based animations with Mac adjustments
+    // Y values are relative to the Mac-adjusted center position (15% vs 50% = 35% higher)
     const desktopSections = [
       {
         trigger: "#hero",
         x: "25%",
-        y: "0%",
+        y: isMac ? "28%" : "0%", // Mac: 28% (accounts for 35% center adjustment)
         scale: 1,
         rotation: 0,
         opacity: 1
       },
       {
         trigger: "#about",
-        x: "-30%",
-        y: "-5%",
+        x: "-25%", // Balanced positioning for 50/50 layout
+        y: isMac ? "25%" : "-5%", // Mac: 25% (accounts for 35% center adjustment)
         scale: 0.8,
         rotation: 15,
         opacity: 0.9
@@ -72,7 +87,7 @@ function ScrollTriggered3DScene() {
       {
         trigger: "#features",
         x: "25%",
-        y: "10%",
+        y: isMac ? "40%" : "10%", // Mac: 40% (accounts for 35% center adjustment)
         scale: 0.6,
         rotation: -10,
         opacity: 0.7
@@ -80,7 +95,7 @@ function ScrollTriggered3DScene() {
       {
         trigger: "#contact",
         x: "15%",
-        y: "20%",
+        y: isMac ? "52%" : "20%", // Mac: 52% (accounts for 35% center adjustment)
         scale: 0.5,
         rotation: 25,
         opacity: 0.5
@@ -134,7 +149,9 @@ function ScrollTriggered3DScene() {
       scrollTriggers.push(trigger)
     })
 
-    // Bottom of page effect for desktop
+    // Bottom of page effect for desktop with Mac adjustments
+    // Since Mac starts 35% higher, bottom position needs significant adjustment
+    const bottomPageY = isMac ? "50%" : "85%" // Adjust bottom positioning for Mac (35% higher)
     const bottomPageEffect = ScrollTrigger.create({
       trigger: "footer",
       start: "top bottom-=100px",
@@ -142,7 +159,7 @@ function ScrollTriggered3DScene() {
       onEnter: () => {
         gsap.to(canvas, {
           x: "0%",
-          y: "85%",
+          y: bottomPageY,
           scale: 1.6,
           rotation: 0,
           opacity: 0.9,
@@ -185,24 +202,85 @@ function ScrollTriggered3DScene() {
     }
   }, [isMobile])
 
-  const cameraSettings = { position: [0, 0, 18] as [number, number, number], fov: 55 }
+  // Calculate responsive dimensions based on viewport
+  const getResponsiveSize = () => {
+    if (!viewportSize.width) return { width: "70vw", height: "70vh" }
+
+    const { width, height } = viewportSize
+    const aspectRatio = width / height
+
+    // Responsive sizing based on viewport dimensions
+    let sizeFactor = 0.7 // Base factor
+
+    // Adjust for very wide screens (ultra-wide monitors)
+    if (aspectRatio > 2.5) {
+      sizeFactor = 0.6
+    }
+    // Adjust for very tall screens (mobile landscape, tablets)
+    else if (aspectRatio < 1.2) {
+      sizeFactor = 0.65
+    }
+    // Adjust for standard desktop screens
+    else if (width > 1920) {
+      sizeFactor = 0.65
+    }
+    // Adjust for smaller desktop screens
+    else if (width < 1200) {
+      sizeFactor = 0.75
+    }
+
+    return {
+      width: `${Math.min(sizeFactor * 100, 85)}vw`,
+      height: `${Math.min(sizeFactor * 100, 85)}vh`
+    }
+  }
+
+  const cameraSettings = {
+    position: [0, 0, viewportSize.width > 1920 ? 20 : viewportSize.width < 1200 ? 16 : 18] as [number, number, number],
+    fov: viewportSize.width < 1200 ? 60 : 55
+  }
 
   // On mobile, render nothing here - we'll handle mobile canvas separately
   if (isMobile) {
     return null
   }
 
+  const responsiveSize = getResponsiveSize()
+
+  // Use GSAP-only positioning to avoid transform conflicts
+  const getInitialPosition = () => {
+    if (!isMac) {
+      return {
+        top: "50%",
+        left: "50%",
+        transform: "translate(-50%, -50%)"
+      }
+    }
+
+    // On Mac devices, start with significantly adjusted positioning to account for menu bar
+    // Moving 35% higher than standard positioning (50% - 35% = 15%)
+    return {
+      top: "15%", // Move up 35% from 50% to 15% on Mac for better visual centering
+      left: "50%",
+      transform: "translate(-50%, -50%)"
+    }
+  }
+
+  const initialPosition = getInitialPosition()
+
   return (
     <div
       ref={canvasRef}
       className="fixed z-0 pointer-events-none"
       style={{
-        width: "70vw",
-        height: "70vh",
-        top: "50%",
-        left: "50%",
-        transform: "translate(-50%, -50%)",
+        width: responsiveSize.width,
+        height: responsiveSize.height,
+        top: initialPosition.top,
+        left: initialPosition.left,
+        transform: initialPosition.transform,
         transformOrigin: "center center",
+        maxWidth: "1200px",
+        maxHeight: "800px",
         overflow: "visible"
       }}
     >
@@ -224,19 +302,10 @@ function ScrollTriggered3DScene() {
               alpha: true,
               preserveDrawingBuffer: true
             }}
-            dpr={[1, 2]}
+            dpr={viewportSize.width < 1200 ? [1, 1.5] : [1, 2]}
             resize={{ scroll: false, debounce: { scroll: 50, resize: 0 } }}
           >
-            <ambientLight intensity={0.4} />
-            <directionalLight 
-              position={[10, 10, 5]} 
-              intensity={0.8}
-              castShadow
-              shadow-mapSize-width={1024}
-              shadow-mapSize-height={1024}
-            />
-            <pointLight position={[-10, -10, -10]} intensity={0.3} />
-            
+            <Lights />
             <Suspense fallback={null}>
               <TwistedTorus isMobile={false} />
             </Suspense>
@@ -244,6 +313,38 @@ function ScrollTriggered3DScene() {
         </Suspense>
     </div>
   )
+}
+
+// Lights component to avoid JSX type issues
+function Lights() {
+  const { scene } = useThree()
+
+  useEffect(() => {
+    // Ambient light
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.4)
+    scene.add(ambientLight)
+
+    // Directional light
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8)
+    directionalLight.position.set(10, 10, 5)
+    directionalLight.castShadow = true
+    directionalLight.shadow.mapSize.width = 1024
+    directionalLight.shadow.mapSize.height = 1024
+    scene.add(directionalLight)
+
+    // Point light
+    const pointLight = new THREE.PointLight(0xffffff, 0.3)
+    pointLight.position.set(-10, -10, -10)
+    scene.add(pointLight)
+
+    return () => {
+      scene.remove(ambientLight)
+      scene.remove(directionalLight)
+      scene.remove(pointLight)
+    }
+  }, [scene])
+
+  return null
 }
 
 export default ScrollTriggered3DScene
