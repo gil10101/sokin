@@ -91,7 +91,7 @@ interface BudgetFormData {
 }
 
 // Helper function to safely parse dates
-const safeParseDateToTimestamp = (dateValue: any): number => {
+const safeParseDateToTimestamp = (dateValue: unknown): number => {
   try {
     if (!dateValue) return 0
     
@@ -120,7 +120,7 @@ const safeParseDateToTimestamp = (dateValue: any): number => {
 }
 
 // Helper function to safely parse dates to Date objects
-const safeParseDate = (dateValue: any): Date | null => {
+const safeParseDate = (dateValue: unknown): Date | null => {
   try {
     if (!dateValue) return null
     
@@ -177,6 +177,7 @@ export default function BudgetsPage() {
     fetchBudgets()
     fetchExpenses()
     fetchCategories()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
 
   const fetchBudgets = async () => {
@@ -194,10 +195,11 @@ export default function BudgetsPage() {
       })) as Budget[]
 
       setBudgets(budgetsData)
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "There was an error loading your budgets"
       toast({
         title: "Error loading budgets",
-        description: error.message || "There was an error loading your budgets",
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {
@@ -219,7 +221,7 @@ export default function BudgetsPage() {
       })) as Expense[]
 
       setExpenses(expensesData)
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Don't show toast for expenses error since it's secondary data
     }
   }
@@ -416,10 +418,11 @@ export default function BudgetsPage() {
       setOpenDialog(false)
       fetchBudgets()
       fetchExpenses() // Refresh expenses to recalculate progress
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : `There was an error ${editingBudget ? "updating" : "adding"} your budget`
       toast({
         title: editingBudget ? "Error updating budget" : "Error adding budget",
-        description: error.message || `There was an error ${editingBudget ? "updating" : "adding"} your budget`,
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {
@@ -440,10 +443,11 @@ export default function BudgetsPage() {
         title: "Budget deleted",
         description: "The budget has been deleted successfully",
       })
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "There was an error deleting the budget"
       toast({
         title: "Error deleting budget",
-        description: error.message || "There was an error deleting the budget",
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {
@@ -754,7 +758,7 @@ function BudgetCard({ budget, onEdit, onDelete, calculateProgress }: BudgetCardP
   const isOverBudget = progress > 100
 
   // Safely parse dates with robust handling
-  const parseDate = (dateValue: any): Date | null => {
+  const parseDate = (dateValue: unknown): Date | null => {
     if (!dateValue) return null
     
     try {

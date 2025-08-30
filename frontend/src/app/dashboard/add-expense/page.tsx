@@ -24,6 +24,16 @@ import { ReceiptScanner } from "../../../components/dashboard/receipt-scanner"
 // Import the useNotifications hook
 import { useNotifications } from "../../../contexts/notifications-context"
 
+// Types for receipt data
+interface ReceiptData {
+  suggestedName?: string
+  amount?: number
+  suggestedCategory?: string
+  suggestedDescription?: string
+  date?: string
+  [key: string]: unknown
+}
+
 // Default categories if we can't fetch from Firestore
 const DEFAULT_CATEGORIES = [
   "Dining",
@@ -57,7 +67,7 @@ export default function AddExpensePage() {
   const [openCategoryPopover, setOpenCategoryPopover] = useState(false)
   const [openDatePopover, setOpenDatePopover] = useState(false)
   const [receiptImageUrl, setReceiptImageUrl] = useState("")
-  const [receiptData, setReceiptData] = useState<any>(null)
+  const [receiptData, setReceiptData] = useState<ReceiptData | null>(null)
 
   useEffect(() => {
     // Fetch categories from Firestore
@@ -98,7 +108,7 @@ export default function AddExpensePage() {
     fetchCategories()
   }, [user])
 
-  const handleReceiptData = (data: any) => {
+  const handleReceiptData = (data: ReceiptData) => {
     // Auto-fill form with receipt data
     if (data.suggestedName) setName(data.suggestedName)
     if (data.amount) setAmount(data.amount.toString())
@@ -177,10 +187,11 @@ export default function AddExpensePage() {
 
       // Redirect to expenses page
       router.push("/dashboard/expenses")
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "There was an error adding your expense"
       toast({
         title: "Error adding expense",
-        description: error.message || "There was an error adding your expense",
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {

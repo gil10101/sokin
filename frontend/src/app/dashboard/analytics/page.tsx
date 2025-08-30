@@ -14,9 +14,31 @@ import { BudgetProgressChart } from "../../../components/dashboard/budget-progre
 import { Tabs, TabsList, TabsTrigger } from "../../../components/ui/tabs"
 import { useToast } from "../../../hooks/use-toast"
 import { LoadingSpinner } from "../../../components/ui/loading-spinner"
+import { Expense } from "../../../lib/types"
+
+// Types for analytics data
+interface MonthlyTrendData {
+  total: number
+  count: number
+  average: number
+}
+
+interface CategoryTotalData {
+  total: number
+  count: number
+  percentage: number
+}
+
+interface ProcessedAnalyticsData {
+  monthlyTrends: Record<string, MonthlyTrendData>
+  categoryTotals: Record<string, CategoryTotalData>
+  totalExpenses: number
+  totalCategories: number
+  averageExpense: number
+}
 
 // Helper function to safely parse dates
-const safeParseDate = (dateValue: any): Date => {
+const safeParseDate = (dateValue: unknown): Date => {
   if (!dateValue) return new Date()
   
   try {
@@ -50,8 +72,8 @@ export default function AnalyticsPage() {
   const [user] = useAuthState(auth)
   const { toast } = useToast()
   const [loading, setLoading] = useState(true)
-  const [monthlyData, setMonthlyData] = useState<any[]>([])
-  const [categoryData, setCategoryData] = useState<any[]>([])
+  const [monthlyData, setMonthlyData] = useState<unknown[]>([])
+  const [categoryData, setCategoryData] = useState<unknown[]>([])
   const [timeframe, setTimeframe] = useState("6months")
 
   useEffect(() => {
@@ -99,10 +121,10 @@ export default function AnalyticsPage() {
 
 
         // Process data for monthly trends
-        const monthlyTrends: any = {}
-        const categoryTotals: any = {}
+        const monthlyTrends: Record<string, MonthlyTrendData> = {}
+        const categoryTotals: Record<string, CategoryTotalData> = {}
 
-        expenses.forEach((expense: any) => {
+        expenses.forEach((expense: Expense) => {
           const date = safeParseDate(expense.date)
           const monthYear = format(date, "MMM yyyy")
 
@@ -149,11 +171,12 @@ export default function AnalyticsPage() {
 
         setMonthlyData(monthlyDataArray)
         setCategoryData(categoryDataArray)
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : "There was an error loading your analytics data"
 
         toast({
           title: "Error loading analytics",
-          description: error.message || "There was an error loading your analytics data",
+          description: errorMessage,
           variant: "destructive",
         })
       } finally {
