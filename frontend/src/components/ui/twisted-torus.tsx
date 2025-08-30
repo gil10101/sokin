@@ -1,7 +1,7 @@
 "use client"
 
-import { useRef, useMemo } from "react"
-import { useFrame } from "@react-three/fiber"
+import { useRef, useMemo, useState, useEffect } from "react"
+import { useFrame, useThree } from "@react-three/fiber"
 import type { Group } from "three"
 import { BoxGeometry } from "three"
 import * as THREE from "three"
@@ -12,14 +12,57 @@ interface TwistedTorusProps {
 
 function TwistedTorus({ isMobile = false }: TwistedTorusProps) {
   const groupRef = useRef<Group>(null)
+  const { viewport } = useThree()
+  const [scaleFactor, setScaleFactor] = useState(1)
+
+  // Calculate responsive scale factor based on viewport
+  useEffect(() => {
+    const updateScaleFactor = () => {
+      const { width, height } = viewport
+      const aspectRatio = width / height
+      const minDimension = Math.min(width, height)
+
+      // Base scale factor
+      let factor = 1
+
+      // Adjust for very small screens
+      if (minDimension < 10) {
+        factor = 0.8
+      }
+      // Adjust for medium screens
+      else if (minDimension < 15) {
+        factor = 0.9
+      }
+      // Adjust for very wide aspect ratios
+      else if (aspectRatio > 2.2) {
+        factor = 0.85
+      }
+      // Adjust for very tall aspect ratios
+      else if (aspectRatio < 0.8) {
+        factor = 0.95
+      }
+
+      setScaleFactor(factor)
+    }
+
+    updateScaleFactor()
+
+    // Update on viewport changes
+    const handleResize = () => updateScaleFactor()
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [viewport])
 
   // Create simple circular arrangement of square panels
   const segments = useMemo(() => {
     const segmentArray = []
-    const numSegments = 80 // Number of panels around the circle
-    const radius = isMobile ? 4.5 : 6 // Radius of the circular path
-    const panelSize = isMobile ? 2.0 : 2.8 // Size of each square panel
-    const panelThickness = isMobile ? 0.15 : 0.2 // Thickness of each panel
+    const numSegments = isMobile ? 60 : 80 // Fewer segments on mobile for performance
+    const baseRadius = isMobile ? 4.5 : 6
+    const radius = baseRadius * scaleFactor // Scale radius based on viewport
+    const basePanelSize = isMobile ? 2.0 : 2.8
+    const panelSize = basePanelSize * scaleFactor // Scale panel size
+    const baseThickness = isMobile ? 0.15 : 0.2
+    const panelThickness = baseThickness * scaleFactor // Scale thickness
     const twistAmount = (6 * 90) * (Math.PI / 180) // 90 degrees total twist
     
     for (let i = 0; i < numSegments; i++) {
@@ -73,12 +116,16 @@ function TwistedTorus({ isMobile = false }: TwistedTorusProps) {
   })
 
   return (
-    <group ref={groupRef}>
+    <group ref={groupRef} scale={scaleFactor}>
       {segments.map((segment, index) => (
         <mesh
           key={index}
           geometry={segment.geometry}
-          position={segment.position}
+          position={[
+            segment.position[0] / scaleFactor, // Compensate for group scale
+            segment.position[1] / scaleFactor,
+            segment.position[2] / scaleFactor
+          ]}
           rotation={segment.rotation}
         >
           <meshStandardMaterial
