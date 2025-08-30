@@ -67,6 +67,7 @@ export function ExpenseChart({ timeframe = "30days" }: ExpenseChartProps) {
   const [loading, setLoading] = useState(true)
   const [chartData, setChartData] = useState<ChartDataPoint[]>([])
   const chartRef = useRef<HTMLDivElement>(null)
+  const [hasData, setHasData] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -157,6 +158,7 @@ export function ExpenseChart({ timeframe = "30days" }: ExpenseChartProps) {
       })
 
       setChartData(groupedData)
+      setHasData(groupedData.length > 0)
     } catch (error) {
       console.error("Error fetching expense data:", error)
       setChartData([])

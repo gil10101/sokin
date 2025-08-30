@@ -24,7 +24,7 @@ interface Expense {
 }
 
 interface OverviewAnalyticsProps {
-  expenses: Expense[]
+  expenses?: Expense[]
 }
 
 // Helper function to safely parse dates including Firebase Timestamps
@@ -62,12 +62,15 @@ export function OverviewAnalytics({ expenses }: OverviewAnalyticsProps) {
 
   // Trend analysis data
   const trendData = useMemo(() => {
+    // Ensure expenses is always an array
+    const safeExpenses = expenses || []
+    
     const monthlyData = Array.from({ length: 12 }, (_, i) => {
       const date = subMonths(new Date(), 11 - i)
       const monthStart = startOfMonth(date)
       const monthEnd = endOfMonth(date)
       
-      const monthExpenses = expenses.filter(expense => {
+      const monthExpenses = safeExpenses.filter(expense => {
         if (!expense.date) return false
         
         const expenseDate = safeParseDate(expense.date)

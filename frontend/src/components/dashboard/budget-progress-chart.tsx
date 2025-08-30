@@ -5,6 +5,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell, ResponsiveContainer, 
 import { motion } from "framer-motion"
 import { collection, query, where, getDocs } from "firebase/firestore"
 import { db } from "../../lib/firebase"
+import { useExpensesData } from "../../hooks/use-expenses-data"
 import { useAuth } from "../../contexts/auth-context"
 import { startOfMonth, endOfMonth, isWithinInterval } from "date-fns"
 import { useViewport } from "../../hooks/use-mobile"
@@ -71,6 +72,7 @@ export function BudgetProgressChart() {
   const [animatedData, setAnimatedData] = useState<BudgetProgressData[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const { data: expenses = [], isLoading: expensesLoading } = useExpensesData()
 
   // Responsive chart configuration
   const chartConfig = useMemo(() => {
@@ -102,10 +104,10 @@ export function BudgetProgressChart() {
   }, [isMobile, isTablet])
 
   useEffect(() => {
-    if (user) {
+    if (user && !expensesLoading) {
       fetchBudgetData()
     }
-  }, [user])
+  }, [user, expensesLoading, expenses])
 
   useEffect(() => {
     if (data.length > 0) {
@@ -142,15 +144,8 @@ export function BudgetProgressChart() {
         ...doc.data(),
       })) as Budget[]
 
-      // Fetch expenses
-      const expensesRef = collection(db, "expenses")
-      const expensesQuery = query(expensesRef, where("userId", "==", user.uid))
-      const expensesSnapshot = await getDocs(expensesQuery)
-      
-      const expenses = expensesSnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Expense[]
+      // Use shared expenses data
+      const sharedExpenses = expenses as Expense[]
 
       // Process data to create budget progress
       const currentMonth = new Date()
@@ -162,7 +157,7 @@ export function BudgetProgressChart() {
       // Group budgets by category or use budget name
       budgets.forEach((budget) => {
         // Filter expenses for this budget's timeframe and categories
-        const relevantExpenses = expenses.filter((expense) => {
+        const relevantExpenses = sharedExpenses.filter((expense) => {
           const expenseDate = safeParseDate(expense.date)
           const isInTimeRange = isWithinInterval(expenseDate, { start: monthStart, end: monthEnd })
           

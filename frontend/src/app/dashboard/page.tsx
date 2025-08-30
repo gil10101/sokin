@@ -4,29 +4,51 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 import { PieChart, PlusCircle, CreditCard, ChevronRight, Calendar, Search, TrendingUp } from "lucide-react"
-import { DashboardSidebar } from "../../components/dashboard/sidebar"
-import { ExpenseChart } from "../../components/dashboard/expense-chart"
-import { CategoryBreakdown } from "../../components/dashboard/category-breakdown"
-import { RecentTransactions } from "../../components/dashboard/recent-transactions"
-import { MetricCard } from "../../components/dashboard/metric-card"
+import { DashboardSidebar } from "@/components/dashboard/sidebar"
+import dynamic from "next/dynamic"
+import Image from "next/image"
+// Lazy load heavy chart components with loading states
+const ExpenseChart = dynamic(() => import("../../components/dashboard/expense-chart").then(mod => ({ default: mod.ExpenseChart })), {
+  ssr: false,
+  loading: () => <div className="h-80 bg-cream/5 rounded-lg animate-pulse" />
+})
+const CategoryBreakdown = dynamic(() => import("../../components/dashboard/category-breakdown").then(mod => ({ default: mod.CategoryBreakdown })), {
+  ssr: false,
+  loading: () => <div className="h-64 bg-cream/5 rounded-lg animate-pulse" />
+})
+const AdvancedAnalytics = dynamic(() => import("../../components/dashboard/advanced-analytics").then(mod => ({ default: mod.AdvancedAnalytics })), {
+  ssr: false,
+  loading: () => <div className="h-40 bg-cream/5 rounded-lg animate-pulse" />
+})
+const StockMarket = dynamic(() => import("../../components/dashboard/stock-market").then(mod => ({ default: mod.StockMarket })), {
+  ssr: false,
+  loading: () => <div className="h-96 bg-cream/5 rounded-lg animate-pulse" />
+})
 
-import { SavingsGoals } from "../../components/dashboard/savings-goals"
-import { AdvancedAnalytics } from "../../components/dashboard/advanced-analytics"
-import { BillReminders } from "../../components/dashboard/bill-reminders"
-import { StockMarket } from "../../components/dashboard/stock-market"
-import { Input } from "../../components/ui/input"
-import { useAuth } from "../../contexts/auth-context"
+// Import lightweight components normally
+import { RecentTransactions } from "@/components/dashboard/recent-transactions"
+import { MetricCard } from "@/components/dashboard/metric-card"
+import { SavingsGoals } from "@/components/dashboard/savings-goals"
+import { BillReminders } from "@/components/dashboard/bill-reminders"
+import { Input } from "@/components/ui/input"
+import { useAuth } from "@/contexts/auth-context"
 import { useRouter } from "next/navigation"
-import { MotionContainer } from "../../components/ui/motion-container"
-import { LoadingSpinner } from "../../components/ui/loading-spinner"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../../components/ui/dropdown-menu"
-import { NotificationsDropdown } from "../../components/notifications/notifications-dropdown"
-import { collection, query, where, orderBy, limit, getDocs } from "firebase/firestore"
-import { db } from "../../lib/firebase"
-import { api } from "../../lib/api"
+// Lazy load motion container to reduce initial bundle
+const MotionContainer = dynamic(() => import("../../components/ui/motion-container").then(mod => ({ default: mod.MotionContainer })), {
+  ssr: false,
+  loading: () => <div />
+})
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { NotificationsDropdown } from "@/components/notifications/notifications-dropdown"
+import { api } from "@/lib/api"
+import { useQueryClient } from "@tanstack/react-query"
 import Link from "next/link"
-import { StackedBarChart } from "../../components/dashboard/stacked-bar-chart"
-import type { NetWorthCalculation } from "../../lib/types"
+const StackedBarChart = dynamic(() => import("../../components/dashboard/stacked-bar-chart").then(mod => ({ default: mod.StackedBarChart })), {
+  ssr: false,
+  loading: () => <div className="h-64 bg-cream/5 rounded-lg animate-pulse" />
+})
+import type { NetWorthCalculation } from "@/lib/types"
 
 interface Expense {
   id: string
@@ -49,6 +71,7 @@ interface Notification {
 }
 
 export default function DashboardPage() {
+  const queryClient = useQueryClient()
   const [collapsed, setCollapsed] = useState(false)
   const { user, loading: authLoading } = useAuth()
   const router = useRouter()
@@ -68,11 +91,10 @@ export default function DashboardPage() {
     setMounted(true)
   }, [])
 
-  // Fetch notifications when user is available
+  // Fetch dashboard data when user is available
   useEffect(() => {
     if (user && mounted) {
-      fetchNotifications()
-      fetchExpenses()
+      fetchDashboard()
       fetchNetWorth()
     }
   }, [user, mounted])
@@ -83,49 +105,40 @@ export default function DashboardPage() {
     setHasUnreadNotifications(unreadExists)
   }, [notifications])
 
-  const fetchNotifications = async () => {
+  const fetchDashboard = async () => {
     if (!user) return
-
-    try {
-      const notificationsRef = collection(db, "notifications")
-      const q = query(
-        notificationsRef, 
-        where("userId", "==", user.uid), 
-        orderBy("createdAt", "desc"),
-        limit(10)
-      )
-
-      const querySnapshot = await getDocs(q)
-      const notificationsData = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Notification[]
-
-      setNotifications(notificationsData)
-    } catch (error) {
-
-      // Fallback to empty notifications if there's an error
-      setNotifications([])
+    
+    // Check if we already have cached data
+    const cachedData = queryClient.getQueryData(['dashboard', user.uid])
+    if (cachedData) {
+      const data = cachedData as { expenses: Expense[]; budgets: any[]; notifications: Notification[] }
+      setExpenses(data.expenses || [])
+      setBudgets(data.budgets || [])
+      setNotifications(data.notifications || [])
+      return
     }
-  }
-
-  const fetchExpenses = async () => {
+    
     try {
-      const expensesRef = collection(db, "expenses")
-      const q = query(
-        expensesRef,
-        where("userId", "==", user?.uid),
-        orderBy("date", "desc"),
-        limit(100)
+      const token = await user.getIdToken()
+      const data = await api.get<{ expenses: Expense[]; budgets: any[]; notifications: Notification[] }>(
+        'dashboard',
+        { token }
       )
-      const snapshot = await getDocs(q)
-      const expensesData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Expense[]
-      setExpenses(expensesData)
-    } catch (error) {
+      setExpenses(data.expenses || [])
+      setBudgets(data.budgets || [])
+      setNotifications(data.notifications || [])
 
+      // Cache dashboard data
+      queryClient.setQueryData(['dashboard', user.uid], data, {
+        updatedAt: Date.now(),
+      })
+      
+      // Prime React Query cache for shared expenses hook consumers
+      queryClient.setQueryData(['expenses', user.uid, null], data.expenses || [])
+    } catch (error) {
+      setExpenses([])
+      setBudgets([])
+      setNotifications([])
     }
   }
 
@@ -147,35 +160,18 @@ export default function DashboardPage() {
     }
 
     setShowSearchResults(true)
-    
-    try {
-      const expensesRef = collection(db, "expenses")
-      const q = query(
-        expensesRef,
-        where("userId", "==", user?.uid),
-        orderBy("date", "desc"),
-        limit(20)
-      )
-      const snapshot = await getDocs(q)
-      const allExpenses = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Expense[]
-
-      // Filter client-side for name matches
-      const filtered = allExpenses.filter(expense => 
-        expense.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        expense.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        expense.description?.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-
-      setSearchResults(filtered)
-    } catch (error) {
-
-      setSearchResults([])
-    } finally {
-      setShowSearchResults(true)
-    }
+    // Filter locally from loaded expenses with improved performance
+    const filtered = expenses
+      .slice(0, 50) // Reduced from 200 to 50 for better performance
+      .filter(expense => {
+        const term = searchTerm.toLowerCase()
+        return (
+          (expense.name || '').toLowerCase().includes(term) ||
+          (expense.category || '').toLowerCase().includes(term) ||
+          (expense.description || '').toLowerCase().includes(term)
+        )
+      })
+    setSearchResults(filtered)
   }
 
   const handleSearch = (e: React.FormEvent) => {
@@ -263,7 +259,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center ml-12 md:ml-0">
                 <Link href="/" className="hidden md:flex items-center hover:opacity-80 transition-opacity mr-3">
-                  <img src="/sokin-icon.png" alt="Sokin" className="h-10 w-10" />
+                  <Image src="/sokin-icon.png" alt="Sokin" width={40} height={40} className="h-10 w-10" priority />
                 </Link>
                 <div>
                   <h1 className="text-xl sm:text-2xl md:text-3xl font-medium font-outfit">Dashboard</h1>

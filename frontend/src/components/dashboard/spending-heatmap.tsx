@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react"
 import { format, startOfWeek, addDays, addWeeks, subWeeks } from "date-fns"
 import { collection, query, where, getDocs } from "firebase/firestore"
 import { db } from "../../lib/firebase"
+import { useExpensesData } from "../../hooks/use-expenses-data"
 import { useAuth } from "../../contexts/auth-context"
 import { useViewport } from "../../hooks/use-mobile"
 
@@ -81,37 +82,26 @@ export function SpendingHeatmap() {
     }
   }, [isMobile, isTablet])
 
-  useEffect(() => {
-    if (user) {
-      fetchExpenseData()
-    }
-  }, [user])
+  const { data: expenses = [], isLoading: expensesLoading } = useExpensesData()
 
-  const fetchExpenseData = async () => {
+  useEffect(() => {
+    if (user && !expensesLoading) {
+      processExpenseData()
+    }
+  }, [user, expensesLoading, expenses])
+
+  const processExpenseData = () => {
     if (!user) return
 
     setLoading(true)
     try {
-      const expensesRef = collection(db, "expenses")
-      const q = query(expensesRef, where("userId", "==", user.uid))
-      
-      const querySnapshot = await getDocs(q)
-      const expenses = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Expense[]
-
-      // Group expenses by date
       const expensesByDate: Record<string, number> = {}
-      
-      expenses.forEach((expense) => {
+      ;(expenses as Expense[]).forEach((expense) => {
         const dateKey = format(safeParseDate(expense.date), "yyyy-MM-dd")
         expensesByDate[dateKey] = (expensesByDate[dateKey] || 0) + expense.amount
       })
-
       setData(expensesByDate)
     } catch (error) {
-      console.error("Error fetching expense data for heatmap:", error)
       setData({})
     } finally {
       setLoading(false)

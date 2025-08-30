@@ -7,6 +7,7 @@ import { LoadingSpinner } from "../../components/ui/loading-spinner"
 import { motion } from "framer-motion"
 import { collection, query, where, getDocs } from "firebase/firestore"
 import { db } from "../../lib/firebase"
+import { useExpensesData } from "../../hooks/use-expenses-data"
 import { useAuth } from "../../contexts/auth-context"
 import { useViewport } from "../../hooks/use-mobile"
 import { format, subMonths, startOfMonth, endOfMonth, eachMonthOfInterval } from "date-fns"
@@ -85,49 +86,36 @@ export function StackedBarChart({ timeframe = "year" }: StackedBarChartProps) {
   const [categories, setCategories] = useState<string[]>([])
   const chartRef = useRef<HTMLDivElement>(null)
 
+  const { data: allExpenses = [], isLoading: expensesLoading } = useExpensesData()
+
   useEffect(() => {
     setMounted(true)
   }, [])
 
   useEffect(() => {
-    if (user && mounted) {
-      fetchExpenseData()
+    if (user && mounted && !expensesLoading) {
+      processExpenseData()
     }
-  }, [user, mounted, timeframe])
+  }, [user, mounted, timeframe, expensesLoading, allExpenses])
 
-  const fetchExpenseData = async () => {
+  const processExpenseData = () => {
     if (!user) return
 
     setLoading(true)
     try {
-      // Calculate date range - always show last 6 months for stacked bar
       const endDate = new Date()
       const startDate = subMonths(endDate, 6)
 
-      // Fetch expenses from Firebase
-      const expensesRef = collection(db, "expenses")
-      const q = query(expensesRef, where("userId", "==", user.uid))
-
-      const querySnapshot = await getDocs(q)
-      const allExpenses = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Expense[]
-
-      // Filter expenses by date range
-      const filteredExpenses = allExpenses.filter((expense) => {
+      const filteredExpenses = (allExpenses as Expense[]).filter((expense) => {
         const expenseDate = safeParseDate(expense.date)
         return expenseDate >= startDate && expenseDate <= endDate
       })
 
-      // Get all unique categories
       const uniqueCategories = Array.from(new Set(filteredExpenses.map(expense => expense.category)))
       setCategories(uniqueCategories)
 
-      // Generate months in the range
       const monthIntervals = eachMonthOfInterval({ start: startDate, end: endDate })
 
-      // Group expenses by month and category
       const groupedData = monthIntervals.map((monthDate) => {
         const monthStart = startOfMonth(monthDate)
         const monthEnd = endOfMonth(monthDate)
@@ -137,31 +125,26 @@ export function StackedBarChart({ timeframe = "year" }: StackedBarChartProps) {
           return expenseDate >= monthStart && expenseDate <= monthEnd
         })
 
-        // Create month data object
         const monthData: ChartDataPoint = {
           month: format(monthDate, "MMM yyyy"),
         }
 
-        // Add spending for each category
         uniqueCategories.forEach((category) => {
           const categoryTotal = monthExpenses
             .filter(expense => expense.category === category)
-            .reduce((sum, expense) => sum + Math.abs(expense.amount), 0) // Ensure positive values
+            .reduce((sum, expense) => sum + Math.abs(expense.amount), 0)
           monthData[category] = categoryTotal
         })
 
         return monthData
       })
 
-      // Filter out months with no data and reverse to show most recent month at top
       const dataWithValues = groupedData.filter(monthData => 
         uniqueCategories.some(category => (monthData[category] as number) > 0)
       )
       const reversedData = dataWithValues.reverse()
       setChartData(reversedData)
-
     } catch (error) {
-
       setChartData([])
       setCategories([])
     } finally {

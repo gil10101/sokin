@@ -6,6 +6,7 @@ import { ChevronRight, X, Calendar, Filter, ShoppingBag, Coffee, Home, Car, Uten
 import { useRouter } from "next/navigation"
 import { collection, query, where, orderBy, limit, getDocs } from "firebase/firestore"
 import { db } from "../../lib/firebase"
+import { useExpensesData } from "../../hooks/use-expenses-data"
 import { useAuth } from "../../contexts/auth-context"
 import { useViewport } from "../../hooks/use-mobile"
 import { format, subDays, isAfter } from "date-fns"
@@ -124,18 +125,19 @@ export function CategoryBreakdown() {
     setMounted(true)
   }, [])
 
-  useEffect(() => {
-    if (user && mounted) {
-      fetchCategoryData()
-    }
-  }, [user, mounted, dateRange])
+  const { data: expenses = [], isLoading: expensesLoading } = useExpensesData()
 
-  const fetchCategoryData = async () => {
+  useEffect(() => {
+    if (user && mounted && !expensesLoading) {
+      processCategoryData()
+    }
+  }, [user, mounted, dateRange, expensesLoading, expenses])
+
+  const processCategoryData = () => {
     if (!user) return
 
     setLoading(true)
     try {
-      // Calculate date range
       const endDate = new Date()
       let startDate = new Date()
 
@@ -159,43 +161,25 @@ export function CategoryBreakdown() {
           startDate = subDays(endDate, 30)
       }
 
-      // Fetch expenses
-      const expensesRef = collection(db, "expenses")
-      const q = query(
-        expensesRef,
-        where("userId", "==", user.uid),
-        orderBy("date", "desc")
-      )
-
-      const querySnapshot = await getDocs(q)
-      const allExpenses = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Expense[]
-
-      // Filter expenses by date range
-      const filteredExpenses = allExpenses.filter((expense) => {
+      const filteredExpenses = (expenses as Expense[]).filter((expense) => {
         const expenseDate = safeParseDate(expense.date)
         return isAfter(expenseDate, startDate) || expenseDate.getTime() === startDate.getTime()
       })
 
-      // Group by category
       const categoryTotals: Record<string, number> = {}
-      const transactionsByCategory: CategoryTransactions = {}
+      const txByCategory: CategoryTransactions = {}
 
       filteredExpenses.forEach((expense) => {
         const category = expense.category || "Other"
         categoryTotals[category] = (categoryTotals[category] || 0) + expense.amount
-        
-        if (!transactionsByCategory[category]) {
-          transactionsByCategory[category] = []
+        if (!txByCategory[category]) {
+          txByCategory[category] = []
         }
-        transactionsByCategory[category].push(expense)
+        txByCategory[category].push(expense)
       })
 
-      // Convert to array and calculate percentages
       const total = Object.values(categoryTotals).reduce((sum, amount) => sum + amount, 0)
-      
+
       const categoryArray = Object.entries(categoryTotals)
         .map(([name, value], index) => ({
           name,
@@ -204,12 +188,11 @@ export function CategoryBreakdown() {
           percentage: total > 0 ? Math.round((value / total) * 100) : 0,
         }))
         .sort((a, b) => b.value - a.value)
-        .slice(0, 5) // Show top 5 categories
+        .slice(0, 5)
 
       setCategoryData(categoryArray)
-      setTransactionsByCategory(transactionsByCategory)
+      setTransactionsByCategory(txByCategory)
     } catch (error) {
-
       setCategoryData([])
       setTransactionsByCategory({})
     } finally {

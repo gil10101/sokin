@@ -15,7 +15,7 @@ interface Expense {
 }
 
 interface SpendingHeatmapAnalyticsProps {
-  expenses: Expense[]
+  expenses?: Expense[]
 }
 
 // Helper function to safely parse dates including Firebase Timestamps
@@ -53,12 +53,15 @@ export function SpendingHeatmapAnalytics({ expenses }: SpendingHeatmapAnalyticsP
 
   // Process spending data for heatmap
   const spendingHeatmapData = useMemo(() => {
+    // Ensure expenses is always an array
+    const safeExpenses = expenses || []
+    
     const endDate = new Date()
     const startDate = subMonths(endDate, 12)
     const dateRange = eachDayOfInterval({ start: startDate, end: endDate })
     
     const dailySpending = dateRange.map(date => {
-      const dayExpenses = expenses.filter(expense => {
+      const dayExpenses = safeExpenses.filter(expense => {
         // Validate and sanitize the expense date
         if (!expense.date) return false
         
