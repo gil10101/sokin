@@ -5,7 +5,7 @@ import { Bell, Check, Trash2, X, Info, AlertTriangle, CheckCircle, AlertCircle }
 import { Button } from "../../components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "../../components/ui/popover"
 import { useNotifications, type NotificationType } from "../../contexts/notifications-context"
-import { cn } from "../../../../lib/utils"
+import { cn } from "@/lib/utils"
 import { formatDistanceToNow } from "date-fns"
 import Link from "next/link"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs"
