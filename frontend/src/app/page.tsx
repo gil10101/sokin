@@ -19,6 +19,30 @@ const MobileHero3DScene = dynamic(() => import("../components/ui/mobile-hero-3d-
 })
 import { useIsMobile } from "../hooks/use-mobile"
 
+// Custom hook for responsive 3D breakpoints
+const useResponsiveBreakpoint = () => {
+  const [breakpoint, setBreakpoint] = useState<'mobile' | 'tablet' | 'desktop'>('desktop')
+
+  useEffect(() => {
+    const updateBreakpoint = () => {
+      const width = window.innerWidth
+      if (width < 640) {
+        setBreakpoint('mobile')
+      } else if (width < 1024) {
+        setBreakpoint('tablet')
+      } else {
+        setBreakpoint('desktop')
+      }
+    }
+
+    updateBreakpoint()
+    window.addEventListener('resize', updateBreakpoint)
+    return () => window.removeEventListener('resize', updateBreakpoint)
+  }, [])
+
+  return breakpoint
+}
+
 export default function LandingPage() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const { scrollYProgress } = useScroll()
@@ -30,6 +54,7 @@ export default function LandingPage() {
   const { user, loading } = useAuth()
   const [mounted, setMounted] = useState(false)
   const isMobile = useIsMobile()
+  const breakpoint = useResponsiveBreakpoint()
   const [currentFeature, setCurrentFeature] = useState(0)
   const [touchStart, setTouchStart] = useState(0)
   const [touchEnd, setTouchEnd] = useState(0)
@@ -295,8 +320,8 @@ export default function LandingPage() {
       </header>
       <main className="flex-1 relative z-10">
         <section id="hero" className={`min-h-screen flex flex-col justify-center relative ${isMobile ? 'pt-16 pb-12' : 'pt-12 sm:pt-16 pb-8'}`}>
-          {/* Mobile 3D Scene at the top */}
-          {isMobile && (
+          {/* Responsive 3D Scene - mobile/tablet get inline scene */}
+          {(breakpoint === 'mobile' || breakpoint === 'tablet') && (
             <div className="relative z-10 mt-4 mb-8">
               <MobileHero3DScene />
             </div>
@@ -306,7 +331,7 @@ export default function LandingPage() {
             <div className={`flex flex-col lg:flex-row gap-0 lg:gap-8 items-center ${isMobile ? 'min-h-[50vh]' : 'min-h-[80vh]'} ${isMobile ? 'mt-0' : 'mt-8 lg:mt-12'} w-full`}>
               {/* Left side - Text content */}
               <motion.div
-                className="flex flex-col justify-center text-center lg:text-left flex-shrink-0 lg:w-3/5 order-2 lg:order-1"
+                className="flex flex-col justify-center text-center flex-shrink-0 lg:w-1/2 order-2 lg:order-1"
                 initial={isMobile ? { opacity: 0 } : { opacity: 0, x: -50 }}
                 animate={isMobile ? { opacity: 1 } : { opacity: 1, x: 0 }}
                 transition={isMobile ? { duration: 0.8, ease: "easeOut" } : { duration: 1.5, ease: "easeOut" }}
@@ -314,10 +339,10 @@ export default function LandingPage() {
                 <h1 className={`${isMobile ? 'text-5xl mb-4' : 'text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl mb-6'} font-medium tracking-tight font-outfit`}>
                   Sokin
                 </h1>
-                <p className={`${isMobile ? 'text-xl mb-10' : 'text-lg md:text-xl lg:text-2xl mb-8'} text-cream/70 font-outfit max-w-md mx-auto lg:mx-0`}>
+                <p className={`${isMobile ? 'text-xl mb-10' : 'text-lg md:text-xl lg:text-2xl mb-8'} text-cream/70 font-outfit max-w-md mx-auto`}>
                   Personal finance, redefined.
                 </p>
-                <div className={`flex flex-col ${isMobile ? 'gap-4' : 'sm:flex-row gap-4'} justify-center lg:justify-start`}>
+                <div className={`flex flex-col ${isMobile ? 'gap-4' : 'sm:flex-row gap-4'} justify-center`}>
                   <Link
                     href={user ? "/dashboard" : "/signup"}
                     className={`inline-flex ${isMobile ? 'h-14 px-10 text-base' : 'h-12 px-8 text-sm'} items-center justify-center rounded-full bg-cream text-dark font-medium transition-all hover:bg-cream/90 group`}
@@ -335,8 +360,8 @@ export default function LandingPage() {
               </motion.div>
 
               {/* Right side - Space for 3D Scene (desktop only) */}
-              {!isMobile && (
-                <div className="relative w-full lg:w-2/5 h-[60vh] min-h-[500px] max-h-[800px] order-1 lg:order-2 -mt-4 lg:mt-0 pointer-events-none">
+              {breakpoint === 'desktop' && (
+                <div className="relative w-full lg:w-1/2 h-[60vh] min-h-[500px] max-h-[800px] order-1 lg:order-2 -mt-4 lg:mt-0 pointer-events-none">
                   {/* This space is reserved for the 3D scene which now floats in the background */}
                 </div>
               )}
@@ -362,13 +387,13 @@ export default function LandingPage() {
           <div className="container mx-auto px-6 md:px-12 lg:px-16 w-full">
             <div className={`flex flex-col lg:flex-row items-center justify-between ${isMobile ? 'gap-8' : 'min-h-[60vh]'}`}>
               {/* Left side - Space for 3D Scene */}
-              <div className="hidden lg:block lg:w-2/5">
+              <div className="hidden lg:block lg:w-1/2">
                 {/* Space reserved for 3D scene */}
               </div>
-              
+
               {/* Right side - Content */}
               <motion.div
-                className={`w-full lg:w-3/5 lg:pl-12 ${isMobile ? 'text-center' : ''}`}
+                className="w-full lg:w-1/2 text-center"
                 initial={isMobile ? { opacity: 0 } : { opacity: 0, y: 20 }}
                 whileInView={isMobile ? { opacity: 1 } : { opacity: 1, y: 0 }}
                 viewport={{ once: true }}
