@@ -23,7 +23,7 @@ import { errorHandler } from './middleware/errorHandler';
 
 // Create Express app
 const app = express();
-const port = process.env.PORT || 5001;
+const port = process.env.PORT || '5001';
 
 // Basic middleware
 app.use(helmet());
@@ -51,6 +51,7 @@ import goalsRoutes from './routes/goalsRoutes';
 import billRemindersRoutes from './routes/billRemindersRoutes';
 import stocksRoutes from './routes/stocksRoutes';
 import netWorthRoutes from './routes/netWorthRoutes';
+import dashboardRoutes from './routes/dashboard';
 
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/users', userRoutes);
@@ -61,6 +62,7 @@ app.use('/api/goals', goalsRoutes);
 app.use('/api/bill-reminders', billRemindersRoutes);
 app.use('/api/stocks', stocksRoutes);
 app.use('/api/net-worth', netWorthRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // Health check route
 app.get('/health', (req: Request, res: Response) => {
@@ -84,7 +86,7 @@ app.use((req: Request, res: Response) => {
 app.use(errorHandler);
 
 // Start server
-app.listen(port, () => {
+app.listen(Number(port), () => {
   logger.info(`Server running on port ${port}`);
   if (process.env.NODE_ENV === 'development') {
     logger.info('Running in development mode with mock data');
