@@ -25,7 +25,7 @@ const getApiBaseUrl = () => {
 /**
  * API client for making authenticated requests to the backend
  */
-export async function apiClient<T = any>(
+export async function apiClient<T = unknown>(
   endpoint: string,
   { data, token, headers, ...customConfig }: ApiClientOptions = {}
 ): Promise<T> {
@@ -82,18 +82,18 @@ interface ApiClientOptions extends Omit<RequestInit, 'body'> {
 
 // Convenience methods for different request types
 export const api = {
-  get: <T = any>(endpoint: string, options?: ApiClientOptions) => 
+  get: <T = unknown>(endpoint: string, options?: ApiClientOptions) =>
     apiClient<T>(endpoint, { ...options, method: 'GET' }),
-  
-  post: <T = any>(endpoint: string, data: Record<string, unknown>, options?: ApiClientOptions) => 
+
+  post: <T = unknown>(endpoint: string, data: Record<string, unknown>, options?: ApiClientOptions) =>
     apiClient<T>(endpoint, { ...options, method: 'POST', data }),
-  
-  put: <T = any>(endpoint: string, data: Record<string, unknown>, options?: ApiClientOptions) => 
+
+  put: <T = unknown>(endpoint: string, data: Record<string, unknown>, options?: ApiClientOptions) =>
     apiClient<T>(endpoint, { ...options, method: 'PUT', data }),
-  
-  delete: <T = any>(endpoint: string, options?: ApiClientOptions) => 
+
+  delete: <T = unknown>(endpoint: string, options?: ApiClientOptions) =>
     apiClient<T>(endpoint, { ...options, method: 'DELETE' }),
-  
-  patch: <T = any>(endpoint: string, data: Record<string, unknown>, options?: ApiClientOptions) => 
+
+  patch: <T = unknown>(endpoint: string, data: Record<string, unknown>, options?: ApiClientOptions) =>
     apiClient<T>(endpoint, { ...options, method: 'PATCH', data }),
 }; 

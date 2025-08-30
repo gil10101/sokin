@@ -15,13 +15,29 @@ import { useRouter } from "next/navigation"
 // Import the NotificationsProvider
 import { NotificationsProvider } from "./notifications-context"
 
+interface UserData {
+  name: string
+  email: string
+  createdAt: string
+  settings: {
+    currency: string
+    theme: string
+    notifications: {
+      email: boolean
+      push: boolean
+      monthlyReport: boolean
+      budgetAlerts: boolean
+    }
+  }
+}
+
 interface AuthContextType {
   user: User | null
   loading: boolean
   signUp: (name: string, email: string, password: string) => Promise<void>
   signIn: (email: string, password: string) => Promise<void>
   signOut: () => Promise<void>
-  userData: any
+  userData: UserData | null
 }
 
 // Create context with a default value
@@ -42,7 +58,7 @@ export function useAuth() {
 // AuthProvider component
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
-  const [userData, setUserData] = useState<any>(null)
+  const [userData, setUserData] = useState<UserData | null>(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
   const unsubscribeRef = useRef<(() => void) | null>(null)
@@ -65,10 +81,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           const userDoc = await getDoc(doc(db, "users", currentUser.uid))
           if (userDoc.exists()) {
-            setUserData(userDoc.data())
+            setUserData(userDoc.data() as UserData)
           }
         } catch (error) {
-
+          console.warn("Failed to fetch user data:", error)
+          // Don't throw the error to prevent auth state issues
         }
       } else {
         setUserData(null)
@@ -122,6 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       router.push("/dashboard")
     } catch (error) {
+      console.error("Sign up error:", error)
       throw error
     }
   }
@@ -131,6 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await signInWithEmailAndPassword(auth, email, password)
       router.push("/dashboard")
     } catch (error) {
+      console.error("Sign in error:", error)
       throw error
     }
   }
@@ -140,7 +159,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await firebaseSignOut(auth)
       router.push("/")
     } catch (error) {
-
+      console.error("Sign out error:", error)
+      // Still redirect even if sign out fails
+      router.push("/")
     }
   }
 
