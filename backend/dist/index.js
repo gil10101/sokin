@@ -22,7 +22,7 @@ const rateLimiter_1 = require("./middleware/rateLimiter");
 const errorHandler_1 = require("./middleware/errorHandler");
 // Create Express app
 const app = (0, express_1.default)();
-const port = process.env.PORT || 5001;
+const port = process.env.PORT || '5001';
 // Basic middleware
 app.use((0, helmet_1.default)());
 app.use((0, cors_1.default)({
@@ -47,6 +47,7 @@ const goalsRoutes_1 = __importDefault(require("./routes/goalsRoutes"));
 const billRemindersRoutes_1 = __importDefault(require("./routes/billRemindersRoutes"));
 const stocksRoutes_1 = __importDefault(require("./routes/stocksRoutes"));
 const netWorthRoutes_1 = __importDefault(require("./routes/netWorthRoutes"));
+const dashboard_1 = __importDefault(require("./routes/dashboard"));
 app.use('/api/expenses', expenses_1.default);
 app.use('/api/users', users_1.default);
 app.use('/api/budgets', budgets_1.default);
@@ -56,6 +57,7 @@ app.use('/api/goals', goalsRoutes_1.default);
 app.use('/api/bill-reminders', billRemindersRoutes_1.default);
 app.use('/api/stocks', stocksRoutes_1.default);
 app.use('/api/net-worth', netWorthRoutes_1.default);
+app.use('/api/dashboard', dashboard_1.default);
 // Health check route
 app.get('/health', (req, res) => {
     res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -74,7 +76,7 @@ app.use((req, res) => {
 // Global error handler
 app.use(errorHandler_1.errorHandler);
 // Start server
-app.listen(port, () => {
+app.listen(Number(port), () => {
     logger_1.default.info(`Server running on port ${port}`);
     if (process.env.NODE_ENV === 'development') {
         logger_1.default.info('Running in development mode with mock data');
