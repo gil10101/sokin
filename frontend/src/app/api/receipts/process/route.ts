@@ -29,12 +29,13 @@ export async function POST(request: NextRequest) {
     const data = await response.json()
     
     return NextResponse.json(data, { status: response.status })
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
 
     return NextResponse.json(
-      { 
+      {
         error: 'Internal server error',
-        details: error.message 
+        details: errorMessage
       },
       { status: 500 }
     )

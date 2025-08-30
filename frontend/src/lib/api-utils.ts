@@ -1,5 +1,4 @@
 import { toast } from '../components/ui/use-toast';
-import { logMessage } from './sentry';
 
 /**
  * Check if the backend API is reachable
@@ -26,9 +25,7 @@ export async function checkBackendConnectivity(): Promise<boolean> {
     const data = await response.json();
     return data.status === 'ok';
   } catch (error) {
-    if (error instanceof Error) {
-      logMessage(`Backend connectivity check failed: ${error.message}`, 'warning');
-    }
+    // Backend connectivity check failed
     return false;
   }
 }
@@ -50,14 +47,12 @@ export function setupConnectivityMonitoring(intervalMs = 30000): () => void {
         title: 'Connection Issue',
         description: 'The server is currently unavailable. Some features may not work.',
       });
-      logMessage('Backend connectivity lost', 'warning');
     } else if (!lastStatus && isConnected) {
       // Backend is available again
       toast({
         title: 'Connection Restored',
         description: 'The server connection has been restored.',
       });
-      logMessage('Backend connectivity restored', 'info');
     }
     
     lastStatus = isConnected;
