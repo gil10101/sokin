@@ -6,16 +6,15 @@ import { useAuth } from '../contexts/auth-context';
 /**
  * A hook for making API calls with loading and error state management
  */
-export function useApi<T = any>() {
+export function useApi<T = unknown>() {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { user } = useAuth();
 
   const execute = useCallback(
-    async <R = T>(
-      apiMethod: (...args: any[]) => Promise<R>,
-      ...args: any[]
+    async <R>(
+      apiCall: () => Promise<R>
     ): Promise<R | null> => {
       // Reset state before starting a new request
       setIsLoading(true);
@@ -27,16 +26,16 @@ export function useApi<T = any>() {
           throw new Error('User is not authenticated');
         }
 
-        const result = await apiMethod(...args);
+        const result = await apiCall();
         setData(result as unknown as T);
         setIsLoading(false);
         return result;
       } catch (err) {
-        const apiError: ApiError = 
-          err instanceof Error 
-            ? { message: err.message } 
+        const apiError: ApiError =
+          err instanceof Error
+            ? { message: err.message }
             : { message: 'An unknown error occurred' };
-            
+
         setError(apiError);
         setIsLoading(false);
         return null;
@@ -46,32 +45,32 @@ export function useApi<T = any>() {
   );
 
   const get = useCallback(
-    <R = T>(endpoint: string, options?: Parameters<typeof api.get>[1]) => 
-      execute<R>(api.get, endpoint, options),
+    <R = T>(endpoint: string, options?: Parameters<typeof api.get>[1]) =>
+      execute<R>(() => api.get<R>(endpoint, options)),
     [execute]
   );
 
   const post = useCallback(
-    <R = T>(endpoint: string, data: Record<string, unknown>, options?: Parameters<typeof api.post>[2]) => 
-      execute<R>(api.post, endpoint, data, options),
+    <R = T>(endpoint: string, data: Record<string, unknown>, options?: Parameters<typeof api.post>[2]) =>
+      execute<R>(() => api.post<R>(endpoint, data, options)),
     [execute]
   );
 
   const put = useCallback(
-    <R = T>(endpoint: string, data: Record<string, unknown>, options?: Parameters<typeof api.put>[2]) => 
-      execute<R>(api.put, endpoint, data, options),
+    <R = T>(endpoint: string, data: Record<string, unknown>, options?: Parameters<typeof api.put>[2]) =>
+      execute<R>(() => api.put<R>(endpoint, data, options)),
     [execute]
   );
 
   const del = useCallback(
-    <R = T>(endpoint: string, options?: Parameters<typeof api.delete>[1]) => 
-      execute<R>(api.delete, endpoint, options),
+    <R = T>(endpoint: string, options?: Parameters<typeof api.delete>[1]) =>
+      execute<R>(() => api.delete<R>(endpoint, options)),
     [execute]
   );
 
   const patch = useCallback(
-    <R = T>(endpoint: string, data: Record<string, unknown>, options?: Parameters<typeof api.patch>[2]) => 
-      execute<R>(api.patch, endpoint, data, options),
+    <R = T>(endpoint: string, data: Record<string, unknown>, options?: Parameters<typeof api.patch>[2]) =>
+      execute<R>(() => api.patch<R>(endpoint, data, options)),
     [execute]
   );
 

@@ -4,12 +4,11 @@
 
 // Initialize Sentry with default functions
 let captureException: (error: Error) => void = (error: Error) => {
-  console.error('Error (Sentry not ready):', error);
+  // Error not logged to console
 };
 
 let captureMessage: (message: string, level?: 'info' | 'warning' | 'error') => void = (message: string, level: 'info' | 'warning' | 'error' = 'info') => {
-  const logMethod = level === 'error' ? console.error : level === 'warning' ? console.warn : console.info;
-  logMethod(`Message (Sentry not ready) [${level}]:`, message);
+  // Message not logged to console
 };
 
 // Check if Sentry DSN is configured
@@ -21,16 +20,10 @@ const isValidDSN = SENTRY_DSN &&
   SENTRY_DSN.startsWith('https://') &&
   SENTRY_DSN.includes('@');
 
-console.log('Sentry DSN check:', {
-  SENTRY_DSN: SENTRY_DSN ? SENTRY_DSN.substring(0, 20) + '...' : 'undefined',
-  isValidDSN,
-  isPlaceholder: SENTRY_DSN === 'your_sentry_dsn_here'
-});
+// DSN validation completed silently
 
 // Only initialize if DSN is valid
 if (isValidDSN) {
-  console.log('Initializing Sentry...');
-
   // Use setTimeout to defer initialization and avoid webpack issues
   setTimeout(() => {
     import('@sentry/nextjs').then((Sentry) => {
@@ -44,8 +37,6 @@ if (isValidDSN) {
             replaysOnErrorSampleRate: 1.0,
             environment: process.env.NODE_ENV,
           });
-
-          console.log('Sentry initialized successfully');
         }
 
         // Create wrapper functions for Sentry
@@ -56,7 +47,7 @@ if (isValidDSN) {
           try {
             Sentry.captureException(error);
           } catch (e) {
-            console.error('Error (Sentry failed):', error);
+            // Sentry capture failed, error not logged to console
           }
         };
 
@@ -64,54 +55,47 @@ if (isValidDSN) {
           try {
             Sentry.captureMessage(message, level);
           } catch (e) {
-            console.error('Message (Sentry failed):', message);
+            // Sentry capture failed, message not logged to console
           }
         };
       } catch (error) {
-        console.error('Failed to initialize Sentry:', error);
-        // Fallback to console logging
+        // Failed to initialize Sentry, using fallback functions
         const originalCaptureException = captureException;
         const originalCaptureMessage = captureMessage;
 
         captureException = (error: Error) => {
-          console.error('Error (Sentry failed):', error);
+          // Error not logged to console
         };
 
         captureMessage = (message: string, level: 'info' | 'warning' | 'error' = 'info') => {
-          const logMethod = level === 'error' ? console.error : level === 'warning' ? console.warn : console.info;
-          logMethod(`Message (Sentry failed) [${level}]:`, message);
+          // Message not logged to console
         };
       }
     }).catch((error) => {
-      console.error('Failed to load Sentry:', error);
-      // Fallback to console logging
+      // Failed to load Sentry, using fallback functions
       const originalCaptureException = captureException;
       const originalCaptureMessage = captureMessage;
 
       captureException = (error: Error) => {
-        console.error('Error (Sentry load failed):', error);
+        // Error not logged to console
       };
 
       captureMessage = (message: string, level: 'info' | 'warning' | 'error' = 'info') => {
-        const logMethod = level === 'error' ? console.error : level === 'warning' ? console.warn : console.info;
-        logMethod(`Message (Sentry load failed) [${level}]:`, message);
+        // Message not logged to console
       };
     });
   }, 100);
 } else {
-  console.log('Sentry not configured, using console logging');
-
-  // Fallback to console when Sentry is not configured
+  // Sentry not configured, using fallback functions
   const originalCaptureException = captureException;
   const originalCaptureMessage = captureMessage;
 
   captureException = (error: Error) => {
-    console.error('Error (not sent to Sentry):', error);
+    // Error not logged to console
   };
 
   captureMessage = (message: string, level: 'info' | 'warning' | 'error' = 'info') => {
-    const logMethod = level === 'error' ? console.error : level === 'warning' ? console.warn : console.info;
-    logMethod(`Message (not sent to Sentry) [${level}]:`, message);
+    // Message not logged to console
   };
 }
 
@@ -124,10 +108,7 @@ export { captureException };
  * Capture an error with additional context
  */
 export function captureError(error: Error, context?: Record<string, any>) {
-  if (context) {
-    console.error(error, context);
-  }
-  captureException(error);
+    captureException(error);
 }
 
 /**
@@ -148,7 +129,7 @@ export function identifyUser(userId: string, userData?: Record<string, any>) {
         ...userData,
       });
     }).catch((error) => {
-      console.error('Failed to identify user in Sentry:', error);
+      // Failed to identify user in Sentry
     });
   }
 }
@@ -161,7 +142,7 @@ export function clearUserIdentity() {
     import('@sentry/nextjs').then((Sentry) => {
       Sentry.setUser(null);
     }).catch((error) => {
-      console.error('Failed to clear user identity in Sentry:', error);
+      // Failed to clear user identity in Sentry
     });
   }
 } 
