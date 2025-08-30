@@ -6,8 +6,17 @@ import { useEffect, useState } from "react"
 import { ArrowRight, Menu, X, ArrowDown } from "lucide-react"
 import { motion, useScroll, useTransform } from "framer-motion"
 import { useAuth } from "../contexts/auth-context"
-import { ScrollTriggered3DScene } from "../components/ui/scroll-triggered-3d-scene"
-import { MobileHero3DScene } from "../components/ui/mobile-hero-3d-scene"
+import dynamic from "next/dynamic"
+
+// Lazy load 3D components only when needed on landing page
+const ScrollTriggered3DScene = dynamic(() => import("../components/ui/scroll-triggered-3d-scene"), { 
+  ssr: false,
+  loading: () => null 
+})
+const MobileHero3DScene = dynamic(() => import("../components/ui/mobile-hero-3d-scene"), { 
+  ssr: false,
+  loading: () => null 
+})
 import { useIsMobile } from "../hooks/use-mobile"
 
 export default function LandingPage() {

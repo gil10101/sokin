@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import { setupConnectivityMonitoring } from '../lib/api-utils'
-import { identifyUser } from '../lib/sentry'
+import { identifyUser, clearUserIdentity } from '../lib/sentry'
 import { initializeMessaging } from '../lib/firebase-messaging'
 import { useAuth } from '../contexts/auth-context'
 
@@ -26,18 +26,31 @@ export function AppInitializer() {
     } else {
       // Clear user identity when logged out
       // This is important for privacy and tracking accuracy
-      identifyUser('anonymous')
+      clearUserIdentity()
     }
   }, [user])
 
-  // Setup backend connectivity monitoring
+  // Setup backend connectivity monitoring - increased interval for better performance
   useEffect(() => {
-    const cleanupConnectivityMonitoring = setupConnectivityMonitoring()
+    const cleanupConnectivityMonitoring = setupConnectivityMonitoring(120000) // 2 minutes instead of 30 seconds
     
     // Cleanup the interval when the component unmounts
     return () => {
       cleanupConnectivityMonitoring()
     }
+  }, [])
+
+  // Register service worker
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return
+    const register = async () => {
+      try {
+        await navigator.serviceWorker.register('/sw.js')
+      } catch (e) {
+        // noop
+      }
+    }
+    register()
   }, [])
 
   // Initialize Firebase Cloud Messaging for push notifications

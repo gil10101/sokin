@@ -42,6 +42,8 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap"
           rel="stylesheet"
         />
+        <link rel="dns-prefetch" href={process.env.NEXT_PUBLIC_API_URL} />
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
       </head>
       <body className="bg-dark text-cream antialiased">
         <ErrorBoundary>
