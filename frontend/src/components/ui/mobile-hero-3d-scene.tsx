@@ -10,11 +10,11 @@ const Canvas = dynamic(() => import("@react-three/fiber").then(mod => ({ default
 })
 
 // Dynamically import the TwistedTorus to avoid SSR issues
-const TwistedTorus = dynamic(() => import("./twisted-torus").then(mod => ({ default: mod.TwistedTorus })), {
+const TwistedTorus = dynamic(() => import("./twisted-torus"), {
   ssr: false
 })
 
-export function MobileHero3DScene() {
+function MobileHero3DScene() {
   const cameraSettings = { 
     position: [0, 0, 10] as [number, number, number], // Moved camera closer for bigger model
     fov: 85 // Increased field of view for more dramatic effect
@@ -67,3 +67,5 @@ export function MobileHero3DScene() {
     </div>
   )
 }
+
+export default MobileHero3DScene

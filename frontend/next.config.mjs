@@ -28,6 +28,57 @@ const nextConfig = {
   experimental: {
     optimizeCss: true,
     scrollRestoration: true,
+    optimizePackageImports: ['@radix-ui/react-icons', 'lucide-react', 'date-fns'],
+  },
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production',
+  },
+  poweredByHeader: false,
+  compress: true,
+  modularizeImports: {
+    'lucide-react': {
+      transform: 'lucide-react/dist/esm/icons/{{member}}'
+    },
+    'date-fns': {
+      transform: 'date-fns/{{member}}'
+    }
+  },
+  webpack: (config) => {
+    config.optimization.splitChunks = {
+      chunks: 'all',
+      cacheGroups: {
+        vendor: {
+          test: /[\\/]node_modules[\\/]/,
+          name: 'vendors',
+          chunks: 'all',
+        },
+        radix: {
+          test: /[\\/]node_modules[\\/]@radix-ui[\\/]/,
+          name: 'radix',
+          chunks: 'all',
+          priority: 10,
+        },
+        recharts: {
+          test: /[\\/]node_modules[\\/]recharts[\\/]/,
+          name: 'recharts',
+          chunks: 'all',
+          priority: 10,
+        },
+        three: {
+          test: /[\\/]node_modules[\\/](three|@react-three)[\\/]/,
+          name: 'three',
+          chunks: 'all',
+          priority: 20,
+        },
+        framerMotion: {
+          test: /[\\/]node_modules[\\/]framer-motion[\\/]/,
+          name: 'framer-motion',
+          chunks: 'all',
+          priority: 15,
+        },
+      },
+    }
+    return config
   },
   headers: async () => {
     return [
@@ -57,6 +108,10 @@ const nextConfig = {
           {
             key: 'Referrer-Policy',
             value: 'origin-when-cross-origin',
+          },
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
           },
         ],
       },

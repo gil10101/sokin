@@ -10,7 +10,7 @@ interface TwistedTorusProps {
   isMobile?: boolean
 }
 
-export function TwistedTorus({ isMobile = false }: TwistedTorusProps) {
+function TwistedTorus({ isMobile = false }: TwistedTorusProps) {
   const groupRef = useRef<Group>(null)
 
   // Create simple circular arrangement of square panels
@@ -93,3 +93,5 @@ export function TwistedTorus({ isMobile = false }: TwistedTorusProps) {
     </group>
   )
 }
+
+export default TwistedTorus

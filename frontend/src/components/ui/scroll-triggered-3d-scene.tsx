@@ -17,11 +17,11 @@ const Canvas = dynamic(() => import("@react-three/fiber").then(mod => ({ default
 })
 
 // Dynamically import the TwistedTorus to avoid SSR issues
-const TwistedTorus = dynamic(() => import("./twisted-torus").then(mod => ({ default: mod.TwistedTorus })), {
+const TwistedTorus = dynamic(() => import("./twisted-torus"), {
   ssr: false
 })
 
-export function ScrollTriggered3DScene() {
+function ScrollTriggered3DScene() {
   const canvasRef = useRef<HTMLDivElement>(null)
   const [isMobile, setIsMobile] = useState(false)
 
@@ -245,3 +245,5 @@ export function ScrollTriggered3DScene() {
     </div>
   )
 }
+
+export default ScrollTriggered3DScene
