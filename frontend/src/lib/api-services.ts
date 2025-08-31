@@ -1,5 +1,110 @@
 import { auth } from './firebase'
 
+// Goal-related interfaces
+interface SavingsGoal {
+  id?: string;
+  userId: string;
+  name: string;
+  description?: string;
+  targetAmount: number;
+  currentAmount: number;
+  targetDate: string;
+  category: string;
+  priority: 'low' | 'medium' | 'high';
+  isCompleted: boolean;
+  completedAt?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+interface Goal {
+  id?: string;
+  userId: string;
+  name: string;
+  description?: string;
+  targetAmount: number;
+  currentAmount: number;
+  targetDate: string;
+  category: string;
+  priority: 'low' | 'medium' | 'high';
+  isCompleted: boolean;
+  completedAt?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+// Bill reminder interfaces
+interface BillReminder {
+  id: string;
+  userId: string;
+  name: string;
+  amount: number;
+  dueDate: string;
+  frequency: 'once' | 'weekly' | 'monthly' | 'yearly';
+  category?: string;
+  notes?: string;
+  isPaid: boolean;
+  paidDate?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+interface BillReminderUpdate {
+  name?: string;
+  amount?: number;
+  dueDate?: string;
+  frequency?: 'once' | 'weekly' | 'monthly' | 'yearly';
+  category?: string;
+  notes?: string;
+}
+
+// Notification interfaces
+interface NotificationPreferences {
+  budgetAlerts: boolean;
+  billReminders: boolean;
+  goalMilestones: boolean;
+  spendingInsights: boolean;
+  pushNotifications: boolean;
+  emailNotifications: boolean;
+  smsNotifications?: boolean;
+}
+
+// Analytics interfaces
+interface SpendingInsight {
+  period: string;
+  totalSpent: number;
+  categories: CategoryBreakdown[];
+  trends: SpendingTrend[];
+  insights: string[];
+}
+
+interface CategoryBreakdown {
+  category: string;
+  amount: number;
+  percentage: number;
+  count: number;
+}
+
+interface SpendingTrend {
+  date: string;
+  amount: number;
+}
+
+interface BudgetProgress {
+  budgets: BudgetItem[];
+  totalBudget: number;
+  totalSpent: number;
+  remaining: number;
+}
+
+interface BudgetItem {
+  category: string;
+  budgeted: number;
+  spent: number;
+  remaining: number;
+  percentage: number;
+}
+
 /**
  * Enhanced API Services for Sokin App
  * Production-ready API integration for mobile-first application
@@ -7,12 +112,15 @@ import { auth } from './firebase'
  */
 
 // Base API configuration
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL
+if (!API_BASE_URL) {
+  throw new Error('NEXT_PUBLIC_API_URL environment variable is not configured')
+}
 const API_TIMEOUT = 10000 // 10 seconds
 const MAX_RETRIES = 3
 
 // Simple in-memory cache to reduce API calls
-const cache = new Map<string, { data: any; timestamp: number }>()
+const cache = new Map<string, { data: unknown; timestamp: number }>()
 const CACHE_DURATION = 2 * 60 * 1000 // 2 minutes
 
 const getCachedData = (key: string) => {
@@ -23,7 +131,7 @@ const getCachedData = (key: string) => {
   return null
 }
 
-const setCachedData = (key: string, data: any) => {
+const setCachedData = (key: string, data: unknown) => {
   cache.set(key, { data, timestamp: Date.now() })
 }
 
@@ -69,7 +177,7 @@ const enhancedFetch = async (
       const retryAfter = errorData.retryAfter || Math.pow(2, MAX_RETRIES - retries) // Exponential backoff
       
       if (retries > 0) {
-        (`Rate limited. Retrying in ${retryAfter} seconds... (attempt ${MAX_RETRIES - retries + 1}/${MAX_RETRIES})`)
+        console.log(`Rate limited. Retrying in ${retryAfter} seconds... (attempt ${MAX_RETRIES - retries + 1}/${MAX_RETRIES})`)
         await new Promise(resolve => setTimeout(resolve, retryAfter * 1000))
         return enhancedFetch(url, options, retries - 1)
       } else {
@@ -88,7 +196,7 @@ const enhancedFetch = async (
     
     // For non-rate-limit errors, use the original retry logic
     if (retries > 0 && error instanceof Error && error.name !== 'AbortError' && !error.message.includes('Rate limited')) {
-      (`API request failed, retrying... (${MAX_RETRIES - retries + 1}/${MAX_RETRIES})`)
+      console.log(`API request failed, retrying... (${MAX_RETRIES - retries + 1}/${MAX_RETRIES})`)
       await new Promise(resolve => setTimeout(resolve, 1000 * (MAX_RETRIES - retries + 1)))
       return enhancedFetch(url, options, retries - 1)
     }
@@ -130,12 +238,12 @@ export const receiptAPI = {
 
 // Savings Goals API
 export const goalsAPI = {
-  async getGoals(): Promise<any[]> {
+  async getGoals(): Promise<Goal[]> {
     const cacheKey = 'goals'
     const cachedData = getCachedData(cacheKey)
     
     if (cachedData) {
-      return cachedData
+      return cachedData as Goal[]
     }
     
     const headers = await getAuthHeaders()
@@ -159,7 +267,7 @@ export const goalsAPI = {
     currentAmount?: number
     deadline?: string
     category?: string
-  }): Promise<any> {
+  }): Promise<Goal> {
     const headers = await getAuthHeaders()
     const response = await enhancedFetch('/api/goals', {
       method: 'POST',
@@ -173,7 +281,7 @@ export const goalsAPI = {
     return response.json()
   },
   
-  async updateGoal(goalId: string, updates: any): Promise<any> {
+  async updateGoal(goalId: string, updates: Partial<Goal>): Promise<Goal> {
     const headers = await getAuthHeaders()
     const response = await enhancedFetch(`/api/goals/${goalId}`, {
       method: 'PUT',
@@ -201,17 +309,17 @@ export const goalsAPI = {
 
 // Bill Reminders API
 export const billRemindersAPI = {
-  async getBillReminders(): Promise<any[]> {
+  async getBillReminders(): Promise<BillReminder[]> {
     const headers = await getAuthHeaders()
     const response = await enhancedFetch('/api/bill-reminders', {
       method: 'GET',
       headers
     })
-    
+
     const data = await response.json()
     return data.bills || []
   },
-  
+
   async createBillReminder(bill: {
     name: string
     amount: number
@@ -219,39 +327,39 @@ export const billRemindersAPI = {
     frequency: 'once' | 'weekly' | 'monthly' | 'yearly'
     category?: string
     notes?: string
-  }): Promise<any> {
+  }): Promise<BillReminder> {
     const headers = await getAuthHeaders()
     const response = await enhancedFetch('/api/bill-reminders', {
       method: 'POST',
       headers,
       body: JSON.stringify(bill)
     })
-    
+
     return response.json()
   },
-  
-  async updateBillReminder(billId: string, updates: any): Promise<any> {
+
+  async updateBillReminder(billId: string, updates: BillReminderUpdate): Promise<BillReminder> {
     const headers = await getAuthHeaders()
     const response = await enhancedFetch(`/api/bill-reminders/${billId}`, {
       method: 'PUT',
       headers,
       body: JSON.stringify(updates)
     })
-    
+
     return response.json()
   },
-  
-  async markBillPaid(billId: string, paidDate: string): Promise<any> {
+
+  async markBillPaid(billId: string, paidDate: string): Promise<BillReminder> {
     const headers = await getAuthHeaders()
     const response = await enhancedFetch(`/api/bill-reminders/${billId}/pay`, {
       method: 'POST',
       headers,
       body: JSON.stringify({ paidDate })
     })
-    
+
     return response.json()
   },
-  
+
   async deleteBillReminder(billId: string): Promise<void> {
     const headers = await getAuthHeaders()
     await enhancedFetch(`/api/bill-reminders/${billId}`, {
@@ -271,58 +379,58 @@ export const notificationsAPI = {
       body: JSON.stringify({ token })
     })
   },
-  
-  async getNotificationPreferences(): Promise<any> {
+
+  async getNotificationPreferences(): Promise<NotificationPreferences> {
     const headers = await getAuthHeaders()
     const response = await enhancedFetch('/api/notifications/preferences', {
       method: 'GET',
       headers
     })
-    
+
     return response.json()
   },
-  
-  async updateNotificationPreferences(preferences: any): Promise<any> {
+
+  async updateNotificationPreferences(preferences: NotificationPreferences): Promise<NotificationPreferences> {
     const headers = await getAuthHeaders()
     const response = await enhancedFetch('/api/notifications/preferences', {
       method: 'PUT',
       headers,
       body: JSON.stringify(preferences)
     })
-    
+
     return response.json()
   }
 }
 
 // Analytics API
 export const analyticsAPI = {
-  async getSpendingInsights(timeframe: string = '30days'): Promise<any> {
+  async getSpendingInsights(timeframe: string = '30days'): Promise<SpendingInsight> {
     const headers = await getAuthHeaders()
     const response = await enhancedFetch(`/api/analytics/insights?timeframe=${timeframe}`, {
       method: 'GET',
       headers
     })
-    
+
     return response.json()
   },
-  
-  async getCategoryBreakdown(timeframe: string = '30days'): Promise<any> {
+
+  async getCategoryBreakdown(timeframe: string = '30days'): Promise<CategoryBreakdown[]> {
     const headers = await getAuthHeaders()
     const response = await enhancedFetch(`/api/analytics/categories?timeframe=${timeframe}`, {
       method: 'GET',
       headers
     })
-    
+
     return response.json()
   },
-  
-  async getBudgetProgress(): Promise<any> {
+
+  async getBudgetProgress(): Promise<BudgetProgress> {
     const headers = await getAuthHeaders()
     const response = await enhancedFetch('/api/analytics/budget-progress', {
       method: 'GET',
       headers
     })
-    
+
     return response.json()
   }
 }

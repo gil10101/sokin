@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:5001'
+const BACKEND_URL = process.env.BACKEND_URL
+
+if (!BACKEND_URL) {
+  throw new Error('BACKEND_URL environment variable is not configured')
+}
 
 export async function GET(request: NextRequest) {
   try {
     // Get the authorization header
     const authorization = request.headers.get('authorization')
-    
+
     if (!authorization) {
       return NextResponse.json(
         { error: 'Authorization header required' },

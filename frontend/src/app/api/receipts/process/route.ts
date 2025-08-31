@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:5001'
+const BACKEND_URL = process.env.BACKEND_URL
+
+if (!BACKEND_URL) {
+  throw new Error('BACKEND_URL environment variable is not configured')
+}
 
 export async function POST(request: NextRequest) {
   try {
