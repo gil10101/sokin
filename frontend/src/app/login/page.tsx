@@ -121,7 +121,7 @@ export default function LoginPage() {
 
           <div className="mt-8 text-center">
             <p className="text-cream/60 text-sm">
-              Don't have an account?{" "}
+              Don&apos;t have an account?{" "}
               <Link href="/signup" className="text-cream hover:underline group inline-flex items-center">
                 Sign up
                 <ArrowRight className="ml-1 h-3 w-3 transform group-hover:translate-x-1 transition-transform duration-300" />

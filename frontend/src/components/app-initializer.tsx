@@ -30,39 +30,42 @@ export function AppInitializer() {
     }
   }, [user])
 
-  // Setup backend connectivity monitoring - increased interval for better performance
+  // Setup backend connectivity monitoring with lazy initialization
   useEffect(() => {
-    const cleanupConnectivityMonitoring = setupConnectivityMonitoring(120000) // 2 minutes instead of 30 seconds
-    
-    // Cleanup the interval when the component unmounts
-    return () => {
-      cleanupConnectivityMonitoring()
-    }
+    // Delay connectivity monitoring by 5 seconds to prioritize initial page load
+    const timeoutId = setTimeout(() => {
+      const cleanupConnectivityMonitoring = setupConnectivityMonitoring(300000) // 5 minutes instead of 2
+      return () => cleanupConnectivityMonitoring()
+    }, 5000)
+
+    return () => clearTimeout(timeoutId)
   }, [])
 
-  // Register service worker
+  // Register service worker with lazy loading
   useEffect(() => {
     if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return
-    const register = async () => {
+
+    // Delay service worker registration by 3 seconds
+    const timeoutId = setTimeout(async () => {
       try {
         await navigator.serviceWorker.register('/sw.js')
       } catch (e) {
         // noop
       }
-    }
-    register()
+    }, 3000)
+
+    return () => clearTimeout(timeoutId)
   }, [])
 
-  // Initialize Firebase Cloud Messaging for push notifications
+  // Initialize Firebase Cloud Messaging for push notifications with lazy loading
   useEffect(() => {
     let mounted = true
-    
+
     const initializeFCM = async () => {
       try {
         // Only initialize FCM if user is authenticated and component is still mounted
         if (user && mounted) {
           await initializeMessaging()
-
         }
       } catch (error) {
         // Failed to initialize Firebase Cloud Messaging, continuing silently
@@ -70,9 +73,13 @@ export function AppInitializer() {
       }
     }
 
-    // Initialize FCM when user becomes available
+    // Delay FCM initialization by 8 seconds and only if user is available
     if (user) {
-      initializeFCM()
+      const timeoutId = setTimeout(initializeFCM, 8000)
+      return () => {
+        mounted = false
+        clearTimeout(timeoutId)
+      }
     }
 
     return () => {

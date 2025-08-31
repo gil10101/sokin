@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 
 export default function NotFoundPage() {
   return (
@@ -12,15 +11,13 @@ export default function NotFoundPage() {
         The page you are looking for does not exist or has been moved.
       </p>
       <div className="flex gap-4">
-        <Button
-          variant="outline"
-          asChild
+        <Link
+          href="/"
+          className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-cream/20 text-cream hover:border-cream hover:bg-cream/5 h-10 px-4 py-2 gap-2"
         >
-          <Link href="/" className="flex items-center gap-2">
-            <ArrowLeft className="h-4 w-4" />
-            Go Home
-          </Link>
-        </Button>
+          <ArrowLeft className="h-4 w-4" />
+          Go Home
+        </Link>
       </div>
     </div>
   )

@@ -31,10 +31,11 @@ export default function SignupPage() {
         title: "Account created",
         description: "Welcome to Sokin! Your account has been created successfully.",
       })
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "There was an error creating your account"
       toast({
         title: "Signup failed",
-        description: error.message || "There was an error creating your account",
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {
