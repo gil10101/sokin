@@ -6,6 +6,7 @@ import { db } from "../../lib/firebase"
 import { useAuth } from "../../contexts/auth-context"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell, ResponsiveContainer, LabelList } from "recharts"
 import { LoadingSpinner } from "../../components/ui/loading-spinner"
+import { Expense, Budget } from "../../lib/types"
 
 interface BudgetProgress {
   category: string
@@ -68,13 +69,13 @@ export function BudgetProgressCard() {
 
         // Calculate spending by category
         const spendingByCategory: Record<string, number> = {}
-        expenses.forEach((expense: any) => {
+        expenses.forEach((expense: Expense) => {
           const { category, amount } = expense
           spendingByCategory[category] = (spendingByCategory[category] || 0) + amount
         })
 
         // Create budget progress data
-        const progressData = budgets.map((budget: any) => {
+        const progressData = budgets.map((budget: Budget) => {
           const spent = spendingByCategory[budget.category] || 0
           const percentage = Math.round((spent / budget.amount) * 100)
 

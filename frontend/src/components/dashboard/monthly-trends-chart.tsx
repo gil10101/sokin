@@ -7,11 +7,11 @@ import { motion } from "framer-motion"
 import { useViewport } from "../../hooks/use-mobile"
 
 interface MonthlyTrendsChartProps {
-  data: any[]
+  data: Array<{ month: string; amount: number }>
 }
 
 export function MonthlyTrendsChart({ data }: MonthlyTrendsChartProps) {
-  const [animatedData, setAnimatedData] = useState<any[]>([])
+  const [animatedData, setAnimatedData] = useState<Array<{ month: string; amount: number }>>([])
   const { isMobile, isTablet } = useViewport()
 
   // Responsive chart configuration
@@ -115,7 +115,7 @@ export function MonthlyTrendsChart({ data }: MonthlyTrendsChartProps) {
             <ChartTooltip 
               content={<ChartTooltipContent />}
               labelFormatter={(value) => `Month: ${value}`}
-              formatter={(value: any) => [`$${value.toLocaleString()}`]}
+              formatter={(value: number) => [`$${value.toLocaleString()}`]}
             />
             <Area
               type="monotone"

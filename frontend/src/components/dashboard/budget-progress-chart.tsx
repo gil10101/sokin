@@ -11,7 +11,7 @@ import { startOfMonth, endOfMonth, isWithinInterval } from "date-fns"
 import { useViewport } from "../../hooks/use-mobile"
 
 // Helper function to safely parse dates including Firebase Timestamps
-const safeParseDate = (dateValue: any): Date => {
+const safeParseDate = (dateValue: unknown): Date => {
   if (!dateValue) return new Date()
   
   try {
@@ -20,8 +20,8 @@ const safeParseDate = (dateValue: any): Date => {
       return dateValue
     }
     // If it's a Firebase Timestamp object
-    else if (dateValue && typeof dateValue === 'object' && 'toDate' in dateValue) {
-      return dateValue.toDate()
+    else if (dateValue && typeof dateValue === 'object' && 'toDate' in dateValue && typeof dateValue.toDate === 'function') {
+      return (dateValue as { toDate(): Date }).toDate()
     }
     // If it's a numeric timestamp (milliseconds)
     else if (typeof dateValue === 'number') {

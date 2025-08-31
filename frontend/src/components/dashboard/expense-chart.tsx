@@ -12,7 +12,7 @@ import { useViewport } from "../../hooks/use-mobile"
 import { format, subDays, subMonths, isAfter, eachDayOfInterval, eachMonthOfInterval, startOfDay, startOfMonth } from "date-fns"
 
 // Helper function to safely parse dates including Firebase Timestamps
-const safeParseDate = (dateValue: any): Date => {
+const safeParseDate = (dateValue: unknown): Date => {
   if (!dateValue) return new Date()
   
   try {

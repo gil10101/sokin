@@ -13,7 +13,7 @@ import { format, subDays, isAfter } from "date-fns"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu"
 
 // Helper function to safely parse dates including Firebase Timestamps
-const safeParseDate = (dateValue: any): Date => {
+const safeParseDate = (dateValue: unknown): Date => {
   if (!dateValue) return new Date()
   
   try {
@@ -229,7 +229,7 @@ export function CategoryBreakdown() {
     )
   }
 
-  const onPieEnter = (_: any, index: number) => {
+  const onPieEnter = (_data: unknown, index: number) => {
     setActiveIndex(index)
   }
 
