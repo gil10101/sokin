@@ -41,7 +41,7 @@ export interface Notification {
   type: 'budget_warning' | 'budget_exceeded' | 'bill_reminder' | 'goal_milestone' | 'spending_insight';
   title: string;
   message: string;
-  data?: any; // Additional context data
+  data?: Record<string, unknown>; // Additional context data
   read: boolean;
   createdAt: string;
   scheduledFor?: string; // For future notifications
