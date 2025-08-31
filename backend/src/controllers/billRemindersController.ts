@@ -42,7 +42,8 @@ export class BillRemindersController {
       }));
 
       res.json({ bills });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      console.error('Error:', error);
       res.status(500).json({ error: 'Failed to fetch bill reminders' });
     }
   }
@@ -78,7 +79,8 @@ export class BillRemindersController {
       const newBill = { id: docRef.id, ...billData };
 
       res.status(201).json({ bill: newBill });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      console.error('Error:', error);
       res.status(500).json({ error: 'Failed to create bill reminder' });
     }
   }
@@ -118,7 +120,8 @@ export class BillRemindersController {
       });
 
       res.json({ success: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      console.error('Error:', error);
       res.status(500).json({ error: 'Failed to mark bill as paid' });
     }
   }
@@ -158,7 +161,8 @@ export class BillRemindersController {
       await billRef.update(updateData);
 
       res.json({ success: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      console.error('Error:', error);
       res.status(500).json({ error: 'Failed to update bill reminder' });
     }
   }
@@ -193,7 +197,8 @@ export class BillRemindersController {
       await billRef.delete();
 
       res.json({ success: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      console.error('Error:', error);
       res.status(500).json({ error: 'Failed to delete bill reminder' });
     }
   }

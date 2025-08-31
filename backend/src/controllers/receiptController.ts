@@ -85,11 +85,12 @@ export class ReceiptController {
         }
       });
 
-    } catch (error: any) {
-     
-      res.status(500).json({ 
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+
+      res.status(500).json({
         error: 'Failed to process receipt',
-        details: error.message 
+        details: errorMessage
       });
     }
   }
@@ -101,9 +102,12 @@ export class ReceiptController {
       }
       
       // Get the default bucket or use the project bucket
-      const bucketName = process.env.FIREBASE_STORAGE_BUCKET || 
-                         process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || 
-                         `${process.env.FIREBASE_PROJECT_ID || 'personalexpensetracker-ff87a'}.appspot.com`;
+      const bucketName = process.env.FIREBASE_STORAGE_BUCKET ||
+                         process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+
+      if (!bucketName) {
+        throw new Error('Firebase storage bucket not configured. Please set FIREBASE_STORAGE_BUCKET or NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET environment variable');
+      }
       
       const bucket = storage.bucket(bucketName);
       
@@ -128,8 +132,9 @@ export class ReceiptController {
 
       // Return the public URL
       return `https://storage.googleapis.com/${bucketName}/${fileName}`;
-    } catch (error: any) {
-      throw new Error(`Failed to upload receipt image: ${error.message}`);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      throw new Error(`Failed to upload receipt image: ${errorMessage}`);
     }
   }
 

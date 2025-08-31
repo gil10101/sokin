@@ -27,7 +27,8 @@ export class NotificationController {
       }));
 
       res.json({ notifications });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      console.error('Error fetching notifications:', error);
       res.status(500).json({ error: 'Failed to fetch notifications' });
     }
   }
@@ -52,7 +53,8 @@ export class NotificationController {
       });
 
       res.json({ success: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      console.error('Error updating notification:', error);
       res.status(500).json({ error: 'Failed to update notification' });
     }
   }
@@ -88,8 +90,8 @@ export class NotificationController {
       });
 
       res.json({ preferences });
-    } catch (error: any) {
-      
+    } catch (error: unknown) {
+      console.error('Error updating preferences:', error);
       res.status(500).json({ error: 'Failed to update preferences' });
     }
   }
@@ -124,7 +126,8 @@ export class NotificationController {
       }
 
       res.json({ success: true });
-    } catch (error: any) { 
+    } catch (error: unknown) {
+      console.error('Error registering FCM token:', error);
       res.status(500).json({ error: 'Failed to register token' });
     }
   }
@@ -141,8 +144,8 @@ export class NotificationController {
       const alerts = await NotificationController.generateBudgetAlerts(userId);
       
       res.json({ alerts });
-    } catch (error: any) {
-      
+    } catch (error: unknown) {
+      console.error('Error checking budget alerts:', error);
       res.status(500).json({ error: 'Failed to check budget alerts' });
     }
   }
@@ -308,14 +311,14 @@ export class NotificationController {
       
       // Remove invalid tokens
       const tokensToRemove: string[] = [];
-      response.responses.forEach((resp: any, idx: number) => {
+      response.responses.forEach((resp: { success: boolean; error?: { code: string } }, idx: number) => {
         if (!resp.success && resp.error?.code === 'messaging/registration-token-not-registered') {
           tokensToRemove.push(fcmTokens[idx]);
         }
       });
 
       if (tokensToRemove.length > 0) {
-        const validTokens = fcmTokens.filter((token: any) => !tokensToRemove.includes(token));
+        const validTokens = fcmTokens.filter((token: string) => !tokensToRemove.includes(token));
         await db.doc(`users/${userId}`).update({
           fcmTokens: validTokens
         });
