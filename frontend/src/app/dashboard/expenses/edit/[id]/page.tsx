@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { doc, getDoc, updateDoc } from "firebase/firestore"
 import { db } from "../../../../../lib/firebase"
@@ -59,14 +59,31 @@ export default function EditExpensePage() {
     setMounted(true)
   }, [])
 
-  useEffect(() => {
-    if (user && mounted) {
-      fetchExpense()
-      fetchCategories()
-    }
-  }, [user, mounted])
+  const fetchCategories = useCallback(async () => {
+    if (!user) return
 
-  const fetchExpense = async () => {
+    try {
+      // Try to fetch user-specific categories first
+      const userCategoriesDoc = await getDoc(doc(db, "users", user.uid, "categories", "default"))
+
+      if (userCategoriesDoc.exists()) {
+        const userCategories = userCategoriesDoc.data().categories
+        if (userCategories && userCategories.length > 0) {
+          setCategories(userCategories)
+          return
+        }
+      }
+
+      // Use default categories if user doesn't have any
+      setCategories(DEFAULT_CATEGORIES)
+    } catch (error) {
+      console.error("Error fetching categories:", error)
+      // Use default categories if there's an error
+      setCategories(DEFAULT_CATEGORIES)
+    }
+  }, [user])
+
+  const fetchExpense = useCallback(async () => {
     if (!user || !expenseId) return
 
     try {
@@ -105,14 +122,15 @@ export default function EditExpensePage() {
       if (expenseData.date) {
         try {
           let parsedDate: Date | null = null
-          
+
           // Handle different date formats
           if (expenseData.date instanceof Date) {
             parsedDate = expenseData.date
           }
           // If it's a Firebase Timestamp object
           else if (expenseData.date && typeof expenseData.date === 'object' && 'toDate' in expenseData.date) {
-            parsedDate = expenseData.date.toDate()
+            const timestampObj = expenseData.date as { toDate: () => Date }
+            parsedDate = timestampObj.toDate()
           }
           // If it's a numeric timestamp (milliseconds)
           else if (typeof expenseData.date === 'number') {
@@ -122,13 +140,13 @@ export default function EditExpensePage() {
           else if (typeof expenseData.date === 'string') {
             // Try parsing as ISO string first
             parsedDate = parseISO(expenseData.date)
-            
+
             // If parseISO fails, try native Date constructor
             if (!parsedDate || isNaN(parsedDate.getTime())) {
               parsedDate = new Date(expenseData.date)
             }
           }
-          
+
           // Validate and set the date
           if (parsedDate && !isNaN(parsedDate.getTime())) {
             setDate(parsedDate)
@@ -141,41 +159,25 @@ export default function EditExpensePage() {
           setDate(new Date())
         }
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "There was an error loading the expense"
       toast({
         title: "Error loading expense",
-        description: error.message || "There was an error loading the expense",
+        description: errorMessage,
         variant: "destructive",
       })
       router.push("/dashboard/expenses")
     } finally {
       setLoading(false)
     }
-  }
+  }, [user, expenseId, router])
 
-  const fetchCategories = async () => {
-    if (!user) return
-
-    try {
-      // Try to fetch user-specific categories first
-      const userCategoriesDoc = await getDoc(doc(db, "users", user.uid, "categories", "default"))
-
-      if (userCategoriesDoc.exists()) {
-        const userCategories = userCategoriesDoc.data().categories
-        if (userCategories && userCategories.length > 0) {
-          setCategories(userCategories)
-          return
-        }
-      }
-
-      // Use default categories if user doesn't have any
-      setCategories(DEFAULT_CATEGORIES)
-    } catch (error) {
-      console.error("Error fetching categories:", error)
-      // Use default categories if there's an error
-      setCategories(DEFAULT_CATEGORIES)
+  useEffect(() => {
+    if (user && mounted) {
+      fetchExpense()
+      fetchCategories()
     }
-  }
+  }, [user, mounted, fetchExpense, fetchCategories])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -226,10 +228,11 @@ export default function EditExpensePage() {
 
       // Redirect to expenses page
       router.push("/dashboard/expenses")
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "There was an error updating your expense"
       toast({
         title: "Error updating expense",
-        description: error.message || "There was an error updating your expense",
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {

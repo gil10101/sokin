@@ -21,16 +21,25 @@ import { useToast } from "../../../hooks/use-toast"
 import { MotionContainer } from "../../../components/ui/motion-container"
 import { ReceiptScanner } from "../../../components/dashboard/receipt-scanner"
 
+// Import the ParsedReceiptData type from receipt-scanner
+interface ParsedReceiptData {
+  merchant?: string
+  amount?: number
+  date?: string
+  items?: string[]
+  confidence: number
+  suggestedName?: string
+  suggestedCategory?: string
+  suggestedDescription?: string
+  imageUrl?: string
+  rawText?: string
+}
+
 // Import the useNotifications hook
 import { useNotifications } from "../../../contexts/notifications-context"
 
-// Types for receipt data
-interface ReceiptData {
-  suggestedName?: string
-  amount?: number
-  suggestedCategory?: string
-  suggestedDescription?: string
-  date?: string
+// Types for receipt data - extends ParsedReceiptData for compatibility
+interface ReceiptData extends ParsedReceiptData {
   [key: string]: unknown
 }
 
@@ -108,7 +117,7 @@ export default function AddExpensePage() {
     fetchCategories()
   }, [user])
 
-  const handleReceiptData = (data: ReceiptData) => {
+  const handleReceiptData = (data: ParsedReceiptData) => {
     // Auto-fill form with receipt data
     if (data.suggestedName) setName(data.suggestedName)
     if (data.amount) setAmount(data.amount.toString())
@@ -121,8 +130,8 @@ export default function AddExpensePage() {
         // Keep current date if parsing fails
       }
     }
-    if (data.imageUrl) setReceiptImageUrl(data.imageUrl)
-    if (data) setReceiptData(data)
+    if (data.imageUrl) setReceiptImageUrl(data.imageUrl || "")
+    if (data) setReceiptData(data as ReceiptData)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {

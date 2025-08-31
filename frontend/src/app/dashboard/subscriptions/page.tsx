@@ -117,7 +117,7 @@ const SERVICE_LOGOS: Record<string, string> = {
 }
 
 // Helper function to safely parse dates
-const safeParseDate = (dateValue: any): Date => {
+const safeParseDate = (dateValue: unknown): Date => {
   if (!dateValue) return new Date()
   
   try {
@@ -126,8 +126,8 @@ const safeParseDate = (dateValue: any): Date => {
       return dateValue
     }
     // If it's a Firebase Timestamp object
-    else if (dateValue && typeof dateValue === 'object' && 'toDate' in dateValue) {
-      return dateValue.toDate()
+    else if (dateValue && typeof dateValue === 'object' && 'toDate' in dateValue && typeof dateValue.toDate === 'function') {
+      return (dateValue as { toDate(): Date }).toDate()
     }
     // If it's a numeric timestamp (milliseconds)
     else if (typeof dateValue === 'number') {
@@ -434,10 +434,11 @@ export default function SubscriptionsPage() {
         histories[subscription.id] = generatePaymentHistory(subscription)
       })
       setPaymentHistories(histories)
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "There was an error loading your subscriptions"
       toast({
         title: "Error loading subscriptions",
-        description: error.message || "There was an error loading your subscriptions",
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {
@@ -589,10 +590,11 @@ export default function SubscriptionsPage() {
       // Reset form and close dialog
       resetForm()
       setOpenDialog(false)
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "There was an error adding your subscription"
       toast({
         title: "Error adding subscription",
-        description: error.message || "There was an error adding your subscription",
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {
@@ -622,10 +624,11 @@ export default function SubscriptionsPage() {
         title: "Subscription deleted",
         description: "The subscription has been deleted successfully",
       })
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "There was an error deleting the subscription"
       toast({
         title: "Error deleting subscription",
-        description: error.message || "There was an error deleting the subscription",
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {
@@ -1035,7 +1038,7 @@ export default function SubscriptionsPage() {
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Delete Subscription</AlertDialogTitle>
                                 <AlertDialogDescription className="text-cream/60">
-                                  Are you sure you want to delete the "{subscription.name}" subscription? This action
+                                  Are you sure you want to delete the &quot;{subscription.name}&quot; subscription? This action
                                   cannot be undone.
                                 </AlertDialogDescription>
                               </AlertDialogHeader>

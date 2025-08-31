@@ -1,31 +1,18 @@
 "use client"
 
-import type React from "react"
+import React, { useState, useEffect, useCallback } from "react"
 
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { format, addDays, isWithinInterval, isBefore, isAfter } from "date-fns"
+import { isBefore, isAfter } from "date-fns"
 import { DashboardSidebar } from "../../../components/dashboard/sidebar"
-import { PageHeader } from "../../../components/dashboard/page-header"
 import { BillReminders } from "../../../components/dashboard/bill-reminders"
 import { MetricCard } from "../../../components/dashboard/metric-card"
-import { Button } from "../../../components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/select"
-import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card"
-import { Badge } from "../../../components/ui/badge"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../../../components/ui/dropdown-menu"
 import { MotionContainer } from "../../../components/ui/motion-container"
-import { 
-  Bell, 
-  Calendar as CalendarIcon, 
-  DollarSign, 
-  AlertCircle, 
-  CheckCircle, 
+import {
+  Bell,
+  DollarSign,
+  AlertCircle,
   Clock,
-  Plus,
-  ArrowLeft,
-  TrendingUp,
-  TrendingDown,
   ChevronRight
 } from "lucide-react"
 import { motion } from "framer-motion"
@@ -33,19 +20,16 @@ import { useToast } from "../../../hooks/use-toast"
 import { LoadingSpinner } from "../../../components/ui/loading-spinner"
 
 interface BillReminder {
-  id?: string
+  id: string
   userId: string
   name: string
   amount: number
   dueDate: string
-  frequency: 'weekly' | 'monthly' | 'quarterly' | 'yearly' | 'one-time'
-  category: string
-  description?: string
+  frequency: 'once' | 'weekly' | 'monthly' | 'yearly'
+  category?: string
+  notes?: string
   isPaid: boolean
   paidDate?: string
-  reminderDays: number[]
-  autoPayEnabled: boolean
-  linkedAccount?: string
   createdAt: string
   updatedAt?: string
 }
@@ -74,17 +58,8 @@ export default function BillsPage() {
   const [sortBy, setSortBy] = useState<'dueDate' | 'amount' | 'name'>('dueDate')
   const [collapsed, setCollapsed] = useState(false)
   const { toast } = useToast()
-  const router = useRouter()
 
-  useEffect(() => {
-    fetchBills()
-  }, [])
-
-  useEffect(() => {
-    calculateStats()
-  }, [bills])
-
-  const fetchBills = async () => {
+  const fetchBills = useCallback(async () => {
     setLoading(true)
     try {
       const { API } = await import('../../../lib/api-services')
@@ -100,14 +75,14 @@ export default function BillsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [toast])
 
-  const calculateStats = () => {
+  const calculateStats = useCallback(() => {
     const today = new Date()
     const currentMonth = today.getMonth()
     const currentYear = today.getFullYear()
 
-    let totalBills = bills.length
+    const totalBills = bills.length
     let upcomingBills = 0
     let overdueBills = 0
     let monthlyTotal = 0
@@ -138,8 +113,9 @@ export default function BillsPage() {
       }
 
       // Category breakdown
-      const existing = categoryMap.get(bill.category) || { amount: 0, count: 0 }
-      categoryMap.set(bill.category, {
+      const categoryKey = bill.category || 'Other'
+      const existing = categoryMap.get(categoryKey) || { amount: 0, count: 0 }
+      categoryMap.set(categoryKey, {
         amount: existing.amount + bill.amount,
         count: existing.count + 1
       })
@@ -158,7 +134,15 @@ export default function BillsPage() {
       monthlyPaid,
       categoryBreakdown
     })
-  }
+  }, [bills])
+
+  useEffect(() => {
+    fetchBills()
+  }, [fetchBills])
+
+  useEffect(() => {
+    calculateStats()
+  }, [calculateStats])
 
   const getFilteredAndSortedBills = () => {
     const today = new Date()
