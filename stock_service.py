@@ -1,3 +1,4 @@
+# type: ignore
 import yfinance as yf
 from flask import Flask, jsonify, request
 from flask_cors import CORS
@@ -29,10 +30,18 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-CORS(app, origins=["http://localhost:3000"])
+
+# Configure CORS origins from environment variable
+cors_origins = os.getenv('CORS_ORIGINS', 'http://localhost:3000')
+if cors_origins:
+    origins_list = [origin.strip() for origin in cors_origins.split(',')]
+else:
+    origins_list = ['http://localhost:3000']  # fallback for development
+
+CORS(app, origins=origins_list)
 
 # Initialize SocketIO for real-time updates
-socketio = SocketIO(app, cors_allowed_origins=["http://localhost:3000"])
+socketio = SocketIO(app, cors_allowed_origins=origins_list)
 
 # Rate limiting storage
 rate_limit_storage = defaultdict(lambda: defaultdict(list))
@@ -198,8 +207,12 @@ def initialize_firebase():
                 cred = credentials.ApplicationDefault()
                 logger.info("Firebase initialized with application default credentials")
             
+            project_id = os.getenv('FIREBASE_PROJECT_ID')
+            if not project_id:
+                raise ValueError('FIREBASE_PROJECT_ID environment variable is not configured')
+
             firebase_admin.initialize_app(cred, {
-                'projectId': os.getenv('FIREBASE_PROJECT_ID', 'personalexpensetracker-ff87a'),
+                'projectId': project_id,
             })
             
         return firestore.client()
@@ -218,6 +231,7 @@ CACHE_DURATION = 300  # 5 minutes
 price_subscribers = {}  # {symbol: set(session_ids)}
 price_update_thread = None
 price_update_running = False
+socket_sessions = {}  # Store user session data for WebSocket connections
 
 def get_cached_data(key: str) -> Optional[Dict]:
     """Get cached data if it exists and is not expired"""
@@ -324,28 +338,31 @@ def handle_connect(auth_data=None):
             token = auth_data.get('token')
         
         if not token:
-            # Try to get token from query parameters
-            token = request.args.get('token')
+                    # Try to get token from query parameters
+        token = request.args.get('token')  # type: ignore
         
         user_id = None
         if token:
             try:
-                user_info = verify_firebase_token(token)
-                user_id = user_info.get('uid') if user_info else None
-                logger.info(f"Authenticated WebSocket connection for user: {user_id}")
+                user_info = verify_firebase_token(token)  # type: ignore
+                user_id = user_info.get('uid') if user_info else None  # type: ignore
+                logger.info(f"Authenticated WebSocket connection for user: {user_id}")  # type: ignore
             except Exception as e:
                 logger.warning(f"WebSocket authentication failed: {str(e)}")
         
-        # Store user info in session (even if anonymous)
-        session['user_id'] = user_id
-        session['authenticated'] = user_id is not None
-        
+        # Store user info in socketio session (even if anonymous)
+        # For SocketIO, we can store this in a global dictionary keyed by session ID
+        socket_sessions[request.sid] = {
+            'user_id': user_id,
+            'authenticated': user_id is not None
+        }
+
         emit('connected', {
             'status': 'Connected to stock price updates',
-            'authenticated': session['authenticated']
+            'authenticated': user_id is not None
         })
-        
-        logger.info(f"Client connected: {request.sid} (authenticated: {session['authenticated']})")
+
+        logger.info(f"Client connected: {request.sid} (authenticated: {user_id is not None})")
         
     except Exception as e:
         logger.error(f"Error in WebSocket connect handler: {str(e)}")

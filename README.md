@@ -27,7 +27,8 @@ The application uses Firebase for authentication and database functionality. To 
    NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id_here
    
    # Backend API URL (important for frontend-backend communication)
-   NEXT_PUBLIC_API_URL=http://localhost:5000/api
+   # Replace with your actual backend URL (e.g., http://localhost:5001/api for local development)
+   NEXT_PUBLIC_API_URL=http://localhost:5001/api
    
    # Optional Sentry configuration (for error tracking)
    NEXT_PUBLIC_SENTRY_DSN=your_sentry_dsn_here
@@ -41,8 +42,8 @@ The application uses Firebase for authentication and database functionality. To 
    ```
    FIREBASE_SERVICE_ACCOUNT='{"type":"service_account","project_id":"...","private_key_id":"...","private_key":"...","client_email":"...","client_id":"...","auth_uri":"...","token_uri":"...","auth_provider_x509_cert_url":"...","client_x509_cert_url":"..."}'
    FIREBASE_PROJECT_ID=your_project_id_here
-   FIREBASE_STORAGE_BUCKET=your_storage_bucket_here
-   PORT=5000
+   NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_storage_bucket_here
+   PORT=5001
    ```
 
 7. Restart your development server after updating the environment files
