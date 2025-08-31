@@ -48,8 +48,8 @@ export const groupBy = <T>(
   array: T[],
   key: string
 ): Record<string, T[]> => {
-  return array.reduce((result, item: any) => {
-    const groupKey = item[key] || 'undefined';
+  return array.reduce((result, item) => {
+    const groupKey = (item as Record<string, unknown>)[key] as string || 'undefined';
     result[groupKey] = result[groupKey] || [];
     result[groupKey].push(item);
     return result;
@@ -57,7 +57,7 @@ export const groupBy = <T>(
 };
 
 // Remove undefined properties from an object
-export const removeUndefined = <T extends Record<string, any>>(obj: T): Partial<T> => {
+export const removeUndefined = <T extends Record<string, unknown>>(obj: T): Partial<T> => {
   return Object.entries(obj)
     .filter(([_, value]) => value !== undefined)
     .reduce((result, [key, value]) => {

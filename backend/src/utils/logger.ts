@@ -10,16 +10,16 @@ const NODE_ENV = process.env.NODE_ENV || 'development';
 
 // Simple console logger with timestamp
 const logger = {
-  error: (message: string, metadata?: any) => {
+  error: (message: string, metadata?: Record<string, unknown>) => {
     logWithLevel(LOG_LEVELS.ERROR, message, metadata);
   },
-  warn: (message: string, metadata?: any) => {
+  warn: (message: string, metadata?: Record<string, unknown>) => {
     logWithLevel(LOG_LEVELS.WARN, message, metadata);
   },
-  info: (message: string, metadata?: any) => {
+  info: (message: string, metadata?: Record<string, unknown>) => {
     logWithLevel(LOG_LEVELS.INFO, message, metadata);
   },
-  debug: (message: string, metadata?: any) => {
+  debug: (message: string, metadata?: Record<string, unknown>) => {
     // Only log debug in development
     if (NODE_ENV === 'development') {
       logWithLevel(LOG_LEVELS.DEBUG, message, metadata);
@@ -28,7 +28,7 @@ const logger = {
 };
 
 // Helper function to format and print logs
-function logWithLevel(level: string, message: string, metadata?: any) {
+function logWithLevel(level: string, message: string, metadata?: Record<string, unknown>) {
   const timestamp = new Date().toISOString();
   const logObject = {
     timestamp,
