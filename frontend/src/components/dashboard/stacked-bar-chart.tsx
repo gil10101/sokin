@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
+import React, { useEffect, useState, useRef } from "react"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell, Tooltip } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "../../components/ui/chart"
 import { LoadingSpinner } from "../../components/ui/loading-spinner"
@@ -13,7 +13,7 @@ import { useViewport } from "../../hooks/use-mobile"
 import { format, subMonths, startOfMonth, endOfMonth, eachMonthOfInterval } from "date-fns"
 
 // Helper function to safely parse dates including Firebase Timestamps
-const safeParseDate = (dateValue: any): Date => {
+const safeParseDate = (dateValue: string | number | Date | { toDate(): Date } | null | undefined): Date => {
   if (!dateValue) return new Date()
   
   try {
@@ -22,8 +22,8 @@ const safeParseDate = (dateValue: any): Date => {
       return dateValue
     }
     // If it's a Firebase Timestamp object
-    else if (dateValue && typeof dateValue === 'object' && 'toDate' in dateValue) {
-      return dateValue.toDate()
+    else if (dateValue && typeof dateValue === 'object' && 'toDate' in dateValue && typeof dateValue.toDate === 'function') {
+      return (dateValue as { toDate(): Date }).toDate()
     }
     // If it's a numeric timestamp (milliseconds)
     else if (typeof dateValue === 'number') {

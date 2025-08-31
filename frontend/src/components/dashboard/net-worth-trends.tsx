@@ -64,7 +64,7 @@ export function NetWorthTrends({
       
       const months = timeframe === '6months' ? 6 : timeframe === '12months' ? 12 : 24
       
-      const data = await api.get(`net-worth/trends?months=${months}`, { token })
+      const data = await api.get(`net-worth/trends?months=${months}`, { token }) as { data: NetWorthTrend[] }
       const trends = data.data || []
       
       // Generate sample data if no historical data exists
@@ -165,12 +165,20 @@ export function NetWorthTrends({
     }).format(value)
   }
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = ({ active, payload, label }: {
+    active?: boolean;
+    payload?: Array<{
+      value: number;
+      name: string;
+      color: string;
+    }>;
+    label?: string;
+  }) => {
     if (active && payload && payload.length) {
       return (
         <div className="bg-dark border border-cream/20 rounded-lg p-3 shadow-lg">
           <p className="font-medium text-cream mb-2">{label}</p>
-          {payload.map((entry: any, index: number) => (
+          {payload.map((entry, index: number) => (
             <p key={index} className="text-sm" style={{ color: entry.color }}>
               {entry.name}: {formatTooltipCurrency(entry.value)}
             </p>
@@ -221,7 +229,7 @@ export function NetWorthTrends({
               </SelectContent>
             </Select>
             
-            <Select value={chartType} onValueChange={(value: any) => setChartType(value)}>
+            <Select value={chartType} onValueChange={(value: 'area' | 'line' | 'bar') => setChartType(value)}>
               <SelectTrigger className="w-32 bg-cream/5 border-cream/10 text-cream">
                 <SelectValue />
               </SelectTrigger>

@@ -130,12 +130,13 @@ export function SavingsGoals() {
       })) as SavingsGoal[]
 
       setGoals(goalsData)
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "There was an error loading your savings goals";
 
       setError('Failed to load savings goals. Please try again.')
       toast({
         title: "Error loading goals",
-        description: error.message || "There was an error loading your savings goals",
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {
@@ -183,11 +184,12 @@ export function SavingsGoals() {
         title: "Goal Created",
         description: `Your goal "${goalData.name}" has been created successfully.`
       })
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to create savings goal";
 
       toast({
         title: "Error",
-        description: error.message || "Failed to create savings goal",
+        description: errorMessage,
         variant: "destructive"
       })
     }
@@ -247,11 +249,12 @@ export function SavingsGoals() {
         title: "Contribution Added",
         description: `$${amount.toLocaleString()} has been added to your goal.`
       })
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to add contribution";
 
       toast({
         title: "Error",
-        description: error.message || "Failed to add contribution",
+        description: errorMessage,
         variant: "destructive"
       })
     }
@@ -452,7 +455,7 @@ export function SavingsGoals() {
                   <Label className="text-sm font-medium">Priority</Label>
                   <Select 
                     value={newGoal.priority} 
-                    onValueChange={(value: any) => setNewGoal({ ...newGoal, priority: value })}
+                    onValueChange={(value: 'low' | 'medium' | 'high') => setNewGoal({ ...newGoal, priority: value })}
                   >
                     <SelectTrigger className="h-11">
                       <SelectValue />
