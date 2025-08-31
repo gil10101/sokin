@@ -1,9 +1,25 @@
-import { getMessaging, getToken, onMessage } from 'firebase/messaging';
+import { getMessaging, getToken, onMessage, Messaging } from 'firebase/messaging';
 import { auth } from './firebase';
 import { notificationsAPI } from './api-services';
 
+// Firebase messaging interfaces
+interface FirebaseNotification {
+  title?: string;
+  body?: string;
+  icon?: string;
+  click_action?: string;
+}
+
+interface FirebaseMessagePayload {
+  notification?: FirebaseNotification;
+  data?: Record<string, string>;
+  from?: string;
+  messageId?: string;
+  sentTime?: number;
+}
+
 // Initialize Firebase messaging only on client side
-let messaging: any = null;
+let messaging: Messaging | null = null;
 
 const initializeMessagingInstance = () => {
   if (typeof window !== 'undefined' && !messaging) {
@@ -75,7 +91,7 @@ const registerFCMToken = async (token: string) => {
 };
 
 // Handle foreground messages
-export const setupForegroundMessageListener = (callback: (payload: any) => void) => {
+export const setupForegroundMessageListener = (callback: (payload: FirebaseMessagePayload) => void) => {
   const messagingInstance = initializeMessagingInstance();
   if (!messagingInstance) {
     return () => {}; // Return empty cleanup function
@@ -88,7 +104,7 @@ export const setupForegroundMessageListener = (callback: (payload: any) => void)
 };
 
 // Show notification toast in foreground
-export const showForegroundNotification = (payload: any) => {
+export const showForegroundNotification = (payload: FirebaseMessagePayload) => {
   // Create a custom notification or use your toast system
   if ('Notification' in window && Notification.permission === 'granted') {
     new Notification(payload.notification?.title || 'Sokin Notification', {

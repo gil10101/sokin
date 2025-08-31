@@ -107,7 +107,7 @@ export { captureException };
 /**
  * Capture an error with additional context
  */
-export function captureError(error: Error, context?: Record<string, any>) {
+export function captureError(error: Error, context?: Record<string, unknown>) {
     captureException(error);
 }
 
@@ -121,7 +121,7 @@ export function logMessage(message: string, level: 'info' | 'warning' | 'error' 
 /**
  * Track a user session
  */
-export function identifyUser(userId: string, userData?: Record<string, any>) {
+export function identifyUser(userId: string, userData?: Record<string, unknown>) {
   if (isValidDSN) {
     import('@sentry/nextjs').then((Sentry) => {
       Sentry.setUser({

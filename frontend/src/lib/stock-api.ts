@@ -163,21 +163,21 @@ export class StockAPI {
    */
   private static baseUrl = (() => {
     const envUrl = process.env.NEXT_PUBLIC_API_URL
-    if (envUrl) {
-      // If environment URL doesn't end with /api, add it
-      return envUrl.endsWith('/api') ? envUrl : `${envUrl}/api`
+    if (!envUrl) {
+      throw new Error('NEXT_PUBLIC_API_URL environment variable is not configured')
     }
-    return 'http://localhost:5001/api'
+    // If environment URL doesn't end with /api, add it
+    return envUrl.endsWith('/api') ? envUrl : `${envUrl}/api`
   })()
 
   // WebSocket connection for real-time updates
   private static socket: Socket | null = null
-  private static priceUpdateCallbacks = new Map<string, Set<(data: any) => void>>()
+  private static priceUpdateCallbacks = new Map<string, Set<(data: StockData) => void>>()
   private static connectionAttempted = false
   private static connectionFailed = false
 
   // Simple in-memory cache
-  private static cache = new Map<string, CacheEntry<any>>()
+  private static cache = new Map<string, CacheEntry<StockData | MarketIndex[] | UserPortfolioStock[] | StockData[]>>()
 
   /**
    * Get authentication headers for API requests
@@ -301,32 +301,30 @@ export class StockAPI {
 
   /**
    * Check cache for data and return if not expired
-   * 
-   * @template T - Type of cached data
+   *
    * @param key - Cache key
    * @returns Cached data or null if expired/not found
    */
-  private static getFromCache<T>(key: string): T | null {
+  private static getFromCache<T extends StockData | MarketIndex[] | UserPortfolioStock[] | StockData[]>(key: string): T | null {
     const entry = this.cache.get(key)
     if (!entry) return null
-    
+
     if (Date.now() - entry.timestamp > entry.ttl) {
       this.cache.delete(key)
       return null
     }
-    
-    return entry.data
+
+    return entry.data as T
   }
 
   /**
    * Store data in cache with TTL
-   * 
-   * @template T - Type of data to cache
+   *
    * @param key - Cache key
    * @param data - Data to cache
    * @param ttlMs - Time to live in milliseconds (default: 30 seconds)
    */
-  private static setCache<T>(key: string, data: T, ttlMs: number = 30000): void {
+  private static setCache<T extends StockData | MarketIndex[] | UserPortfolioStock[] | StockData[]>(key: string, data: T, ttlMs: number = 30000): void {
     this.cache.set(key, {
       data,
       timestamp: Date.now(),
@@ -775,7 +773,7 @@ export class StockAPI {
 
         })
 
-        this.socket.on('price_updates', (data: Record<string, any>) => {
+        this.socket.on('price_updates', (data: Record<string, StockData>) => {
           // Broadcast price updates to all registered callbacks
           Object.entries(data).forEach(([symbol, priceData]) => {
             const callbacks = this.priceUpdateCallbacks.get(symbol)
@@ -810,14 +808,14 @@ export class StockAPI {
     return this.socket
   }
 
-  static subscribeToStockPrices(symbols: string[], callback: (symbol: string, data: any) => void): () => void {
+  static subscribeToStockPrices(symbols: string[], callback: (symbol: string, data: StockData) => void): () => void {
     // Register callback for each symbol
     symbols.forEach(symbol => {
       if (!this.priceUpdateCallbacks.has(symbol)) {
         this.priceUpdateCallbacks.set(symbol, new Set())
       }
-      
-      const symbolCallback = (data: any) => callback(symbol, data)
+
+      const symbolCallback = (data: StockData) => callback(symbol, data)
       this.priceUpdateCallbacks.get(symbol)!.add(symbolCallback)
     })
 
