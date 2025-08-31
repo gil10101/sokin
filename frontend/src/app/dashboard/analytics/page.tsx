@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import React, { useState, useEffect } from "react"
 import { collection, query, where, getDocs, Timestamp } from "firebase/firestore"
 import { auth, db } from "../../../lib/firebase"
 import { useAuthState } from "react-firebase-hooks/auth"
@@ -11,7 +11,12 @@ import { MonthlyTrendsChart } from "../../../components/dashboard/monthly-trends
 import { CategoryComparisonChart } from "../../../components/dashboard/category-comparison-chart"
 import { SpendingHeatmap } from "../../../components/dashboard/spending-heatmap"
 import { BudgetProgressChart } from "../../../components/dashboard/budget-progress-chart"
-import { Tabs, TabsList, TabsTrigger } from "../../../components/ui/tabs"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/select"
+
+// Properly typed Select components
+const TypedSelectTrigger = SelectTrigger
+const TypedSelectContent = SelectContent
+const TypedSelectItem = SelectItem
 import { useToast } from "../../../hooks/use-toast"
 import { LoadingSpinner } from "../../../components/ui/loading-spinner"
 import { Expense } from "../../../lib/types"
@@ -29,18 +34,12 @@ interface CategoryTotalData {
   percentage: number
 }
 
-interface ProcessedAnalyticsData {
-  monthlyTrends: Record<string, MonthlyTrendData>
-  categoryTotals: Record<string, CategoryTotalData>
-  totalExpenses: number
-  totalCategories: number
-  averageExpense: number
-}
+
 
 // Helper function to safely parse dates
 const safeParseDate = (dateValue: unknown): Date => {
   if (!dateValue) return new Date()
-  
+
   try {
     // If it's already a Date object
     if (dateValue instanceof Date) {
@@ -48,7 +47,8 @@ const safeParseDate = (dateValue: unknown): Date => {
     }
     // If it's a Firebase Timestamp object
     else if (dateValue && typeof dateValue === 'object' && 'toDate' in dateValue) {
-      return dateValue.toDate()
+      const timestampObj = dateValue as { toDate: () => Date }
+      return timestampObj.toDate()
     }
     // If it's a numeric timestamp (milliseconds)
     else if (typeof dateValue === 'number') {
@@ -59,7 +59,7 @@ const safeParseDate = (dateValue: unknown): Date => {
       const parsedDate = new Date(dateValue)
       return isNaN(parsedDate.getTime()) ? new Date() : parsedDate
     }
-    
+
     return new Date()
   } catch (error) {
 
@@ -72,8 +72,8 @@ export default function AnalyticsPage() {
   const [user] = useAuthState(auth)
   const { toast } = useToast()
   const [loading, setLoading] = useState(true)
-  const [monthlyData, setMonthlyData] = useState<unknown[]>([])
-  const [categoryData, setCategoryData] = useState<unknown[]>([])
+  const [monthlyData, setMonthlyData] = useState<{ month: string; amount: number }[]>([])
+  const [categoryData, setCategoryData] = useState<{ category: string; amount: number }[]>([])
   const [timeframe, setTimeframe] = useState("6months")
 
   useEffect(() => {
@@ -113,18 +113,18 @@ export default function AnalyticsPage() {
         )
 
         const querySnapshot = await getDocs(q)
-        const expenses = querySnapshot.docs.map((doc) => ({
+        const expenses: Expense[] = querySnapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
-        }))
+        })) as Expense[]
 
 
 
         // Process data for monthly trends
-        const monthlyTrends: Record<string, MonthlyTrendData> = {}
-        const categoryTotals: Record<string, CategoryTotalData> = {}
+        const monthlyTrends: Record<string, number> = {}
+        const categoryTotals: Record<string, number> = {}
 
-        expenses.forEach((expense: Expense) => {
+        expenses.forEach((expense) => {
           const date = safeParseDate(expense.date)
           const monthYear = format(date, "MMM yyyy")
 
@@ -165,7 +165,7 @@ export default function AnalyticsPage() {
         })
 
         // Sort category data by amount (descending)
-        categoryDataArray.sort((a, b) => (b.amount as number) - (a.amount as number))
+        categoryDataArray.sort((a, b) => b.amount - a.amount)
 
 
 
@@ -219,28 +219,22 @@ export default function AnalyticsPage() {
               <p className="text-cream/60 text-sm mt-1 font-outfit">Detailed insights into your spending patterns</p>
             </div>
             <div>
-              <Tabs defaultValue="6months" value={timeframe} onValueChange={setTimeframe} className="w-full">
-                <TabsList className="bg-cream/5 text-cream">
-                  <TabsTrigger
-                    value="3months"
-                    className="data-[state=active]:bg-cream/10 transition-all duration-200 hover:bg-cream/8"
-                  >
+              <Select value={timeframe} onValueChange={setTimeframe}>
+                <TypedSelectTrigger className="bg-cream/5 border-cream/10 text-cream focus:ring-cream/20 w-full md:w-48">
+                  <SelectValue placeholder="Select timeframe" />
+                </TypedSelectTrigger>
+                <TypedSelectContent className="bg-dark border-cream/10">
+                  <TypedSelectItem value="3months" className="text-cream hover:bg-cream/10">
                     3 Months
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="6months"
-                    className="data-[state=active]:bg-cream/10 transition-all duration-200 hover:bg-cream/8"
-                  >
+                  </TypedSelectItem>
+                  <TypedSelectItem value="6months" className="text-cream hover:bg-cream/10">
                     6 Months
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="12months"
-                    className="data-[state=active]:bg-cream/10 transition-all duration-200 hover:bg-cream/8"
-                  >
+                  </TypedSelectItem>
+                  <TypedSelectItem value="12months" className="text-cream hover:bg-cream/10">
                     12 Months
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
+                  </TypedSelectItem>
+                </TypedSelectContent>
+              </Select>
             </div>
           </motion.header>
 

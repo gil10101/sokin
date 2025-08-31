@@ -3,26 +3,36 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
-import { PieChart, PlusCircle, CreditCard, ChevronRight, Calendar, Search, TrendingUp } from "lucide-react"
+import { PieChart, PlusCircle, CreditCard, ChevronRight, Calendar, Search, TrendingUp } from "../../lib/icons"
 import { DashboardSidebar } from "@/components/dashboard/sidebar"
 import dynamic from "next/dynamic"
 import Image from "next/image"
-// Lazy load heavy chart components with loading states
+// Lazy load heavy chart components with optimized loading states and progressive loading
 const ExpenseChart = dynamic(() => import("../../components/dashboard/expense-chart").then(mod => ({ default: mod.ExpenseChart })), {
   ssr: false,
-  loading: () => <div className="h-80 bg-cream/5 rounded-lg animate-pulse" />
+  loading: () => <div className="h-80 bg-cream/5 rounded-lg animate-pulse flex items-center justify-center"><div className="text-cream/60">Loading chart...</div></div>
 })
 const CategoryBreakdown = dynamic(() => import("../../components/dashboard/category-breakdown").then(mod => ({ default: mod.CategoryBreakdown })), {
   ssr: false,
-  loading: () => <div className="h-64 bg-cream/5 rounded-lg animate-pulse" />
+  loading: () => <div className="h-64 bg-cream/5 rounded-lg animate-pulse flex items-center justify-center"><div className="text-cream/60">Loading breakdown...</div></div>
 })
 const AdvancedAnalytics = dynamic(() => import("../../components/dashboard/advanced-analytics").then(mod => ({ default: mod.AdvancedAnalytics })), {
   ssr: false,
-  loading: () => <div className="h-40 bg-cream/5 rounded-lg animate-pulse" />
+  loading: () => <div className="h-40 bg-cream/5 rounded-lg animate-pulse flex items-center justify-center"><div className="text-cream/60">Loading analytics...</div></div>
 })
 const StockMarket = dynamic(() => import("../../components/dashboard/stock-market").then(mod => ({ default: mod.StockMarket })), {
   ssr: false,
-  loading: () => <div className="h-96 bg-cream/5 rounded-lg animate-pulse" />
+  loading: () => <div className="h-96 bg-cream/5 rounded-lg animate-pulse flex items-center justify-center"><div className="text-cream/60">Loading market data...</div></div>
+})
+
+// Lazy load motion container to reduce initial bundle
+const MotionContainer = dynamic(() => import("../../components/ui/motion-container").then(mod => ({ default: mod.MotionContainer })), {
+  ssr: false,
+  loading: () => <div />
+})
+const StackedBarChart = dynamic(() => import("../../components/dashboard/stacked-bar-chart").then(mod => ({ default: mod.StackedBarChart })), {
+  ssr: false,
+  loading: () => <div className="h-64 bg-cream/5 rounded-lg animate-pulse flex items-center justify-center"><div className="text-cream/60">Loading chart...</div></div>
 })
 
 // Import lightweight components normally
@@ -33,22 +43,13 @@ import { BillReminders } from "@/components/dashboard/bill-reminders"
 import { Input } from "@/components/ui/input"
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter } from "next/navigation"
-// Lazy load motion container to reduce initial bundle
-const MotionContainer = dynamic(() => import("../../components/ui/motion-container").then(mod => ({ default: mod.MotionContainer })), {
-  ssr: false,
-  loading: () => <div />
-})
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../../lib/ui-components"
 import { NotificationsDropdown } from "@/components/notifications/notifications-dropdown"
 import { api } from "@/lib/api"
 import { useQueryClient } from "@tanstack/react-query"
 import Link from "next/link"
-const StackedBarChart = dynamic(() => import("../../components/dashboard/stacked-bar-chart").then(mod => ({ default: mod.StackedBarChart })), {
-  ssr: false,
-  loading: () => <div className="h-64 bg-cream/5 rounded-lg animate-pulse" />
-})
-import type { NetWorthCalculation } from "@/lib/types"
+import type { NetWorthCalculation, Budget } from "@/lib/types"
 
 interface Expense {
   id: string
@@ -83,7 +84,7 @@ export default function DashboardPage() {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false)
   const [expenses, setExpenses] = useState<Expense[]>([])
-  const [budgets, setBudgets] = useState<any[]>([])
+  const [budgets, setBudgets] = useState<Budget[]>([])
   const [netWorth, setNetWorth] = useState<NetWorthCalculation | null>(null)
 
   // Fix hydration issues by only rendering after mount
@@ -91,11 +92,22 @@ export default function DashboardPage() {
     setMounted(true)
   }, [])
 
-  // Fetch dashboard data when user is available
+  // Fetch dashboard data when user is available with optimized caching
   useEffect(() => {
     if (user && mounted) {
-      fetchDashboard()
-      fetchNetWorth()
+      // Use requestIdleCallback for non-critical data fetching
+      const fetchData = () => {
+        fetchDashboard()
+        // Delay net worth fetching to prioritize main dashboard data
+        setTimeout(fetchNetWorth, 1000)
+      }
+
+      if ('requestIdleCallback' in window) {
+        requestIdleCallback(fetchData, { timeout: 2000 })
+      } else {
+        // Fallback for browsers without requestIdleCallback
+        setTimeout(fetchData, 100)
+      }
     }
   }, [user, mounted])
 
@@ -111,7 +123,7 @@ export default function DashboardPage() {
     // Check if we already have cached data
     const cachedData = queryClient.getQueryData(['dashboard', user.uid])
     if (cachedData) {
-      const data = cachedData as { expenses: Expense[]; budgets: any[]; notifications: Notification[] }
+      const data = cachedData as { expenses: Expense[]; budgets: Budget[]; notifications: Notification[] }
       setExpenses(data.expenses || [])
       setBudgets(data.budgets || [])
       setNotifications(data.notifications || [])
@@ -120,7 +132,7 @@ export default function DashboardPage() {
     
     try {
       const token = await user.getIdToken()
-      const data = await api.get<{ expenses: Expense[]; budgets: any[]; notifications: Notification[] }>(
+      const data = await api.get<{ expenses: Expense[]; budgets: Budget[]; notifications: Notification[] }>(
         'dashboard',
         { token }
       )
@@ -145,7 +157,7 @@ export default function DashboardPage() {
   const fetchNetWorth = async () => {
     try {
       const token = await user?.getIdToken()
-      const data = await api.get('net-worth/calculate', { token })
+      const data = await api.get<{ data: NetWorthCalculation }>('net-worth/calculate', { token })
       setNetWorth(data.data)
     } catch (error) {
 
@@ -160,18 +172,29 @@ export default function DashboardPage() {
     }
 
     setShowSearchResults(true)
-    // Filter locally from loaded expenses with improved performance
-    const filtered = expenses
-      .slice(0, 50) // Reduced from 200 to 50 for better performance
-      .filter(expense => {
-        const term = searchTerm.toLowerCase()
-        return (
-          (expense.name || '').toLowerCase().includes(term) ||
-          (expense.category || '').toLowerCase().includes(term) ||
-          (expense.description || '').toLowerCase().includes(term)
-        )
-      })
-    setSearchResults(filtered)
+    // Use requestIdleCallback for search to prevent blocking main thread
+    const performSearch = () => {
+      const term = searchTerm.toLowerCase()
+      const filtered = expenses
+        .slice(0, 30) // Further reduced for better performance
+        .filter(expense => {
+          // Optimized search with early returns
+          const name = expense.name || ''
+          const category = expense.category || ''
+          const description = expense.description || ''
+
+          return name.toLowerCase().includes(term) ||
+                 category.toLowerCase().includes(term) ||
+                 description.toLowerCase().includes(term)
+        })
+      setSearchResults(filtered)
+    }
+
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(performSearch, { timeout: 100 })
+    } else {
+      performSearch()
+    }
   }
 
   const handleSearch = (e: React.FormEvent) => {
@@ -234,14 +257,40 @@ export default function DashboardPage() {
   if (!mounted) {
     return (
       <div className="flex h-screen bg-dark text-cream overflow-hidden">
-        <div className="h-screen bg-dark border-r border-cream/10 flex flex-col" style={{ width: "80px" }} />
+        <div className="h-screen bg-dark border-r border-cream/10 flex flex-col" style={{ width: "80px" }}>
+          {/* Skeleton sidebar */}
+          <div className="p-4">
+            <div className="h-8 w-8 bg-cream/5 rounded-lg mb-8" />
+            <div className="space-y-2">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="h-10 bg-cream/5 rounded-lg" />
+              ))}
+            </div>
+          </div>
+        </div>
         <div className="flex-1 overflow-auto p-6 md:p-8 lg:p-10">
           <div className="max-w-7xl mx-auto">
-            <div className="h-12 w-64 bg-cream/5 rounded-md animate-pulse mb-8" />
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            {/* Header skeleton */}
+            <div className="flex items-center justify-between mb-8">
+              <div className="h-8 w-48 bg-cream/5 rounded-md" />
+              <div className="h-10 w-32 bg-cream/5 rounded-full" />
+            </div>
+
+            {/* Metrics cards skeleton */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-6 lg:mb-8">
               {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="h-32 bg-cream/5 rounded-xl animate-pulse" />
+                <div key={i} className="h-32 bg-cream/5 rounded-xl p-4">
+                  <div className="h-4 w-24 bg-cream/10 rounded mb-2" />
+                  <div className="h-6 w-16 bg-cream/10 rounded mb-1" />
+                  <div className="h-3 w-20 bg-cream/10 rounded" />
+                </div>
               ))}
+            </div>
+
+            {/* Charts skeleton */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 mb-6 lg:mb-8">
+              <div className="h-80 bg-cream/5 rounded-xl" />
+              <div className="h-80 bg-cream/5 rounded-xl" />
             </div>
           </div>
         </div>

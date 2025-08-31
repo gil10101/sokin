@@ -1,18 +1,29 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import React, { useState, useEffect } from "react"
 import { doc, getDoc, updateDoc } from "firebase/firestore"
-import { auth, db } from "../../../lib/firebase"
+import { auth, db } from "@/lib/firebase"
 import { useAuthState } from "react-firebase-hooks/auth"
 import { motion } from "framer-motion"
-import { DashboardSidebar } from "../../../components/dashboard/sidebar"
-import { Button } from "../../../components/ui/button"
-import { Switch } from "../../../components/ui/switch"
-import { Label } from "../../../components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../components/ui/tabs"
+import { DashboardSidebar } from "@/components/dashboard/sidebar"
+import { Button } from "@/components/ui/button"
+import { Switch } from "@/components/ui/switch"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Save, Moon, Globe, CreditCard } from "lucide-react"
-import { useToast } from "../../../hooks/use-toast"
+import { useToast } from "@/hooks/use-toast"
+
+// Properly typed UI components
+const TypedSelectTrigger = SelectTrigger
+const TypedSelectContent = SelectContent
+const TypedSelectItem = SelectItem
+const TypedTabsList = TabsList
+const TypedTabsTrigger = TabsTrigger
+const TypedTabsContent = TabsContent
+const TypedLabel = Label
+const TypedSwitch = Switch
+const TypedButton = Button
 
 interface Settings {
   theme: string;
@@ -63,10 +74,11 @@ export default function SettingsPage() {
           };
           setSettings(serializedSettings);
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : "There was an error loading your settings"
         toast({
           title: "Error loading settings",
-          description: error.message || "There was an error loading your settings",
+          description: errorMessage,
           variant: "destructive",
         })
       } finally {
@@ -90,10 +102,11 @@ export default function SettingsPage() {
         title: "Settings saved",
         description: "Your settings have been updated successfully",
       })
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "There was an error saving your settings"
       toast({
         title: "Error saving settings",
-        description: error.message || "There was an error saving your settings",
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {
@@ -101,19 +114,26 @@ export default function SettingsPage() {
     }
   }
 
-  const updateSetting = (path: string[], value: any) => {
+  const updateSetting = (path: string[], value: unknown) => {
     setSettings((prevSettings) => {
       const newSettings = { ...prevSettings }
-      let current = newSettings
+      let current: Record<string, unknown> = newSettings
 
       // Navigate to the nested property
       for (let i = 0; i < path.length - 1; i++) {
-        current = current[path[i] as keyof typeof current] as any
+        const key = path[i]
+        if (typeof current[key] === 'object' && current[key] !== null) {
+          current = current[key] as Record<string, unknown>
+        } else {
+          // Create nested object if it doesn't exist
+          current[key] = {}
+          current = current[key] as Record<string, unknown>
+        }
       }
 
       // Set the value
       const lastKey = path[path.length - 1]
-      current[lastKey as keyof typeof current] = value
+      current[lastKey] = value
 
       return newSettings
     })
@@ -138,19 +158,19 @@ export default function SettingsPage() {
             </div>
           ) : (
             <Tabs defaultValue="general" className="space-y-6">
-              <TabsList className="bg-cream/5 text-cream">
-                <TabsTrigger value="general" className="data-[state=active]:bg-cream/10">
+              <TypedTabsList className="bg-cream/5 text-cream">
+                <TypedTabsTrigger value="general" className="data-[state=active]:bg-cream/10">
                   General
-                </TabsTrigger>
-                <TabsTrigger value="notifications" className="data-[state=active]:bg-cream/10">
+                </TypedTabsTrigger>
+                <TypedTabsTrigger value="notifications" className="data-[state=active]:bg-cream/10">
                   Notifications
-                </TabsTrigger>
-                <TabsTrigger value="budgets" className="data-[state=active]:bg-cream/10">
+                </TypedTabsTrigger>
+                <TypedTabsTrigger value="budgets" className="data-[state=active]:bg-cream/10">
                   Budgets
-                </TabsTrigger>
-              </TabsList>
+                </TypedTabsTrigger>
+              </TypedTabsList>
 
-              <TabsContent value="general">
+              <TypedTabsContent value="general">
                 <motion.div
                   className="bg-cream/5 rounded-xl border border-cream/10 p-6"
                   initial={{ opacity: 0, y: 20 }}
@@ -164,25 +184,25 @@ export default function SettingsPage() {
                       <div className="space-y-0.5">
                         <div className="flex items-center">
                           <Moon className="mr-2 h-4 w-4 text-cream/60" />
-                          <Label htmlFor="theme">Theme</Label>
+                          <TypedLabel htmlFor="theme">Theme</TypedLabel>
                         </div>
                         <p className="text-cream/60 text-sm">Choose your preferred theme</p>
                       </div>
                       <Select value={settings.theme} onValueChange={(value) => updateSetting(["theme"], value)}>
-                        <SelectTrigger className="w-[180px] bg-cream/5 border-cream/10 text-cream focus:ring-cream/20">
+                        <TypedSelectTrigger className="w-[180px] bg-cream/5 border-cream/10 text-cream focus:ring-cream/20">
                           <SelectValue placeholder="Select theme" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-dark border-cream/10">
-                          <SelectItem value="dark" className="text-cream hover:bg-cream/10">
+                        </TypedSelectTrigger>
+                        <TypedSelectContent className="bg-dark border-cream/10">
+                          <TypedSelectItem value="dark" className="text-cream hover:bg-cream/10">
                             Dark
-                          </SelectItem>
-                          <SelectItem value="light" className="text-cream hover:bg-cream/10">
+                          </TypedSelectItem>
+                          <TypedSelectItem value="light" className="text-cream hover:bg-cream/10">
                             Light
-                          </SelectItem>
-                          <SelectItem value="system" className="text-cream hover:bg-cream/10">
+                          </TypedSelectItem>
+                          <TypedSelectItem value="system" className="text-cream hover:bg-cream/10">
                             System
-                          </SelectItem>
-                        </SelectContent>
+                          </TypedSelectItem>
+                        </TypedSelectContent>
                       </Select>
                     </div>
 
@@ -190,38 +210,38 @@ export default function SettingsPage() {
                       <div className="space-y-0.5">
                         <div className="flex items-center">
                           <Globe className="mr-2 h-4 w-4 text-cream/60" />
-                          <Label htmlFor="currency">Currency</Label>
+                          <TypedLabel htmlFor="currency">Currency</TypedLabel>
                         </div>
                         <p className="text-cream/60 text-sm">Set your preferred currency</p>
                       </div>
                       <Select value={settings.currency} onValueChange={(value) => updateSetting(["currency"], value)}>
-                        <SelectTrigger className="w-[180px] bg-cream/5 border-cream/10 text-cream focus:ring-cream/20">
+                        <TypedSelectTrigger className="w-[180px] bg-cream/5 border-cream/10 text-cream focus:ring-cream/20">
                           <SelectValue placeholder="Select currency" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-dark border-cream/10">
-                          <SelectItem value="USD" className="text-cream hover:bg-cream/10">
+                        </TypedSelectTrigger>
+                        <TypedSelectContent className="bg-dark border-cream/10">
+                          <TypedSelectItem value="USD" className="text-cream hover:bg-cream/10">
                             USD ($)
-                          </SelectItem>
-                          <SelectItem value="EUR" className="text-cream hover:bg-cream/10">
+                          </TypedSelectItem>
+                          <TypedSelectItem value="EUR" className="text-cream hover:bg-cream/10">
                             EUR (€)
-                          </SelectItem>
-                          <SelectItem value="GBP" className="text-cream hover:bg-cream/10">
+                          </TypedSelectItem>
+                          <TypedSelectItem value="GBP" className="text-cream hover:bg-cream/10">
                             GBP (£)
-                          </SelectItem>
-                          <SelectItem value="JPY" className="text-cream hover:bg-cream/10">
+                          </TypedSelectItem>
+                          <TypedSelectItem value="JPY" className="text-cream hover:bg-cream/10">
                             JPY (¥)
-                          </SelectItem>
-                          <SelectItem value="CAD" className="text-cream hover:bg-cream/10">
+                          </TypedSelectItem>
+                          <TypedSelectItem value="CAD" className="text-cream hover:bg-cream/10">
                             CAD ($)
-                          </SelectItem>
-                        </SelectContent>
+                          </TypedSelectItem>
+                        </TypedSelectContent>
                       </Select>
                     </div>
                   </div>
                 </motion.div>
-              </TabsContent>
+              </TypedTabsContent>
 
-              <TabsContent value="notifications">
+              <TypedTabsContent value="notifications">
                 <motion.div
                   className="bg-cream/5 rounded-xl border border-cream/10 p-6"
                   initial={{ opacity: 0, y: 20 }}
@@ -233,56 +253,56 @@ export default function SettingsPage() {
                   <div className="space-y-6">
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
-                        <Label htmlFor="email-notifications">Email Notifications</Label>
+                        <TypedLabel htmlFor="email-notifications">Email Notifications</TypedLabel>
                         <p className="text-cream/60 text-sm">Receive notifications via email</p>
                       </div>
-                      <Switch
+                      <TypedSwitch
                         id="email-notifications"
                         checked={settings.notifications?.email}
-                        onCheckedChange={(checked) => updateSetting(["notifications", "email"], checked)}
+                        onCheckedChange={(checked: boolean) => updateSetting(["notifications", "email"], checked)}
                       />
                     </div>
 
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
-                        <Label htmlFor="push-notifications">Push Notifications</Label>
+                        <TypedLabel htmlFor="push-notifications">Push Notifications</TypedLabel>
                         <p className="text-cream/60 text-sm">Receive push notifications in your browser</p>
                       </div>
-                      <Switch
+                      <TypedSwitch
                         id="push-notifications"
                         checked={settings.notifications?.push}
-                        onCheckedChange={(checked) => updateSetting(["notifications", "push"], checked)}
+                        onCheckedChange={(checked: boolean) => updateSetting(["notifications", "push"], checked)}
                       />
                     </div>
 
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
-                        <Label htmlFor="budget-alerts">Budget Alerts</Label>
-                        <p className="text-cream/60 text-sm">Get notified when you're approaching your budget limits</p>
+                        <TypedLabel htmlFor="budget-alerts">Budget Alerts</TypedLabel>
+                        <p className="text-cream/60 text-sm">Get notified when you&apos;re approaching your budget limits</p>
                       </div>
-                      <Switch
+                      <TypedSwitch
                         id="budget-alerts"
                         checked={settings.notifications?.budgetAlerts}
-                        onCheckedChange={(checked) => updateSetting(["notifications", "budgetAlerts"], checked)}
+                        onCheckedChange={(checked: boolean) => updateSetting(["notifications", "budgetAlerts"], checked)}
                       />
                     </div>
 
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
-                        <Label htmlFor="expense-notifications">Expense Notifications</Label>
+                        <TypedLabel htmlFor="expense-notifications">Expense Notifications</TypedLabel>
                         <p className="text-cream/60 text-sm">Get notified about expense changes and updates</p>
                       </div>
-                      <Switch
+                      <TypedSwitch
                         id="expense-notifications"
                         checked={settings.notifications?.expenseNotifications ?? true}
-                        onCheckedChange={(checked) => updateSetting(["notifications", "expenseNotifications"], checked)}
+                        onCheckedChange={(checked: boolean) => updateSetting(["notifications", "expenseNotifications"], checked)}
                       />
                     </div>
                   </div>
                 </motion.div>
-              </TabsContent>
+              </TypedTabsContent>
 
-              <TabsContent value="budgets">
+              <TypedTabsContent value="budgets">
                 <motion.div
                   className="bg-cream/5 rounded-xl border border-cream/10 p-6"
                   initial={{ opacity: 0, y: 20 }}
@@ -303,23 +323,23 @@ export default function SettingsPage() {
                       <p className="text-cream/60 mb-4">
                         Set up and manage your category budgets to track your spending goals.
                       </p>
-                      <Button className="bg-cream text-dark hover:bg-cream/90">Set Up Budgets</Button>
+                      <TypedButton className="bg-cream text-dark hover:bg-cream/90">Set Up Budgets</TypedButton>
                     </div>
                   </div>
                 </motion.div>
-              </TabsContent>
+              </TypedTabsContent>
             </Tabs>
           )}
 
           <div className="mt-8 flex justify-end">
-            <Button
+            <TypedButton
               onClick={handleSaveSettings}
               disabled={saving || loading}
               className="bg-cream text-dark hover:bg-cream/90 font-medium"
             >
               {saving ? "Saving..." : "Save Settings"}
               {!saving && <Save className="ml-2 h-4 w-4" />}
-            </Button>
+            </TypedButton>
           </div>
         </div>
       </main>

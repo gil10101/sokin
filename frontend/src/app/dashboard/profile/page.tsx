@@ -22,6 +22,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "../../../components/ui/avat
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../components/ui/tabs"
 import { Eye, EyeOff, Save, User } from "lucide-react"
 import { useToast } from "../../../hooks/use-toast"
+import type { UserProfile } from "../../../lib/types"
 
 export default function ProfilePage() {
   const [collapsed, setCollapsed] = useState(false)
@@ -38,7 +39,7 @@ export default function ProfilePage() {
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [updating, setUpdating] = useState(false)
-  const [userData, setUserData] = useState<any>(null)
+  const [userData, setUserData] = useState<UserProfile | null>(null)
   const [isInitialized, setIsInitialized] = useState(false)
 
   // Redirect if not logged in
@@ -56,17 +57,18 @@ export default function ProfilePage() {
       try {
         const userDoc = await getDoc(doc(db, "users", user.uid))
         if (userDoc.exists()) {
-          setUserData(userDoc.data())
+          setUserData(userDoc.data() as UserProfile)
         }
 
         setName(user.displayName || "")
         setEmail(user.email || "")
         setIsInitialized(true)
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("Error loading profile:", error)
+        const errorMessage = error instanceof Error ? error.message : "There was an error loading your profile"
         toast({
           title: "Error loading profile",
-          description: error.message || "There was an error loading your profile",
+          description: errorMessage,
           variant: "destructive",
         })
         setIsInitialized(true)
@@ -104,10 +106,11 @@ export default function ProfilePage() {
         title: "Profile updated",
         description: "Your profile has been updated successfully",
       })
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "There was an error updating your profile"
       toast({
         title: "Error updating profile",
-        description: error.message || "There was an error updating your profile",
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {
@@ -146,10 +149,11 @@ export default function ProfilePage() {
         title: "Password updated",
         description: "Your password has been updated successfully",
       })
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "There was an error updating your password"
       toast({
         title: "Error updating password",
-        description: error.message || "There was an error updating your password",
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {
