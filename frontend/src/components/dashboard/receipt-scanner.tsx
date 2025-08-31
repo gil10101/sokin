@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useCallback } from 'react'
+import React, { useState, useRef, useCallback } from 'react'
 import { Button } from '../ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog'
@@ -102,11 +102,12 @@ export function ReceiptScanner({ onDataExtracted, onExpenseCreated }: ReceiptSca
       } else {
         throw new Error(result.error || 'Failed to extract data')
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Please try again or enter the expense manually";
 
       toast({
         title: "Error processing receipt",
-        description: error.message || "Please try again or enter the expense manually",
+        description: errorMessage,
         variant: "destructive"
       })
     } finally {
@@ -218,11 +219,12 @@ export function ReceiptScanner({ onDataExtracted, onExpenseCreated }: ReceiptSca
       })
 
       onExpenseCreated?.()
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to create expense";
 
       toast({
         title: "Error creating expense",
-        description: error.message || "Please try again",
+        description: errorMessage,
         variant: "destructive"
       })
     } finally {

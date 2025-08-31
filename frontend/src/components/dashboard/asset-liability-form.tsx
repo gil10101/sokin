@@ -223,7 +223,7 @@ export function AssetLiabilityForm({ type, editItem, onSuccess, onCancel }: Asse
       const endpoint = type === 'asset' ? 'net-worth/assets' : 'net-worth/liabilities'
       
       // Prepare the body data and clean up empty optional fields
-      let body: any
+      let body: AssetFormData | LiabilityFormData
       if (type === 'asset') {
         body = {
           ...assetForm,
@@ -247,7 +247,7 @@ export function AssetLiabilityForm({ type, editItem, onSuccess, onCancel }: Asse
 
       // Remove undefined fields
       body = Object.fromEntries(
-        Object.entries(body).filter(([_, value]) => value !== undefined)
+        Object.entries(body).filter(([_key, value]: [string, unknown]) => value !== undefined)
       )
 
       if (editItem) {

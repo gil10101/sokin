@@ -407,7 +407,7 @@ export function BillReminders() {
                     <Label className="text-sm md:text-base">Frequency</Label>
                     <Select 
                       value={newBill.frequency} 
-                      onValueChange={(value: any) => setNewBill({ ...newBill, frequency: value })}
+                      onValueChange={(value: 'once' | 'weekly' | 'monthly' | 'yearly') => setNewBill({ ...newBill, frequency: value })}
                     >
                       <SelectTrigger className="mt-1 md:mt-2">
                         <SelectValue />
