@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "analyze": "cross-env ANALYZE=true next build"
+    "analyze": "cross-env ANALYZE=true next build",
+    "performance-check": "node performance-analyzer.js",
+    "build:analyze": "npm run analyze && npm run performance-check"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

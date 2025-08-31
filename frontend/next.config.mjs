@@ -24,11 +24,19 @@ const nextConfig = {
       },
     ],
     formats: ['image/avif', 'image/webp'],
+    minimumCacheTTL: 31536000, // 1 year
   },
   experimental: {
     optimizeCss: true,
     scrollRestoration: true,
-    optimizePackageImports: ['@radix-ui/react-icons', 'lucide-react', 'date-fns'],
+    optimizePackageImports: [
+      '@radix-ui/react-icons',
+      'lucide-react',
+      'date-fns',
+      '@radix-ui/react-dialog',
+      '@radix-ui/react-dropdown-menu',
+      '@radix-ui/react-select'
+    ],
   },
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
@@ -36,48 +44,86 @@ const nextConfig = {
   poweredByHeader: false,
   compress: true,
   modularizeImports: {
-    'lucide-react': {
-      transform: 'lucide-react/dist/esm/icons/{{member}}'
-    },
     'date-fns': {
       transform: 'date-fns/{{member}}'
     }
   },
-  webpack: (config) => {
+  webpack: (config, { dev, isServer }) => {
+    // Optimize bundle splitting for better caching
     config.optimization.splitChunks = {
       chunks: 'all',
       cacheGroups: {
-        vendor: {
-          test: /[\\/]node_modules[\\/]/,
-          name: 'vendors',
+        framework: {
+          chunks: 'all',
+          name: 'framework',
+          test: /(?<!node_modules.*)[\\/]node_modules[\\/](react|react-dom|scheduler|prop-types|use-subscription)[\\/]/,
+          priority: 40,
+          enforce: true,
+        },
+        lib: {
+          test: /[\\/]node_modules[\\/](!next[\\/])[\\/]/,
+          name: 'lib',
+          priority: 30,
           chunks: 'all',
         },
         radix: {
           test: /[\\/]node_modules[\\/]@radix-ui[\\/]/,
           name: 'radix',
           chunks: 'all',
-          priority: 10,
+          priority: 20,
         },
         recharts: {
           test: /[\\/]node_modules[\\/]recharts[\\/]/,
           name: 'recharts',
           chunks: 'all',
-          priority: 10,
+          priority: 15,
+        },
+        firebase: {
+          test: /[\\/]node_modules[\\/]firebase[\\/]/,
+          name: 'firebase',
+          chunks: 'all',
+          priority: 15,
         },
         three: {
           test: /[\\/]node_modules[\\/](three|@react-three)[\\/]/,
           name: 'three',
           chunks: 'all',
-          priority: 20,
+          priority: 10,
         },
         framerMotion: {
           test: /[\\/]node_modules[\\/]framer-motion[\\/]/,
           name: 'framer-motion',
           chunks: 'all',
-          priority: 15,
+          priority: 10,
+        },
+        // Separate chunk for large utilities
+        utils: {
+          test: /[\\/]node_modules[\\/](clsx|tailwind-merge|date-fns|sonner)[\\/]/,
+          name: 'utils',
+          chunks: 'all',
+          priority: 5,
         },
       },
     }
+
+    // Add performance hints in production
+    if (!dev && !isServer) {
+      config.performance = {
+        hints: 'warning',
+        maxAssetSize: 512000, // 512KB
+        maxEntrypointSize: 512000, // 512KB
+      }
+    }
+
+    // Optimize CSS extraction
+    if (!isServer) {
+      config.optimization = {
+        ...config.optimization,
+        runtimeChunk: 'single',
+        splitChunks: config.optimization.splitChunks,
+      }
+    }
+
     return config
   },
   headers: async () => {
