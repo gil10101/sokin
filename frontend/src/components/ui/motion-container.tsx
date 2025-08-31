@@ -19,7 +19,7 @@ export function MotionContainer({ children, className, delay = 0 }: MotionContai
   }, [])
 
   if (!isMounted) {
-    return <div className={cn(className)}>{children}</div>
+    return <div className={cn(className)}>{children as React.ReactNode}</div>
   }
 
   return (
@@ -30,7 +30,7 @@ export function MotionContainer({ children, className, delay = 0 }: MotionContai
       transition={{ duration: 0.5, delay }}
       exit={{ opacity: 0, y: 20 }}
     >
-      {children}
+      {children as React.ReactNode}
     </motion.div>
   )
 }

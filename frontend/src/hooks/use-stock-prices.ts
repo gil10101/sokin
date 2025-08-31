@@ -119,7 +119,7 @@ export function useStockPrices({
    * @param symbol - Stock symbol
    * @param data - Price update data
    */
-  const handlePriceUpdate = useCallback((symbol: string, data: any) => {
+  const handlePriceUpdate = useCallback((symbol: string, data: { price: number; change?: number; changePercent?: number; timestamp?: number }) => {
     try {
       // Validate incoming data
       if (!data || typeof data.price !== 'number') {
@@ -267,7 +267,7 @@ export function useStockPrices({
       setConnected(false)
       onConnectionChange?.(false)
     }
-  }, [symbols, enabled, handlePriceUpdate, onError, onConnectionChange])
+  }, [symbols, enabled, handlePriceUpdate, onError, onConnectionChange, prices])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -365,7 +365,7 @@ export function useStockPrices({
  * ```
  */
 export function useStockPrice(symbol: string, enabled = true) {
-  const { prices, connected, error, getPrice } = useStockPrices({ 
+  const { connected, error, getPrice } = useStockPrices({ 
     symbols: symbol ? [symbol] : [], 
     enabled: enabled && !!symbol 
   })

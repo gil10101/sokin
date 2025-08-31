@@ -1,7 +1,7 @@
 "use client"
 
 import { useInfiniteQuery } from '@tanstack/react-query'
-import { collection, query, where, orderBy, limit, startAfter, getDocs, QueryDocumentSnapshot, DocumentData } from 'firebase/firestore'
+import { collection, query, where, orderBy, limit, startAfter, getDocs, QueryDocumentSnapshot, DocumentData, Timestamp } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import { useAuth } from '../contexts/auth-context'
 
@@ -9,7 +9,7 @@ export interface ExpenseLite {
   id: string
   name?: string
   amount: number
-  date: any
+  date: string | Date | Timestamp
   category: string
   userId: string
 }
@@ -33,7 +33,7 @@ export function useInfiniteExpenses(pageSize = 25) {
         where('userId', '==', user.uid),
         orderBy('date', 'desc'),
         limit(pageSize),
-      ] as any[]
+      ] as const
 
       const q = query(
         collection(db, 'expenses'),
