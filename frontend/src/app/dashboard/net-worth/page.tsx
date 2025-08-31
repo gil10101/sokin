@@ -189,8 +189,8 @@ export default function NetWorthPage() {
       const token = await user?.getIdToken()
       
       // Fetch net worth calculation
-      const netWorthData = await api.get('net-worth/calculate', { token })
-      
+      const netWorthData = await api.get('net-worth/calculate', { token }) as { data: NetWorthCalculation }
+
       setNetWorth(netWorthData.data)
       setAssets(netWorthData.data.assets || [])
       setLiabilities(netWorthData.data.liabilities || [])

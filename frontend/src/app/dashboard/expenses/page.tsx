@@ -2,7 +2,7 @@
 
 import React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { collection, query, where, orderBy, getDocs, deleteDoc, doc } from "firebase/firestore"
 import { db } from "../../../lib/firebase"
 import { useAuth } from "../../../contexts/auth-context"
@@ -24,7 +24,8 @@ import {
   AlertDialogTrigger,
 } from "../../../components/ui/alert-dialog"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../../../components/ui/dialog"
-import { Search, Trash2, Edit, PlusCircle, ChevronDown, ChevronRight, Image, Receipt } from "lucide-react"
+import { Search, Trash2, Edit, PlusCircle, ChevronDown, ChevronRight, Receipt } from "lucide-react"
+import Image from "next/image"
 import { useToast } from "../../../hooks/use-toast"
 import { useRouter } from "next/navigation"
 import { MotionContainer } from "../../../components/ui/motion-container"
@@ -51,7 +52,8 @@ interface Expense {
 }
 
 // Helper function to safely format dates
-const safeFormatDate = (dateValue: any, formatStr: string): string => {
+type DateValue = Date | number | string | { toDate(): Date } | null | undefined
+const safeFormatDate = (dateValue: DateValue, formatStr: string): string => {
   try {
     let date: Date | null = null
     
@@ -119,13 +121,9 @@ export default function ExpensesPage() {
     setMounted(true)
   }, [])
 
-  useEffect(() => {
-    if (user && mounted) {
-      fetchExpenses()
-    }
-  }, [user, mounted])
 
-  const fetchExpenses = async () => {
+
+  const fetchExpenses = useCallback(async () => {
     if (!user) return
 
     setLoading(true)
@@ -145,16 +143,23 @@ export default function ExpensesPage() {
       // Extract unique categories
       const uniqueCategories = Array.from(new Set(expensesData.map((expense) => expense.category)))
       setCategories(uniqueCategories as string[])
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "There was an error loading your expenses"
       toast({
         title: "Error loading expenses",
-        description: error.message || "There was an error loading your expenses",
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {
       setLoading(false)
     }
-  }
+  }, [user])
+
+  useEffect(() => {
+    if (user && mounted) {
+      fetchExpenses()
+    }
+  }, [user, mounted, fetchExpenses])
 
   useEffect(() => {
     // Apply filters and sorting
@@ -186,7 +191,7 @@ export default function ExpensesPage() {
         result.sort((a, b) => {
           try {
             // Safely parse dates using the same logic as safeFormatDate
-            const parseDate = (dateValue: any): number => {
+            const parseDate = (dateValue: DateValue): number => {
               if (!dateValue) return 0
               
               if (dateValue instanceof Date) {
@@ -218,7 +223,7 @@ export default function ExpensesPage() {
         result.sort((a, b) => {
           try {
             // Safely parse dates using the same logic as safeFormatDate
-            const parseDate = (dateValue: any): number => {
+            const parseDate = (dateValue: DateValue): number => {
               if (!dateValue) return 0
               
               if (dateValue instanceof Date) {
@@ -273,10 +278,11 @@ export default function ExpensesPage() {
         message: `Your expense "${expenseToDeleteData?.name || "Unknown"}" has been deleted.`,
         type: "info",
       })
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "There was an error deleting the expense"
       toast({
         title: "Error deleting expense",
-        description: error.message || "There was an error deleting the expense",
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {
@@ -604,7 +610,7 @@ export default function ExpensesPage() {
                                               onClick={() => setReceiptImageUrl(expense.receiptImageUrl!)}
                                               className="bg-cream/5 border-cream/20 text-cream hover:bg-cream/10"
                                             >
-                                              <Image className="h-4 w-4 mr-2" />
+                                              <Receipt className="h-4 w-4 mr-2" />
                                               View Receipt Image
                                             </Button>
                                           </DialogTrigger>
@@ -613,9 +619,11 @@ export default function ExpensesPage() {
                                               <DialogTitle className="text-cream">Receipt Image</DialogTitle>
                                             </DialogHeader>
                                             <div className="mt-4">
-                                              <img
-                                                src={expense.receiptImageUrl}
+                                              <Image
+                                                src={expense.receiptImageUrl!}
                                                 alt="Receipt"
+                                                width={800}
+                                                height={600}
                                                 className="w-full h-auto max-h-[60vh] object-contain rounded-lg border border-cream/10"
                                               />
                                             </div>

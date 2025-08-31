@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+
 import { collection, query, where, orderBy, getDocs, addDoc, doc, updateDoc, deleteDoc } from "firebase/firestore"
 import { db } from "../../../lib/firebase"
 import { useAuth } from "../../../contexts/auth-context"
@@ -90,47 +90,21 @@ interface BudgetFormData {
   notes: string
 }
 
-// Helper function to safely parse dates
-const safeParseDateToTimestamp = (dateValue: unknown): number => {
-  try {
-    if (!dateValue) return 0
-    
-    // If it's already a Date object
-    if (dateValue instanceof Date) {
-      return dateValue.getTime()
-    }
-    // If it's a Firebase Timestamp object
-    else if (dateValue && typeof dateValue === 'object' && 'toDate' in dateValue) {
-      return dateValue.toDate().getTime()
-    }
-    // If it's a numeric timestamp (milliseconds)
-    else if (typeof dateValue === 'number') {
-      return dateValue
-    }
-    // If it's a string
-    else if (typeof dateValue === 'string') {
-      const parsedDate = new Date(dateValue)
-      return isNaN(parsedDate.getTime()) ? 0 : parsedDate.getTime()
-    }
-    
-    return 0
-  } catch (error) {
-    return 0
-  }
-}
+
 
 // Helper function to safely parse dates to Date objects
 const safeParseDate = (dateValue: unknown): Date | null => {
   try {
     if (!dateValue) return null
-    
+
     // If it's already a Date object
     if (dateValue instanceof Date) {
       return dateValue
     }
     // If it's a Firebase Timestamp object
     else if (dateValue && typeof dateValue === 'object' && 'toDate' in dateValue) {
-      return dateValue.toDate()
+      const timestampObj = dateValue as { toDate: () => Date }
+      return timestampObj.toDate()
     }
     // If it's a numeric timestamp (milliseconds)
     else if (typeof dateValue === 'number') {
@@ -141,7 +115,7 @@ const safeParseDate = (dateValue: unknown): Date | null => {
       const parsedDate = new Date(dateValue)
       return isNaN(parsedDate.getTime()) ? null : parsedDate
     }
-    
+
     return null
   } catch (error) {
     return null
@@ -151,7 +125,7 @@ const safeParseDate = (dateValue: unknown): Date | null => {
 export default function BudgetsPage() {
   const [collapsed, setCollapsed] = useState(false)
   const { user } = useAuth()
-  const router = useRouter()
+
   const { toast } = useToast()
 
   const [budgets, setBudgets] = useState<Budget[]>([])
@@ -760,7 +734,7 @@ function BudgetCard({ budget, onEdit, onDelete, calculateProgress }: BudgetCardP
   // Safely parse dates with robust handling
   const parseDate = (dateValue: unknown): Date | null => {
     if (!dateValue) return null
-    
+
     try {
       // If it's already a Date object
       if (dateValue instanceof Date) {
@@ -768,7 +742,8 @@ function BudgetCard({ budget, onEdit, onDelete, calculateProgress }: BudgetCardP
       }
       // If it's a Firebase Timestamp object
       else if (dateValue && typeof dateValue === 'object' && 'toDate' in dateValue) {
-        return dateValue.toDate()
+        const timestampObj = dateValue as { toDate: () => Date }
+        return timestampObj.toDate()
       }
       // If it's a numeric timestamp (milliseconds)
       else if (typeof dateValue === 'number') {
@@ -779,7 +754,7 @@ function BudgetCard({ budget, onEdit, onDelete, calculateProgress }: BudgetCardP
         const parsedDate = new Date(dateValue)
         return isNaN(parsedDate.getTime()) ? null : parsedDate
       }
-      
+
       return null
     } catch (error) {
       return null
@@ -790,7 +765,6 @@ function BudgetCard({ budget, onEdit, onDelete, calculateProgress }: BudgetCardP
   const endDate = parseDate(budget.endDate)
 
   // Validate dates
-  const isValidStartDate = startDate && !isNaN(startDate.getTime())
   const isValidEndDate = endDate && !isNaN(endDate.getTime())
 
   // Format period display

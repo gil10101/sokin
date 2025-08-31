@@ -178,11 +178,11 @@ export default function GoalsPage() {
       })) as SavingsGoal[]
 
       setGoals(goalsData)
-    } catch (error: any) {
-
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "There was an error loading your savings goals"
       toast({
         title: "Error loading goals",
-        description: error.message || "There was an error loading your savings goals",
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {
@@ -275,10 +275,11 @@ export default function GoalsPage() {
       setShowCreateDialog(false)
       setEditingGoal(null)
       resetForm()
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to save goal"
       toast({
         title: "Error",
-        description: error.message || "Failed to save goal",
+        description: errorMessage,
         variant: "destructive"
       })
     }
@@ -294,11 +295,11 @@ export default function GoalsPage() {
         title: "Goal Deleted",
         description: "Your goal has been deleted successfully."
       })
-    } catch (error: any) {
-
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to delete goal"
       toast({
         title: "Error",
-        description: error.message || "Failed to delete goal",
+        description: errorMessage,
         variant: "destructive"
       })
     } finally {
@@ -375,10 +376,11 @@ export default function GoalsPage() {
         title: "Contribution Added",
         description: `$${amount.toLocaleString()} has been added to your goal.`
       })
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to add contribution"
       toast({
         title: "Error",
-        description: error.message || "Failed to add contribution",
+        description: errorMessage,
         variant: "destructive"
       })
     }
@@ -938,7 +940,7 @@ export default function GoalsPage() {
                     <Label className="text-sm font-medium">Priority</Label>
                     <Select 
                       value={formData.priority} 
-                      onValueChange={(value: any) => handleSelectChange('priority', value)}
+                      onValueChange={(value: string) => handleSelectChange('priority', value)}
                     >
                       <SelectTrigger className="h-11">
                         <SelectValue />

@@ -16,6 +16,7 @@ import { ScrollArea } from "../../../components/ui/scroll-area"
 import { useAuth } from "../../../contexts/auth-context"
 import { toast } from "../../../components/ui/use-toast"
 import { useStockPrices } from "../../../hooks/use-stock-prices"
+import { User } from "../../../lib/types"
 import { 
   StockAPI, 
   StockData,
@@ -60,7 +61,7 @@ const MobileStockCard: React.FC<{
   watchlist: string[];
   onToggleWatchlist: (symbol: string) => void;
   onTrade?: (stock: StockData, action?: 'trade' | 'add') => void;
-  user?: any;
+  user?: User | null;
 }> = ({ stock, watchlist, onToggleWatchlist, onTrade, user }) => {
   return (
     <Card className="bg-dark border-cream/10 p-4">
@@ -155,7 +156,7 @@ interface TransactionDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (transaction: CurrencyTransaction) => void;
-  user?: any;
+  user?: User | null;
   mode?: 'trade' | 'add';
 }
 
