@@ -1,9 +1,39 @@
 "use client"
 
 import { useMemo } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { useIsMobile } from '../../hooks/use-mobile'
 import { format, subMonths, eachDayOfInterval } from 'date-fns'
+
+// Simple card components to avoid React 19 type conflicts
+interface SimpleCardProps {
+  className?: string;
+  children?: React.ReactNode;
+  [key: string]: unknown;
+}
+
+const SimpleCard = ({ className, children, ...props }: SimpleCardProps) => (
+  <div className={`rounded-lg border bg-card text-card-foreground shadow-sm ${className || ''}`} {...props}>
+    {children}
+  </div>
+)
+
+const SimpleCardHeader = ({ className, children, ...props }: SimpleCardProps) => (
+  <div className={`flex flex-col space-y-1.5 p-6 ${className || ''}`} {...props}>
+    {children}
+  </div>
+)
+
+const SimpleCardTitle = ({ className, children, ...props }: SimpleCardProps) => (
+  <div className={`text-2xl font-semibold leading-none tracking-tight ${className || ''}`} {...props}>
+    {children}
+  </div>
+)
+
+const SimpleCardContent = ({ className, children, ...props }: SimpleCardProps) => (
+  <div className={`p-6 pt-0 ${className || ''}`} {...props}>
+    {children}
+  </div>
+)
 
 interface Expense {
   id: string
@@ -19,7 +49,7 @@ interface SpendingHeatmapAnalyticsProps {
 }
 
 // Helper function to safely parse dates including Firebase Timestamps
-const safeParseDate = (dateValue: any): Date => {
+const safeParseDate = (dateValue: string | number | Date | { toDate(): Date } | null | undefined): Date => {
   if (!dateValue) return new Date()
   
   try {
@@ -93,12 +123,12 @@ export function SpendingHeatmapAnalytics({ expenses }: SpendingHeatmapAnalyticsP
   }, [expenses])
 
   return (
-    <Card className="bg-cream/5 border-cream/20">
-      <CardHeader className="pb-6">
-        <CardTitle className="text-xl text-cream/90">Spending Heatmap</CardTitle>
+    <SimpleCard className="bg-cream/5 border-cream/20">
+      <SimpleCardHeader className="pb-6">
+        <SimpleCardTitle className="text-xl text-cream/90">Spending Heatmap</SimpleCardTitle>
         <p className="text-sm text-cream/60">Daily spending patterns over the last {isMobile ? '5 weeks' : '7 weeks'}</p>
-      </CardHeader>
-      <CardContent className="pb-6">
+      </SimpleCardHeader>
+      <SimpleCardContent className="pb-6">
         <div className="space-y-4">
           <div className={`grid grid-cols-7 gap-3 ${isMobile ? 'text-xs' : 'text-sm'} max-w-4xl mx-auto`}>
             {(isMobile ? ['S', 'M', 'T', 'W', 'T', 'F', 'S'] : ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']).map((day, index) => (
@@ -139,7 +169,7 @@ export function SpendingHeatmapAnalytics({ expenses }: SpendingHeatmapAnalyticsP
             <span className="text-xs text-cream/60">More</span>
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </SimpleCardContent>
+    </SimpleCard>
   )
 }

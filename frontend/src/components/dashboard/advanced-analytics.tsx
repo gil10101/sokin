@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { useIsMobile } from '../../hooks/use-mobile'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs'
@@ -15,8 +15,20 @@ import { SpendingHeatmapAnalytics } from './spending-heatmap-analytics'
 import { CategoryComparisonChart } from './category-comparison-chart'
 
 interface AdvancedAnalyticsProps {
-  budgets: any[]
+  budgets: Budget[]
   timeframe?: string
+}
+
+interface Budget {
+  id: string
+  name?: string
+  amount: number
+  currentSpent?: number
+  period?: string
+  categories?: string[]
+  startDate?: string
+  endDate?: string
+  userId?: string
 }
 
 interface Expense {
@@ -38,7 +50,7 @@ interface SpendingInsight {
 }
 
 // Helper function to safely parse dates including Firebase Timestamps
-const safeParseDate = (dateValue: any): Date => {
+const safeParseDate = (dateValue: unknown): Date => {
   if (!dateValue) return new Date()
   
   try {
@@ -47,8 +59,8 @@ const safeParseDate = (dateValue: any): Date => {
       return dateValue
     }
     // If it's a Firebase Timestamp object
-    else if (dateValue && typeof dateValue === 'object' && 'toDate' in dateValue) {
-      return dateValue.toDate()
+    else if (dateValue && typeof dateValue === 'object' && 'toDate' in dateValue && typeof dateValue.toDate === 'function') {
+      return (dateValue as { toDate(): Date }).toDate()
     }
     // If it's a numeric timestamp (milliseconds)
     else if (typeof dateValue === 'number') {
@@ -189,10 +201,10 @@ export function AdvancedAnalytics({ budgets, timeframe = "6months" }: AdvancedAn
       
       // Budget variance analysis
       budgets?.forEach(budget => {
-        if (budget.currentSpent > budget.amount * 0.9) {
+        if (budget.currentSpent && budget.currentSpent > budget.amount * 0.9) {
           newInsights.push({
             type: 'pattern',
-            title: `${budget.name} Budget Alert`,
+            title: `${budget.name || 'Budget'} Alert`,
             description: `You've used ${((budget.currentSpent / budget.amount) * 100).toFixed(1)}% of your budget`,
             severity: budget.currentSpent > budget.amount ? 'danger' : 'warning',
             value: budget.currentSpent

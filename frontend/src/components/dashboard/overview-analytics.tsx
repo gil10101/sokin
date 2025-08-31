@@ -28,7 +28,7 @@ interface OverviewAnalyticsProps {
 }
 
 // Helper function to safely parse dates including Firebase Timestamps
-const safeParseDate = (dateValue: any): Date => {
+const safeParseDate = (dateValue: string | number | Date | { toDate(): Date } | null | undefined): Date => {
   if (!dateValue) return new Date()
   
   try {

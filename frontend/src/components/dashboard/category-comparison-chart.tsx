@@ -1,13 +1,13 @@
 "use client"
 
-import { useEffect, useState, useRef, useMemo } from "react"
+import React, { useEffect, useState, useRef, useMemo } from "react"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell, LabelList, RectangleProps } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "../../components/ui/chart"
 import { motion } from "framer-motion"
 import { useViewport } from "../../hooks/use-mobile"
 
 interface CategoryComparisonChartProps {
-  data: any[]
+  data: Array<{ category: string; amount: number }>
 }
 
 export function CategoryComparisonChart({ data }: CategoryComparisonChartProps) {
@@ -15,7 +15,7 @@ export function CategoryComparisonChart({ data }: CategoryComparisonChartProps) 
   
   // Show all categories (no limit)
   const topCategories = data
-  const [animatedData, setAnimatedData] = useState<any[]>([])
+  const [animatedData, setAnimatedData] = useState<Array<{ category: string; amount: number }>>([])
   const [hoverIndex, setHoverIndex] = useState<number | null>(null)
 
   // Responsive chart configuration - adjust height based on number of categories
@@ -69,15 +69,15 @@ export function CategoryComparisonChart({ data }: CategoryComparisonChartProps) 
     return () => clearTimeout(timer)
   }, [data])
 
-  const CustomCursor = (props: any) => {
-    const { x, y, width, height, stroke } = props;
-    
+  const CustomCursor = (props: RectangleProps) => {
+    const { x, y, width, height } = props;
+
     return (
       <rect
-        x={x}
-        y={y - 5}
+        x={x || 0}
+        y={(y || 0) - 5}
         width="100%"
-        height={height + 10}
+        height={(height || 0) + 10}
         fill="#353535"
         fillOpacity={0.9}
       />
@@ -129,7 +129,7 @@ export function CategoryComparisonChart({ data }: CategoryComparisonChartProps) 
             <ChartTooltip 
               content={<ChartTooltipContent />} 
               cursor={<CustomCursor />}
-              formatter={(value: any) => [`$${value.toLocaleString()}`]}
+              formatter={(value: number) => [`$${value.toLocaleString()}`]}
               labelFormatter={(value) => `Category: ${value}`}
             />
             <Bar 

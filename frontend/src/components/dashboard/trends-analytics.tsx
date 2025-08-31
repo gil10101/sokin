@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from 'react'
+import React, { useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { useIsMobile } from '../../hooks/use-mobile'
 import { 
@@ -28,7 +28,7 @@ interface TrendsAnalyticsProps {
 }
 
 // Helper function to safely parse dates including Firebase Timestamps
-const safeParseDate = (dateValue: any): Date => {
+const safeParseDate = (dateValue: string | number | Date | { toDate(): Date } | null | undefined): Date => {
   if (!dateValue) return new Date()
   
   try {
