@@ -141,7 +141,6 @@ const safeParseDate = (dateValue: unknown): Date => {
     
     return new Date()
   } catch (error) {
-    console.error("Error parsing date:", error, "Input:", dateValue)
     return new Date()
   }
 }

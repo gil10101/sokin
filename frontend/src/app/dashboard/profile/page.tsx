@@ -64,7 +64,6 @@ export default function ProfilePage() {
         setEmail(user.email || "")
         setIsInitialized(true)
       } catch (error: unknown) {
-        console.error("Error loading profile:", error)
         const errorMessage = error instanceof Error ? error.message : "There was an error loading your profile"
         toast({
           title: "Error loading profile",
@@ -207,9 +206,11 @@ export default function ProfilePage() {
                 <div className="flex flex-col md:flex-row gap-8 items-start mb-8">
                   <div className="flex flex-col items-center">
                     <Avatar className="h-24 w-24 mb-4">
-                      <AvatarImage src="/placeholder.svg?height=96&width=96" alt={name} />
+                      {user?.photoURL ? (
+                        <AvatarImage src={user.photoURL} alt={name} />
+                      ) : null}
                       <AvatarFallback className="text-2xl">
-                        {name ? name.charAt(0).toUpperCase() : <User />}
+                        {name ? name.charAt(0).toUpperCase() : user?.displayName?.charAt(0)?.toUpperCase() || "U"}
                       </AvatarFallback>
                     </Avatar>
                     <Button
@@ -224,7 +225,11 @@ export default function ProfilePage() {
                     <p className="text-cream/60 text-sm mb-4">{email || "No email"}</p>
                     <p className="text-cream/60 text-sm">
                       Member since:{" "}
-                      {userData?.createdAt ? new Date(userData.createdAt).toLocaleDateString() : "Unknown"}
+                      {userData?.createdAt ? new Date(
+                        typeof userData.createdAt === 'object' && userData.createdAt && 'toDate' in userData.createdAt 
+                          ? (userData.createdAt as { toDate(): Date }).toDate() 
+                          : userData.createdAt as string | number
+                      ).toLocaleDateString() : "Unknown"}
                     </p>
                   </div>
                 </div>

@@ -15,6 +15,7 @@ import { Label } from "../../../components/ui/label"
 import { ScrollArea } from "../../../components/ui/scroll-area"
 import { useAuth } from "../../../contexts/auth-context"
 import { toast } from "../../../components/ui/use-toast"
+import { logger } from "../../../lib/logger"
 import { useStockPrices } from "../../../hooks/use-stock-prices"
 import { User } from "../../../lib/types"
 import { 
@@ -186,7 +187,11 @@ const TransactionDialog: React.FC<TransactionDialogProps> = ({ stock, isOpen, on
       const maxInfo = await StockAPI.getMaxSellAmount(user.uid, stock.symbol)
       setMaxSellInfo(maxInfo)
     } catch (error) {
-
+      logger.error("Error loading max sell amount", {
+        userId: user.uid,
+        symbol: stock.symbol,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      })
     } finally {
       setLoading(false)
     }
@@ -208,6 +213,14 @@ const TransactionDialog: React.FC<TransactionDialogProps> = ({ stock, isOpen, on
         })
         return
       }
+    }
+    
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please sign in to complete transactions",
+      })
+      return
     }
     
     onSubmit({
@@ -469,7 +482,7 @@ export default function StocksPage() {
   })
 
   // Debounced search
-  const debounceTimer = React.useRef<NodeJS.Timeout>()
+  const debounceTimer = React.useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     loadStockData()
@@ -1044,7 +1057,7 @@ export default function StocksPage() {
                 isOpen={transactionDialogOpen}
                 onClose={() => setTransactionDialogOpen(false)}
                 onSubmit={handleTransaction}
-                user={user}
+                user={user as User | null | undefined}
                 mode={transactionDialogMode}
               />
             </div>
@@ -1283,7 +1296,7 @@ export default function StocksPage() {
                       watchlist={watchlist}
                       onToggleWatchlist={toggleWatchlist}
                       onTrade={user ? openTransactionDialog : undefined}
-                      user={user}
+                      user={user as User | null | undefined}
                     />
                   ))
                 )}
@@ -1295,7 +1308,7 @@ export default function StocksPage() {
                 isOpen={transactionDialogOpen}
                 onClose={() => setTransactionDialogOpen(false)}
                 onSubmit={handleTransaction}
-                user={user}
+                user={user as User | null | undefined}
                 mode={transactionDialogMode}
               />
             </div>
