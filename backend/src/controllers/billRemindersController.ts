@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { db } from '../config/firebase';
+import logger from '../utils/logger';
 
 interface BillReminder {
   id?: string;
@@ -43,7 +44,7 @@ export class BillRemindersController {
 
       res.json({ bills });
     } catch (error: unknown) {
-      console.error('Error:', error);
+      logger.error('Error fetching bill reminders', { error: error instanceof Error ? error.message : 'Unknown error', userId: req.user?.uid });
       res.status(500).json({ error: 'Failed to fetch bill reminders' });
     }
   }
@@ -80,7 +81,7 @@ export class BillRemindersController {
 
       res.status(201).json({ bill: newBill });
     } catch (error: unknown) {
-      console.error('Error:', error);
+      logger.error('Error creating bill reminder', { error: error instanceof Error ? error.message : 'Unknown error', userId: req.user?.uid });
       res.status(500).json({ error: 'Failed to create bill reminder' });
     }
   }
@@ -121,7 +122,7 @@ export class BillRemindersController {
 
       res.json({ success: true });
     } catch (error: unknown) {
-      console.error('Error:', error);
+      logger.error('Error marking bill as paid', { error: error instanceof Error ? error.message : 'Unknown error', billId: req.params.billId, userId: req.user?.uid });
       res.status(500).json({ error: 'Failed to mark bill as paid' });
     }
   }
@@ -162,7 +163,7 @@ export class BillRemindersController {
 
       res.json({ success: true });
     } catch (error: unknown) {
-      console.error('Error:', error);
+      logger.error('Error updating bill reminder', { error: error instanceof Error ? error.message : 'Unknown error', billId: req.params.billId, userId: req.user?.uid });
       res.status(500).json({ error: 'Failed to update bill reminder' });
     }
   }
@@ -198,7 +199,7 @@ export class BillRemindersController {
 
       res.json({ success: true });
     } catch (error: unknown) {
-      console.error('Error:', error);
+      logger.error('Error deleting bill reminder', { error: error instanceof Error ? error.message : 'Unknown error', billId: req.params.billId, userId: req.user?.uid });
       res.status(500).json({ error: 'Failed to delete bill reminder' });
     }
   }

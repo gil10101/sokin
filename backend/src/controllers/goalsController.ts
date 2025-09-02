@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { db } from '../config/firebase';
 import { SavingsGoal, GoalContribution } from '../models/types';
+import logger from '../utils/logger';
 
 export class GoalsController {
   
@@ -26,7 +27,7 @@ export class GoalsController {
 
       res.json({ goals });
     } catch (error: unknown) {
-      console.error('Error fetching goals:', error);
+      logger.error('Error fetching goals', { error: error instanceof Error ? error.message : 'Unknown error', userId: req.user?.uid });
       res.status(500).json({ error: 'Failed to fetch goals' });
     }
   }
@@ -68,7 +69,7 @@ export class GoalsController {
 
       res.status(201).json({ goal: newGoal });
     } catch (error: unknown) {
-      console.error('Error creating goal:', error);
+      logger.error('Error creating goal', { error: error instanceof Error ? error.message : 'Unknown error', userId: req.user?.uid });
       res.status(500).json({ error: 'Failed to create goal' });
     }
   }
@@ -136,7 +137,7 @@ export class GoalsController {
         isCompleted
       });
     } catch (error: unknown) {
-      console.error('Error:', error);
+      logger.error('Error adding contribution', { error: error instanceof Error ? error.message : 'Unknown error', goalId: req.params.goalId, userId: req.user?.uid });
       res.status(500).json({ error: 'Failed to add contribution' });
     }
   }
@@ -177,7 +178,7 @@ export class GoalsController {
 
       res.json({ success: true });
     } catch (error: unknown) {
-      console.error('Error:', error);
+      logger.error('Error updating goal', { error: error instanceof Error ? error.message : 'Unknown error', goalId: req.params.goalId, userId: req.user?.uid });
       res.status(500).json({ error: 'Failed to update goal' });
     }
   }
@@ -213,7 +214,7 @@ export class GoalsController {
 
       res.json({ success: true });
     } catch (error: unknown) {
-      console.error('Error:', error);
+      logger.error('Error deleting goal', { error: error instanceof Error ? error.message : 'Unknown error', goalId: req.params.goalId, userId: req.user?.uid });
       res.status(500).json({ error: 'Failed to delete goal' });
     }
   }

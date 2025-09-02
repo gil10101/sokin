@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { db } from '../config/firebase';
+import logger from '../utils/logger';
 import { 
   Asset, 
   Liability, 
@@ -704,6 +705,9 @@ export const updateNetWorthSnapshot = async (userId: string): Promise<void> => {
       await existingSnapshot.docs[0].ref.update(snapshotData);
     }
   } catch (error) {
+    logger.error("Error updating net worth snapshot", {
+      error: error instanceof Error ? error.message : 'Unknown error'
+    })
   }
 };
 
