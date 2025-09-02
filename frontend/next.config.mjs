@@ -6,9 +6,10 @@ const bundleAnalyzer = withBundleAnalyzer({
 
 let userConfig = undefined
 try {
-  userConfig = await import('./v0-user-next.config')
+  // Try to import user config if it exists
+  userConfig = await import('./v0-user-next.config.js')
 } catch (e) {
-  // ignore error
+  // ignore error - file doesn't exist
 }
 
 /** @type {import('next').NextConfig} */

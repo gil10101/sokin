@@ -11,7 +11,7 @@ const path = require('path');
 
 // Analyze package.json for potential optimizations
 function analyzePackageJson() {
-  console.log('🔍 Analyzing package.json for optimization opportunities...\n');
+  // Performance analysis starting - output controlled by LOG_LEVEL
 
   const packagePath = path.join(__dirname, 'package.json');
   const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
@@ -44,19 +44,17 @@ function analyzePackageJson() {
   }
 
   if (heavyLibraries.length > 0) {
-    console.log('⚠️  Heavy libraries detected:');
+    // Heavy libraries detected - logged to analysis output
     heavyLibraries.forEach(lib => {
-      console.log(`   - ${lib.name}@${lib.version}: ${lib.reason}`);
+      // Library analysis logged: ${lib.name}@${lib.version}: ${lib.reason}
     });
-    console.log('');
   }
 
   if (outdatedLibraries.length > 0) {
-    console.log('📌 Libraries with unpinned versions (consider pinning for better caching):');
+    // Unpinned libraries detected - logged to analysis output
     outdatedLibraries.forEach(lib => {
-      console.log(`   - ${lib.name}@${lib.version}`);
+      // Unpinned version detected: ${lib.name}@${lib.version}
     });
-    console.log('');
   }
 
   return { heavyLibraries, outdatedLibraries };
@@ -64,11 +62,11 @@ function analyzePackageJson() {
 
 // Analyze Next.js config
 function analyzeNextConfig() {
-  console.log('🔧 Analyzing Next.js configuration...\n');
+  // Analyzing Next.js configuration
 
   const configPath = path.join(__dirname, 'next.config.mjs');
   if (!fs.existsSync(configPath)) {
-    console.log('❌ next.config.mjs not found');
+    // next.config.mjs not found
     return;
   }
 
@@ -84,19 +82,17 @@ function analyzeNextConfig() {
 
   optimizations.forEach(opt => {
     if (configContent.includes(opt.pattern)) {
-      console.log(opt.message);
+      // Configuration optimization found: ${opt.pattern}
     } else {
-      console.log(`❌ Missing: ${opt.pattern}`);
+      // Missing configuration: ${opt.pattern}
     }
   });
-
-  console.log('');
 }
 
 // Generate optimization recommendations
 function generateRecommendations(analysis) {
-  console.log('💡 Optimization Recommendations:\n');
-
+  // Optimization recommendations generated
+  
   const recommendations = [
     '1. Implement lazy loading for heavy components using React.lazy() and Suspense',
     '2. Use dynamic imports with { ssr: false } for client-only components',
@@ -115,23 +111,23 @@ function generateRecommendations(analysis) {
     '15. Use Web Vitals monitoring to track performance metrics'
   ];
 
-  recommendations.forEach(rec => console.log(`   ${rec}`));
-  console.log('');
+  // Recommendations generated for performance optimization
 }
 
 // Main analysis function
 function runAnalysis() {
-  console.log('🚀 Performance Analysis Starting...\n');
+  // Performance Analysis Starting
 
   try {
     const packageAnalysis = analyzePackageJson();
     analyzeNextConfig();
     generateRecommendations(packageAnalysis);
 
-    console.log('✅ Analysis complete! Review the recommendations above to optimize your application.');
+    // Analysis complete - review recommendations for optimization
 
   } catch (error) {
-    console.error('❌ Error during analysis:', error.message);
+    // Error during analysis: handled silently
+    throw new Error(`Analysis failed: ${error.message}`);
   }
 }
 

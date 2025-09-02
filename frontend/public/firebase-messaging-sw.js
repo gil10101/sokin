@@ -16,7 +16,7 @@ const messaging = firebase.messaging();
 
 // Handle background messages
 messaging.onBackgroundMessage((payload) => {
-  console.log('Received background message: ', payload);
+  // Background message received - processing notification
   
   const notificationTitle = payload.notification?.title || 'Sokin Notification';
   const notificationOptions = {
