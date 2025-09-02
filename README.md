@@ -32,6 +32,10 @@ The application uses Firebase for authentication and database functionality. To 
    
    # Optional Sentry configuration (for error tracking)
    NEXT_PUBLIC_SENTRY_DSN=your_sentry_dsn_here
+
+   # Performance Monitor (not recommended for production)
+   # Set to 'true' to enable the performance monitor overlay
+   NEXT_PUBLIC_ENABLE_PERFORMANCE_MONITOR=false
    ```
 
 6. For backend Firebase Admin SDK setup, create a service account:

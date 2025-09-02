@@ -38,3 +38,7 @@ service-account-key.json
 .c*
 
 TODO.MD
+
+**/service-account-key.json
+
+__pycache__
