@@ -1,6 +1,7 @@
 import { getMessaging, getToken, onMessage, Messaging } from 'firebase/messaging';
 import { auth } from './firebase';
 import { notificationsAPI } from './api-services';
+import { logger } from './logger';
 
 // Firebase messaging interfaces
 interface FirebaseNotification {
@@ -25,8 +26,9 @@ const initializeMessagingInstance = () => {
   if (typeof window !== 'undefined' && !messaging) {
     try {
       messaging = getMessaging();
-    } catch (error) {
-
+    } catch (error: unknown) {
+      // Failed to initialize Firebase messaging - push notifications unavailable
+      logger.error('Failed to initialize Firebase messaging', { error: error instanceof Error ? error.message : 'Unknown error' });
     }
   }
   return messaging;
@@ -71,8 +73,9 @@ export const requestNotificationPermission = async (): Promise<string | null> =>
     } else {
       return null;
     }
-  } catch (error) {
-
+  } catch (error: unknown) {
+    // Failed to request notification permission or get FCM token
+    logger.error('Failed to setup notifications', { error: error instanceof Error ? error.message : 'Unknown error' });
     return null;
   }
 };
@@ -84,8 +87,9 @@ const registerFCMToken = async (token: string) => {
     if (!user) return;
     
     await notificationsAPI.registerFCMToken(token);
-  } catch (error) {
-
+  } catch (error: unknown) {
+    // Failed to register FCM token - push notifications may not work properly
+    logger.error('Failed to register FCM token', { error: error instanceof Error ? error.message : 'Unknown error' });
     // Retry mechanism is handled by the API service
   }
 };
@@ -136,8 +140,9 @@ export const initializeMessaging = async () => {
       // Setup foreground message listener
       setupForegroundMessageListener(showForegroundNotification);
       
-    } catch (error) {
-
+    } catch (error: unknown) {
+      // Failed to initialize Firebase messaging service - push notifications unavailable
+      logger.error('Failed to initialize messaging service', { error: error instanceof Error ? error.message : 'Unknown error' });
     }
   } else {
     // Service Worker not supported in this browser

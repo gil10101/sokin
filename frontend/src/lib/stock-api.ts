@@ -152,7 +152,7 @@ interface CacheEntry<T> {
  * 
  * // Subscribe to real-time prices
  * const unsubscribe = StockAPI.subscribeToStockPrices(['AAPL', 'GOOGL'], (symbol, data) => {
- *   console.log(`${symbol}: $${data.price}`)
+ *   updatePriceDisplay(symbol, data.price)
  * })
  * ```
  */

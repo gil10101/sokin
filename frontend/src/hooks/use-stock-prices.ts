@@ -8,6 +8,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { StockAPI } from '../lib/stock-api'
+import { logger } from '../lib/logger'
 
 /**
  * Stock price update data structure
@@ -78,7 +79,7 @@ interface UseStockPricesReturn {
  * }
  * 
  * if (connected) {
- *   console.log('AAPL price:', prices['AAPL']?.price)
+ *   displayPrice('AAPL', prices['AAPL']?.price)
  * }
  * ```
  * 
@@ -134,7 +135,7 @@ export function useStockPrices({
           price: data.price,
           change: data.change || 0,
           changePercent: data.changePercent || 0,
-          timestamp: data.timestamp || new Date().toISOString(),
+          timestamp: data.timestamp ? new Date(data.timestamp).toISOString() : new Date().toISOString(),
         }
       }))
       
@@ -145,7 +146,10 @@ export function useStockPrices({
         onConnectionChange?.(true)
       }
     } catch (err) {
-
+      logger.error('Failed to process price update', {
+        error: err instanceof Error ? err.message : 'Unknown error',
+        symbols
+      })
       setError('Failed to process price update')
       onError?.('Failed to process price update')
     }
@@ -294,7 +298,7 @@ export function useStockPrices({
    * ```typescript
    * const aaplPrice = getPrice('AAPL')
    * if (aaplPrice) {
-   *   console.log(`AAPL: $${aaplPrice.price} (${aaplPrice.changePercent}%)`)
+   *   displayPriceUpdate('AAPL', aaplPrice.price, aaplPrice.changePercent)
    * }
    * ```
    */
@@ -315,7 +319,7 @@ export function useStockPrices({
    * ```typescript
    * const portfolioPrices = getPrices(['AAPL', 'GOOGL', 'MSFT'])
    * Object.entries(portfolioPrices).forEach(([symbol, data]) => {
-   *   console.log(`${symbol}: $${data.price}`)
+   *   updatePortfolioPrice(symbol, data.price)
    * })
    * ```
    */
@@ -356,7 +360,7 @@ export function useStockPrices({
  * const { price, connected, error } = useStockPrice('AAPL')
  * 
  * if (price) {
- *   console.log(`AAPL: $${price.price} (${price.changePercent >= 0 ? '+' : ''}${price.changePercent}%)`)
+ *   displayPriceWithChange('AAPL', price.price, price.changePercent)
  * }
  * 
  * if (error) {
