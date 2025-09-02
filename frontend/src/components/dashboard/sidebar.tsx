@@ -17,8 +17,8 @@ import {
   Building,
 } from "lucide-react"
 import { useState, useEffect } from "react"
-import { Avatar, AvatarFallback, AvatarImage } from "../../components/ui/avatar"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../../components/ui/tooltip"
+import * as AvatarPrimitive from "@radix-ui/react-avatar"
+import * as TooltipPrimitive from "@radix-ui/react-tooltip"
 import { useAuth } from "../../contexts/auth-context"
 import { usePathname } from "next/navigation"
 
@@ -72,13 +72,13 @@ export function DashboardSidebar({ collapsed, setCollapsed }: DashboardSidebarPr
       </div>
 
       <nav className="flex-1 py-6 px-3">
-        <TooltipProvider delayDuration={0}>
+        <TooltipPrimitive.Provider delayDuration={0}>
           <ul className="space-y-2">
             {navItems.map((item) => (
               <li key={item.href}>
                 {collapsed ? (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
+                  <TooltipPrimitive.Root>
+                    <TooltipPrimitive.Trigger asChild>
                       <div>
                         <Link
                           href={item.href}
@@ -89,9 +89,11 @@ export function DashboardSidebar({ collapsed, setCollapsed }: DashboardSidebarPr
                           <item.icon className="h-5 w-5" />
                         </Link>
                       </div>
-                    </TooltipTrigger>
-                    <TooltipContent side="right">{item.label}</TooltipContent>
-                  </Tooltip>
+                    </TooltipPrimitive.Trigger>
+                    <TooltipPrimitive.Content side="right" className="z-50 overflow-hidden rounded-md border bg-dark border-cream/10 px-3 py-1.5 text-sm text-cream shadow-md">
+                      {item.label}
+                    </TooltipPrimitive.Content>
+                  </TooltipPrimitive.Root>
                 ) : (
                   <div>
                     <Link
@@ -108,32 +110,42 @@ export function DashboardSidebar({ collapsed, setCollapsed }: DashboardSidebarPr
               </li>
             ))}
           </ul>
-        </TooltipProvider>
+        </TooltipPrimitive.Provider>
       </nav>
 
       <div className="mt-auto border-t border-cream/10 p-4">
         {collapsed ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
+          <TooltipPrimitive.Root>
+            <TooltipPrimitive.Trigger asChild>
               <button
                 className="flex items-center justify-center h-10 w-10 rounded-lg text-cream/60 hover:text-cream hover:bg-cream/5 transition-colors"
                 onClick={handleSignOut}
               >
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src="/placeholder.svg?height=32&width=32" alt={user?.displayName || "User"} />
-                  <AvatarFallback>{user?.displayName?.charAt(0) || "U"}</AvatarFallback>
-                </Avatar>
+                <AvatarPrimitive.Root className="h-8 w-8 rounded-full flex items-center justify-center">
+                  {user?.photoURL ? (
+                    <AvatarPrimitive.Image src={user.photoURL} alt={user?.displayName || "User"} className="h-8 w-8 rounded-full" />
+                  ) : null}
+                  <AvatarPrimitive.Fallback className="h-8 w-8 rounded-full flex items-center justify-center bg-cream/10 text-cream text-sm">
+                    {user?.displayName?.charAt(0) || "U"}
+                  </AvatarPrimitive.Fallback>
+                </AvatarPrimitive.Root>
               </button>
-            </TooltipTrigger>
-            <TooltipContent side="right">{user?.displayName || "User"}</TooltipContent>
-          </Tooltip>
+            </TooltipPrimitive.Trigger>
+            <TooltipPrimitive.Content side="right" className="z-50 overflow-hidden rounded-md border bg-dark border-cream/10 px-3 py-1.5 text-sm text-cream shadow-md">
+              {user?.displayName || "User"}
+            </TooltipPrimitive.Content>
+          </TooltipPrimitive.Root>
         ) : (
           <div className="flex items-center justify-between">
             <div className="flex items-center">
-              <Avatar className="h-8 w-8 mr-3">
-                <AvatarImage src="/placeholder.svg?height=32&width=32" alt={user?.displayName || "User"} />
-                <AvatarFallback>{user?.displayName?.charAt(0) || "U"}</AvatarFallback>
-              </Avatar>
+              <AvatarPrimitive.Root className="h-8 w-8 mr-3 rounded-full flex items-center justify-center">
+                {user?.photoURL ? (
+                  <AvatarPrimitive.Image src={user.photoURL} alt={user?.displayName || "User"} className="h-8 w-8 rounded-full" />
+                ) : null}
+                <AvatarPrimitive.Fallback className="h-8 w-8 rounded-full flex items-center justify-center bg-cream/10 text-cream text-sm">
+                  {user?.displayName?.charAt(0) || "U"}
+                </AvatarPrimitive.Fallback>
+              </AvatarPrimitive.Root>
               <div>
                 <p className="text-sm font-medium font-outfit">{user?.displayName || "User"}</p>
                 <p className="text-xs text-cream/60">{user?.email || "user@example.com"}</p>

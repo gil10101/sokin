@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useMemo } from "react"
 import { Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Area, ComposedChart } from "recharts"
-import { ChartContainer } from "../../components/ui/chart"
+// Removed ChartContainer due to type compatibility issues - using plain div instead
 import { LoadingSpinner } from "../../components/ui/loading-spinner"
 import { motion } from "framer-motion"
 import { collection, query, where, getDocs } from "firebase/firestore"
@@ -10,36 +10,8 @@ import { db } from "../../lib/firebase"
 import { useAuth } from "../../contexts/auth-context"
 import { useViewport } from "../../hooks/use-mobile"
 import { format, subDays, subMonths, isAfter, eachDayOfInterval, eachMonthOfInterval, startOfDay, startOfMonth } from "date-fns"
-
-// Helper function to safely parse dates including Firebase Timestamps
-const safeParseDate = (dateValue: unknown): Date => {
-  if (!dateValue) return new Date()
-  
-  try {
-    // If it's already a Date object
-    if (dateValue instanceof Date) {
-      return dateValue
-    }
-    // If it's a Firebase Timestamp object
-    else if (dateValue && typeof dateValue === 'object' && 'toDate' in dateValue) {
-      return dateValue.toDate()
-    }
-    // If it's a numeric timestamp (milliseconds)
-    else if (typeof dateValue === 'number') {
-      return new Date(dateValue)
-    }
-    // If it's a string
-    else if (typeof dateValue === 'string') {
-      const parsedDate = new Date(dateValue)
-      return isNaN(parsedDate.getTime()) ? new Date() : parsedDate
-    }
-    
-    return new Date()
-  } catch (error) {
-    console.error("Error parsing date:", error, "Input:", dateValue)
-    return new Date()
-  }
-}
+import { safeParseDate } from "../../types/firebase"
+import { logger } from "../../lib/logger"
 
 interface Expense {
   id: string
@@ -160,7 +132,11 @@ export function ExpenseChart({ timeframe = "30days" }: ExpenseChartProps) {
       setChartData(groupedData)
       setHasData(groupedData.length > 0)
     } catch (error) {
-      console.error("Error fetching expense data:", error)
+      logger.error("Error fetching expense data", {
+        userId: user?.uid,
+        timeframe,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      })
       setChartData([])
     } finally {
       setLoading(false)
@@ -218,19 +194,7 @@ export function ExpenseChart({ timeframe = "30days" }: ExpenseChartProps) {
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
     >
-      <ChartContainer
-        config={{
-          amount: {
-            label: "Amount",
-            color: "hsl(var(--chart-1))",
-          },
-          average: {
-            label: "Average",
-            color: "hsl(var(--chart-2))",
-          },
-        }}
-        className={`${isMobile ? 'h-[280px]' : 'h-[400px]'} w-full`}
-      >
+      <div className={`${isMobile ? 'h-[280px]' : 'h-[400px]'} w-full`}>
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={chartData} margin={isMobile ? { top: 5, right: 0, left: -15, bottom: 15 } : { top: 10, right: 10, left: 0, bottom: 20 }}>
             <defs>
@@ -306,7 +270,7 @@ export function ExpenseChart({ timeframe = "30days" }: ExpenseChartProps) {
             />
           </ComposedChart>
         </ResponsiveContainer>
-      </ChartContainer>
+      </div>
     </motion.div>
   )
 }
