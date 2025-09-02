@@ -1,4 +1,5 @@
 import { getFirestore, Transaction } from 'firebase-admin/firestore';
+import logger from '../utils/logger';
 
 // Configure Firestore settings for better performance
 const configureFirestore = () => {
@@ -24,7 +25,10 @@ const configureFirestore = () => {
     db.settings(settings);
 
   } catch (error) {
-
+    // Settings already applied, this is expected in some environments
+    logger.debug("Firestore settings already configured", {
+      error: error instanceof Error ? error.message : 'Unknown error'
+    })
   }
 
   return db;

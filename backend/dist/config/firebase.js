@@ -82,8 +82,8 @@ const initializeFirebaseAdmin = () => {
                 const serviceAccount = JSON.parse(serviceAccountJson);
                 const app = (0, app_1.initializeApp)({
                     credential: (0, app_1.cert)(serviceAccount),
-                    projectId: process.env.FIREBASE_PROJECT_ID || 'personalexpensetracker-ff87a',
-                    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || 'personalexpensetracker-ff87a.firebasestorage.app',
+                    projectId: process.env.FIREBASE_PROJECT_ID,
+                    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
                 });
                 logger_1.default.info('Firebase Admin initialized with service account JSON');
                 return app;
@@ -91,8 +91,8 @@ const initializeFirebaseAdmin = () => {
             // Development mode fallback
             if (process.env.NODE_ENV === 'development' || process.env.FIRESTORE_EMULATOR_HOST) {
                 const app = (0, app_1.initializeApp)({
-                    projectId: process.env.FIREBASE_PROJECT_ID || 'personalexpensetracker-ff87a',
-                    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || 'personalexpensetracker-ff87a.firebasestorage.app',
+                    projectId: process.env.FIREBASE_PROJECT_ID,
+                    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
                 });
                 logger_1.default.info('Firebase Admin initialized in development mode');
                 return app;
