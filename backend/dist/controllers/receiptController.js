@@ -83,7 +83,7 @@ class ReceiptController {
             // Get the default bucket or use the project bucket
             const bucketName = process.env.FIREBASE_STORAGE_BUCKET ||
                 process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
-                `${process.env.FIREBASE_PROJECT_ID || 'personalexpensetracker-ff87a'}.appspot.com`;
+                `${process.env.FIREBASE_PROJECT_ID}`;
             const bucket = firebase_1.storage.bucket(bucketName);
             // Generate unique filename
             const timestamp = Date.now();
