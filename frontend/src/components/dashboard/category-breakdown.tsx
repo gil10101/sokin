@@ -11,35 +11,9 @@ import { useAuth } from "../../contexts/auth-context"
 import { useViewport } from "../../hooks/use-mobile"
 import { format, subDays, isAfter } from "date-fns"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu"
-
-// Helper function to safely parse dates including Firebase Timestamps
-const safeParseDate = (dateValue: unknown): Date => {
-  if (!dateValue) return new Date()
-  
-  try {
-    // If it's already a Date object
-    if (dateValue instanceof Date) {
-      return dateValue
-    }
-    // If it's a Firebase Timestamp object
-    else if (dateValue && typeof dateValue === 'object' && 'toDate' in dateValue) {
-      return dateValue.toDate()
-    }
-    // If it's a numeric timestamp (milliseconds)
-    else if (typeof dateValue === 'number') {
-      return new Date(dateValue)
-    }
-    // If it's a string
-    else if (typeof dateValue === 'string') {
-      const parsedDate = new Date(dateValue)
-      return isNaN(parsedDate.getTime()) ? new Date() : parsedDate
-    }
-    
-    return new Date()
-  } catch (error) {
-    return new Date()
-  }
-}
+import React from "react"
+import { safeParseDate } from "../../types/firebase"
+import { logger } from "../../lib/logger"
 
 // Define transaction type
 interface Transaction {
@@ -193,6 +167,11 @@ export function CategoryBreakdown() {
       setCategoryData(categoryArray)
       setTransactionsByCategory(txByCategory)
     } catch (error) {
+      logger.error("Error processing category data", {
+        userId: user?.uid,
+        dateRange,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      })
       setCategoryData([])
       setTransactionsByCategory({})
     } finally {

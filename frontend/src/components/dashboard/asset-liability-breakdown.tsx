@@ -21,6 +21,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { Button } from '../ui/button'
 import { Badge } from '../ui/badge'
 import { useAuth } from '../../contexts/auth-context'
+import { logger } from '../../lib/logger'
 import { 
   Asset, 
   Liability, 
@@ -175,7 +176,10 @@ export function AssetLiabilityBreakdown({
       try {
         onDeleteAsset(assetId)
       } catch (error) {
-
+        logger.error("Error deleting asset", {
+          assetId,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        })
       }
     }
   }
@@ -185,7 +189,10 @@ export function AssetLiabilityBreakdown({
       try {
         onDeleteLiability(liabilityId)
       } catch (error) {
-
+        logger.error("Error deleting liability", {
+          liabilityId,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        })
       }
     }
   }

@@ -248,7 +248,7 @@ export function AssetLiabilityForm({ type, editItem, onSuccess, onCancel }: Asse
       // Remove undefined fields
       body = Object.fromEntries(
         Object.entries(body).filter(([_key, value]: [string, unknown]) => value !== undefined)
-      )
+      ) as AssetFormData | LiabilityFormData
 
       if (editItem) {
         // Update existing item
