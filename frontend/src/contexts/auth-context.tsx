@@ -11,6 +11,7 @@ import {
 } from "firebase/auth"
 import { doc, setDoc, getDoc } from "firebase/firestore"
 import { auth, db } from "../../../lib/firebase"
+import { logger } from "../../../lib/logger"
 import { useRouter } from "next/navigation"
 // Import the NotificationsProvider
 import { NotificationsProvider } from "./notifications-context"
@@ -84,7 +85,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUserData(userDoc.data() as UserData)
           }
         } catch (error) {
-          console.warn("Failed to fetch user data:", error)
+          logger.warn("Failed to fetch user data", {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            userId: firebaseUser.uid
+          })
           // Don't throw the error to prevent auth state issues
         }
       } else {
@@ -139,7 +143,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       router.push("/dashboard")
     } catch (error) {
-      console.error("Sign up error:", error)
+      logger.error("Sign up error", {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        email
+      })
       throw error
     }
   }
@@ -149,7 +156,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await signInWithEmailAndPassword(auth, email, password)
       router.push("/dashboard")
     } catch (error) {
-      console.error("Sign in error:", error)
+      logger.error("Sign in error", {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        email
+      })
       throw error
     }
   }
@@ -159,7 +169,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await firebaseSignOut(auth)
       router.push("/")
     } catch (error) {
-      console.error("Sign out error:", error)
+      logger.error("Sign out error", {
+        error: error instanceof Error ? error.message : 'Unknown error'
+      })
       // Still redirect even if sign out fails
       router.push("/")
     }

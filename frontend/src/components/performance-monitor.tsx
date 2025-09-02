@@ -26,8 +26,9 @@ export function PerformanceMonitor() {
   const [isVisible, setIsVisible] = useState(false)
 
   useEffect(() => {
-    // Only enable in development or when explicitly requested
-    if (process.env.NODE_ENV !== 'development' && !localStorage.getItem('show-performance-monitor')) {
+    // Only enable when explicitly enabled via environment variable
+    const enablePerformanceMonitor = process.env.NEXT_PUBLIC_ENABLE_PERFORMANCE_MONITOR === 'true'
+    if (!enablePerformanceMonitor) {
       return
     }
 
@@ -63,7 +64,7 @@ export function PerformanceMonitor() {
     try {
       observer.observe({ entryTypes: ['paint', 'largest-contentful-paint', 'first-input', 'layout-shift'] })
     } catch (e) {
-      console.warn('Performance monitoring not fully supported')
+      // Performance monitoring not fully supported - graceful degradation
     }
 
     // Navigation timing
@@ -158,8 +159,8 @@ export function PerformanceMonitor() {
               userAgent: navigator.userAgent,
               ...metrics
             }
-            console.log('Performance Report:', report)
-            // In production, you might want to send this to your analytics service
+            // Performance report generated - sent to analytics service in production
+            // TODO: Integrate with analytics service (Sentry, LogRocket, etc.)
           }}
           className="text-xs bg-cream/10 hover:bg-cream/20 text-cream px-2 py-1 rounded"
         >

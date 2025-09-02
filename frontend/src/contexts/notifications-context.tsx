@@ -5,6 +5,7 @@ import { createContext, useContext, useState, useEffect } from "react"
 import { collection, query, where, orderBy, doc, updateDoc, deleteDoc, addDoc, onSnapshot } from "firebase/firestore"
 import { db } from "../../../lib/firebase"
 import { useAuth } from "./auth-context"
+import { logger } from "../lib/logger"
 
 export type NotificationType = "info" | "success" | "warning" | "error" | "budget" | "system"
 
@@ -85,8 +86,12 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
         dismissed: false,
         createdAt: new Date().toISOString(),
       })
-    } catch (error) {
-
+    } catch (error: unknown) {
+      // Failed to add notification - user will not see this notification
+      logger.error('Failed to add notification', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userId: user?.uid
+      });
     }
   }
 
@@ -97,8 +102,13 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
       await updateDoc(doc(db, "notifications", id), {
         read: true,
       })
-    } catch (error) {
-
+    } catch (error: unknown) {
+      // Failed to mark notification as read - will remain unread
+      logger.error('Failed to mark notification as read', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        notificationId: id,
+        userId: user?.uid
+      });
     }
   }
 
@@ -111,8 +121,12 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
         .map((n) => updateDoc(doc(db, "notifications", n.id), { read: true }))
 
       await Promise.all(promises)
-    } catch (error) {
-
+    } catch (error: unknown) {
+      // Failed to mark all notifications as read - some may remain unread
+      logger.error('Failed to mark all notifications as read', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userId: user?.uid
+      });
     }
   }
 
@@ -123,8 +137,13 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
       await updateDoc(doc(db, "notifications", id), {
         dismissed: true,
       })
-    } catch (error) {
-
+    } catch (error: unknown) {
+      // Failed to dismiss notification - will remain visible
+      logger.error('Failed to dismiss notification', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        notificationId: id,
+        userId: user?.uid
+      });
     }
   }
 
@@ -135,8 +154,12 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
       const promises = notifications.map((n) => updateDoc(doc(db, "notifications", n.id), { dismissed: true }))
 
       await Promise.all(promises)
-    } catch (error) {
-
+    } catch (error: unknown) {
+      // Failed to dismiss all notifications - some may remain visible
+      logger.error('Failed to dismiss all notifications', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userId: user?.uid
+      });
     }
   }
 
@@ -145,8 +168,13 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
 
     try {
       await deleteDoc(doc(db, "notifications", id))
-    } catch (error) {
-
+    } catch (error: unknown) {
+      // Failed to delete notification - will remain in system
+      logger.error('Failed to delete notification', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        notificationId: id,
+        userId: user?.uid
+      });
     }
   }
 
