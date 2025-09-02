@@ -8,6 +8,7 @@ import { collection, query, where, orderBy, getDocs, addDoc, doc, updateDoc, del
 import { db } from "../../../lib/firebase"
 import { useAuth } from "../../../contexts/auth-context"
 import { format } from "date-fns"
+import { logger } from "../../../lib/logger"
 import { DashboardSidebar } from "../../../components/dashboard/sidebar"
 import { PageHeader } from "../../../components/dashboard/page-header"
 import { Button } from "../../../components/ui/button"
@@ -225,6 +226,10 @@ export default function BudgetsPage() {
         }
       }
     } catch (error) {
+      logger.error("Error fetching budget categories", {
+        userId: user?.uid,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      })
     }
   }
 
@@ -268,7 +273,7 @@ export default function BudgetsPage() {
 
   const calculateBudgetProgress = (budget: Budget): { spent: number; progress: number } => {
     if (!expenses.length) {
-      console.log(`No expenses found for budget ${budget.category}`)
+      // No expenses found for budget calculation
       return { spent: 0, progress: 0 }
     }
 

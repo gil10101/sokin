@@ -77,7 +77,6 @@ export default function EditExpensePage() {
       // Use default categories if user doesn't have any
       setCategories(DEFAULT_CATEGORIES)
     } catch (error) {
-      console.error("Error fetching categories:", error)
       // Use default categories if there's an error
       setCategories(DEFAULT_CATEGORIES)
     }
@@ -151,11 +150,9 @@ export default function EditExpensePage() {
           if (parsedDate && !isNaN(parsedDate.getTime())) {
             setDate(parsedDate)
           } else {
-            console.error("Invalid date value:", expenseData.date)
             setDate(new Date())
           }
         } catch (error) {
-          console.error("Error parsing date:", error, "Input:", expenseData.date)
           setDate(new Date())
         }
       }

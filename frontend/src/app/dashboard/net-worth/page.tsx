@@ -49,6 +49,7 @@ import { AssetLiabilityBreakdown } from "../../../components/dashboard/asset-lia
 import { NetWorthTrends } from "../../../components/dashboard/net-worth-trends"  
 import { AssetLiabilityForm } from "../../../components/dashboard/asset-liability-form"
 import { api } from "../../../lib/api"
+import { logger } from "../../../lib/logger"
 import Link from "next/link"
 
 // Category configurations for display
@@ -195,7 +196,10 @@ export default function NetWorthPage() {
       setAssets(netWorthData.data.assets || [])
       setLiabilities(netWorthData.data.liabilities || [])
     } catch (error) {
-
+      logger.error("Error fetching net worth data", {
+        userId: user?.uid,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      })
     } finally {
       setLoading(false)
     }
@@ -225,7 +229,11 @@ export default function NetWorthPage() {
       await api.delete(`net-worth/assets/${assetId}`, { token })
       fetchNetWorthData() // Refresh data
     } catch (error) {
-
+      logger.error("Error deleting asset", {
+        userId: user?.uid,
+        assetId,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      })
     }
   }
 
@@ -235,7 +243,11 @@ export default function NetWorthPage() {
       await api.delete(`net-worth/liabilities/${liabilityId}`, { token })
       fetchNetWorthData() // Refresh data
     } catch (error) {
-
+      logger.error("Error deleting liability", {
+        userId: user?.uid,
+        liabilityId,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      })
     }
   }
 
