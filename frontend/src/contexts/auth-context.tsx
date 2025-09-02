@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState, useRef, type ReactNode } from "react"
+import React, { createContext, useContext, useEffect, useState, useRef } from "react"
 import {
   type User,
   onAuthStateChanged,
@@ -11,7 +11,7 @@ import {
 } from "firebase/auth"
 import { doc, setDoc, getDoc } from "firebase/firestore"
 import { auth, db } from "../../../lib/firebase"
-import { logger } from "../../../lib/logger"
+import { logger } from "../lib/logger"
 import { useRouter } from "next/navigation"
 // Import the NotificationsProvider
 import { NotificationsProvider } from "./notifications-context"
@@ -57,7 +57,7 @@ export function useAuth() {
 }
 
 // AuthProvider component
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [userData, setUserData] = useState<UserData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -87,7 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } catch (error) {
           logger.warn("Failed to fetch user data", {
             error: error instanceof Error ? error.message : 'Unknown error',
-            userId: firebaseUser.uid
+            userId: currentUser.uid
           })
           // Don't throw the error to prevent auth state issues
         }
