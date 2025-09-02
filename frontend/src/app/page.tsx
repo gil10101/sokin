@@ -3,21 +3,57 @@
 import Link from "next/link"
 import Image from "next/image"
 import { useEffect, useState } from "react"
-import { ArrowRight, Menu, X, ArrowDown } from "lucide-react"
+import { ArrowRight, Menu, X, ArrowDown, BarChart3, PieChart, Target, Wallet } from "lucide-react"
 import { motion, useScroll, useTransform } from "framer-motion"
 import { useAuth } from "../contexts/auth-context"
 import dynamic from "next/dynamic"
 
 // Lazy load 3D components only when needed on landing page
-const ScrollTriggered3DScene = dynamic(() => import("../components/ui/scroll-triggered-3d-scene"), { 
+const ScrollTriggered3DScene = dynamic(() => import("../components/ui/scroll-triggered-3d-scene"), {
   ssr: false,
-  loading: () => null 
+  loading: () => null
 })
-const MobileHero3DScene = dynamic(() => import("../components/ui/mobile-hero-3d-scene"), { 
+const MobileHero3DScene = dynamic(() => import("../components/ui/mobile-hero-3d-scene"), {
   ssr: false,
-  loading: () => null 
+  loading: () => null
 })
 import { useIsMobile } from "../hooks/use-mobile"
+
+// Core features data - moved to top to prevent module loading issues
+const coreFeatures = [
+  {
+    title: "Expense Tracking",
+    description:
+      "Effortlessly track your expenses with automatic categorization and real-time updates. Our intuitive interface makes it simple to understand where your money is going and identify spending patterns over time.",
+    icon: Wallet,
+    imageSrc: "expense-tracking.png",
+    tags: ["Auto-categorization", "Real-time updates", "Receipt scanning"],
+  },
+  {
+    title: "Data Visualization",
+    description:
+      "Transform complex financial data into clear, actionable insights with our advanced visualization tools. Understand your spending patterns and financial health at a glance with beautiful charts and graphs.",
+    icon: BarChart3,
+    imageSrc: "data-visualization.png",
+    tags: ["Interactive charts", "Trend analysis", "Custom reports"],
+  },
+  {
+    title: "Budget Management",
+    description:
+      "Create and manage budgets that adapt to your spending habits and financial goals. Set limits, track progress, and receive gentle notifications when you're approaching your thresholds.",
+    icon: PieChart,
+    imageSrc: "budget-tracking.png",
+    tags: ["Custom categories", "Spending alerts", "Flexible timeframes"],
+  },
+  {
+    title: "Goal Setting",
+    description:
+      "Define your financial aspirations and track your journey toward achieving them. Whether saving for a vacation or paying off debt, we'll help you stay focused and motivated with visual progress tracking.",
+    icon: Target,
+    imageSrc: "goal-setting.png",
+    tags: ["Progress tracking", "Milestone rewards", "Smart recommendations"],
+  },
+]
 
 // Custom hook for responsive 3D breakpoints
 const useResponsiveBreakpoint = () => {
@@ -608,41 +644,4 @@ export default function LandingPage() {
     </div>
   )
 }
-
-import { BarChart3, PieChart, Target, Wallet } from "lucide-react"
-
-const coreFeatures = [
-  {
-    title: "Expense Tracking",
-    description:
-      "Effortlessly track your expenses with automatic categorization and real-time updates. Our intuitive interface makes it simple to understand where your money is going and identify spending patterns over time.",
-    icon: Wallet,
-    imageSrc: "expense-tracking.png",
-    tags: ["Auto-categorization", "Real-time updates", "Receipt scanning"],
-  },
-  {
-    title: "Data Visualization",
-    description:
-      "Transform complex financial data into clear, actionable insights with our advanced visualization tools. Understand your spending patterns and financial health at a glance with beautiful charts and graphs.",
-    icon: BarChart3,
-    imageSrc: "data-visualization.png",
-    tags: ["Interactive charts", "Trend analysis", "Custom reports"],
-  },
-  {
-    title: "Budget Management",
-    description:
-      "Create and manage budgets that adapt to your spending habits and financial goals. Set limits, track progress, and receive gentle notifications when you're approaching your thresholds.",
-    icon: PieChart,
-    imageSrc: "budget-tracking.png",
-    tags: ["Custom categories", "Spending alerts", "Flexible timeframes"],
-  },
-  {
-    title: "Goal Setting",
-    description:
-      "Define your financial aspirations and track your journey toward achieving them. Whether saving for a vacation or paying off debt, we'll help you stay focused and motivated with visual progress tracking.",
-    icon: Target,
-    imageSrc: "goal-setting.png",
-    tags: ["Progress tracking", "Milestone rewards", "Smart recommendations"],
-  },
-]
 

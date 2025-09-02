@@ -4,6 +4,7 @@ import "./globals.css"
 import { Suspense, lazy } from 'react'
 import { LoadingSpinner } from "../components/ui/loading-spinner"
 import { ErrorBoundary } from "../components/error-boundary"
+import FontLoader from "../components/font-loader"
 
 // Lazy load providers to reduce initial bundle size
 const ThemeProvider = lazy(() => import("../components/theme-provider").then(mod => ({ default: mod.ThemeProvider })))
@@ -46,10 +47,6 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap"
           rel="stylesheet"
           media="print"
-          onLoad={() => {
-            const link = document.querySelector('link[rel="stylesheet"][media="print"]') as HTMLLinkElement;
-            if (link) link.media = 'all';
-          }}
         />
         <link rel="dns-prefetch" href={process.env.NEXT_PUBLIC_API_URL} />
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -58,6 +55,7 @@ export default function RootLayout({
         <link rel="preload" href="/sokin-icon.png" as="image" />
       </head>
       <body className="bg-dark text-cream antialiased">
+        <FontLoader />
         <ErrorBoundary>
           <Suspense fallback={<LoadingSpinner size="lg" />}>
             <ReactQueryClientProvider>

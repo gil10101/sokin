@@ -2,35 +2,35 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
-import { PieChart, PlusCircle, CreditCard, ChevronRight, Calendar, Search, TrendingUp } from "../../lib/icons"
+import { useState, useEffect, useCallback } from "react"
+import { PieChart, PlusCircle, CreditCard, ChevronRight, Calendar, Search, TrendingUp } from "@/lib/icons"
 import { DashboardSidebar } from "@/components/dashboard/sidebar"
 import dynamic from "next/dynamic"
 import Image from "next/image"
 // Lazy load heavy chart components with optimized loading states and progressive loading
-const ExpenseChart = dynamic(() => import("../../components/dashboard/expense-chart").then(mod => ({ default: mod.ExpenseChart })), {
+const ExpenseChart = dynamic(() => import("@/components/dashboard/expense-chart").then(mod => ({ default: mod.ExpenseChart })), {
   ssr: false,
   loading: () => <div className="h-80 bg-cream/5 rounded-lg animate-pulse flex items-center justify-center"><div className="text-cream/60">Loading chart...</div></div>
 })
-const CategoryBreakdown = dynamic(() => import("../../components/dashboard/category-breakdown").then(mod => ({ default: mod.CategoryBreakdown })), {
+const CategoryBreakdown = dynamic(() => import("@/components/dashboard/category-breakdown").then(mod => ({ default: mod.CategoryBreakdown })), {
   ssr: false,
   loading: () => <div className="h-64 bg-cream/5 rounded-lg animate-pulse flex items-center justify-center"><div className="text-cream/60">Loading breakdown...</div></div>
 })
-const AdvancedAnalytics = dynamic(() => import("../../components/dashboard/advanced-analytics").then(mod => ({ default: mod.AdvancedAnalytics })), {
+const AdvancedAnalytics = dynamic(() => import("@/components/dashboard/advanced-analytics").then(mod => ({ default: mod.AdvancedAnalytics })), {
   ssr: false,
   loading: () => <div className="h-40 bg-cream/5 rounded-lg animate-pulse flex items-center justify-center"><div className="text-cream/60">Loading analytics...</div></div>
 })
-const StockMarket = dynamic(() => import("../../components/dashboard/stock-market").then(mod => ({ default: mod.StockMarket })), {
+const StockMarket = dynamic(() => import("@/components/dashboard/stock-market").then(mod => ({ default: mod.StockMarket })), {
   ssr: false,
   loading: () => <div className="h-96 bg-cream/5 rounded-lg animate-pulse flex items-center justify-center"><div className="text-cream/60">Loading market data...</div></div>
 })
 
 // Lazy load motion container to reduce initial bundle
-const MotionContainer = dynamic(() => import("../../components/ui/motion-container").then(mod => ({ default: mod.MotionContainer })), {
+const MotionContainer = dynamic(() => import("@/components/ui/motion-container").then(mod => ({ default: mod.MotionContainer })), {
   ssr: false,
   loading: () => <div />
 })
-const StackedBarChart = dynamic(() => import("../../components/dashboard/stacked-bar-chart").then(mod => ({ default: mod.StackedBarChart })), {
+const StackedBarChart = dynamic(() => import("@/components/dashboard/stacked-bar-chart").then(mod => ({ default: mod.StackedBarChart })), {
   ssr: false,
   loading: () => <div className="h-64 bg-cream/5 rounded-lg animate-pulse flex items-center justify-center"><div className="text-cream/60">Loading chart...</div></div>
 })
@@ -44,7 +44,7 @@ import { Input } from "@/components/ui/input"
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter } from "next/navigation"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../../lib/ui-components"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/lib/ui-components"
 import { NotificationsDropdown } from "@/components/notifications/notifications-dropdown"
 import { api } from "@/lib/api"
 import { useQueryClient } from "@tanstack/react-query"
@@ -82,7 +82,7 @@ export default function DashboardPage() {
   const [showSearchResults, setShowSearchResults] = useState(false)
   const [timeframe, setTimeframe] = useState("30days")
   const [notifications, setNotifications] = useState<Notification[]>([])
-  const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false)
+
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [budgets, setBudgets] = useState<Budget[]>([])
   const [netWorth, setNetWorth] = useState<NetWorthCalculation | null>(null)
@@ -92,32 +92,7 @@ export default function DashboardPage() {
     setMounted(true)
   }, [])
 
-  // Fetch dashboard data when user is available with optimized caching
-  useEffect(() => {
-    if (user && mounted) {
-      // Use requestIdleCallback for non-critical data fetching
-      const fetchData = () => {
-        fetchDashboard()
-        // Delay net worth fetching to prioritize main dashboard data
-        setTimeout(fetchNetWorth, 1000)
-      }
-
-      if ('requestIdleCallback' in window) {
-        requestIdleCallback(fetchData, { timeout: 2000 })
-      } else {
-        // Fallback for browsers without requestIdleCallback
-        setTimeout(fetchData, 100)
-      }
-    }
-  }, [user, mounted])
-
-  // Check for unread notifications
-  useEffect(() => {
-    const unreadExists = notifications.some((notification) => !notification.read)
-    setHasUnreadNotifications(unreadExists)
-  }, [notifications])
-
-  const fetchDashboard = async () => {
+  const fetchDashboard = useCallback(async () => {
     if (!user) return
     
     // Check if we already have cached data
@@ -152,19 +127,53 @@ export default function DashboardPage() {
       setBudgets([])
       setNotifications([])
     }
-  }
+  }, [user, queryClient])
 
-  const fetchNetWorth = async () => {
+  const fetchNetWorth = useCallback(async () => {
+    if (!user) return
+    
     try {
-      const token = await user?.getIdToken()
+      const token = await user.getIdToken()
       const data = await api.get<{ data: NetWorthCalculation }>('net-worth/calculate', { token })
       setNetWorth(data.data)
     } catch (error) {
-
+      setNetWorth(null)
     }
-  }
+  }, [user])
 
-  const searchExpenses = async (searchTerm: string) => {
+  // Fetch dashboard data when user is available with optimized caching
+  useEffect(() => {
+    if (user && mounted) {
+      let fetchTimeoutId: NodeJS.Timeout
+      let requestId: number
+
+      // Use requestIdleCallback for non-critical data fetching
+      const fetchData = () => {
+        fetchDashboard()
+        // Delay net worth fetching to prioritize main dashboard data
+        fetchTimeoutId = setTimeout(fetchNetWorth, 1000)
+      }
+
+      if ('requestIdleCallback' in window) {
+        requestId = requestIdleCallback(fetchData, { timeout: 2000 })
+      } else {
+        // Fallback for browsers without requestIdleCallback
+        fetchTimeoutId = setTimeout(fetchData, 100)
+      }
+
+      // Cleanup function to cancel pending operations
+      return () => {
+        if (fetchTimeoutId) {
+          clearTimeout(fetchTimeoutId)
+        }
+        if (requestId && 'cancelIdleCallback' in window) {
+          cancelIdleCallback(requestId)
+        }
+      }
+    }
+  }, [user, mounted, fetchDashboard, fetchNetWorth])
+
+  const searchExpenses = useCallback(async (searchTerm: string) => {
     if (!searchTerm.trim()) {
       setSearchResults([])
       setShowSearchResults(false)
@@ -195,7 +204,7 @@ export default function DashboardPage() {
     } else {
       performSearch()
     }
-  }
+  }, [expenses])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -213,23 +222,6 @@ export default function DashboardPage() {
       setShowSearchResults(false)
     }
   }
-
-  const markAllAsRead = async () => {
-    // This would update notifications in Firebase
-    // For now, just update local state
-    setNotifications(notifications.map((notification) => ({ ...notification, read: true })))
-    setHasUnreadNotifications(false)
-  }
-
-  const markAsRead = async (id: string) => {
-    // This would update specific notification in Firebase
-    // For now, just update local state
-    setNotifications(
-      notifications.map((notification) => (notification.id === id ? { ...notification, read: true } : notification))
-    )
-  }
-
-
 
   // Helper function to format currency
   const formatCurrency = (amount: number): string => {
@@ -580,10 +572,6 @@ export default function DashboardPage() {
               </div>
             </MotionContainer>
           </div>
-
-
-
-
         </div>
       </main>
     </div>
