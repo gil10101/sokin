@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { db, auth } from '../config/firebase';
 import { getMessaging } from 'firebase-admin/messaging';
 import { Notification, NotificationPreferences, Budget, Expense } from '../models/types';
+import logger from '../utils/logger';
 
 export class NotificationController {
   
@@ -28,7 +29,7 @@ export class NotificationController {
 
       res.json({ notifications });
     } catch (error: unknown) {
-      console.error('Error fetching notifications:', error);
+      logger.error('Error fetching notifications', { error: error instanceof Error ? error.message : 'Unknown error', userId: req.user?.uid });
       res.status(500).json({ error: 'Failed to fetch notifications' });
     }
   }
@@ -54,7 +55,7 @@ export class NotificationController {
 
       res.json({ success: true });
     } catch (error: unknown) {
-      console.error('Error updating notification:', error);
+      logger.error('Error updating notification', { error: error instanceof Error ? error.message : 'Unknown error', notificationId: req.params.notificationId, userId: req.user?.uid });
       res.status(500).json({ error: 'Failed to update notification' });
     }
   }
@@ -91,7 +92,7 @@ export class NotificationController {
 
       res.json({ preferences });
     } catch (error: unknown) {
-      console.error('Error updating preferences:', error);
+      logger.error('Error updating preferences', { error: error instanceof Error ? error.message : 'Unknown error', userId: req.user?.uid });
       res.status(500).json({ error: 'Failed to update preferences' });
     }
   }
@@ -127,7 +128,7 @@ export class NotificationController {
 
       res.json({ success: true });
     } catch (error: unknown) {
-      console.error('Error registering FCM token:', error);
+      logger.error('Error registering FCM token', { error: error instanceof Error ? error.message : 'Unknown error', userId: req.user?.uid });
       res.status(500).json({ error: 'Failed to register token' });
     }
   }
@@ -145,7 +146,7 @@ export class NotificationController {
       
       res.json({ alerts });
     } catch (error: unknown) {
-      console.error('Error checking budget alerts:', error);
+      logger.error('Error checking budget alerts', { error: error instanceof Error ? error.message : 'Unknown error', userId: req.body.userId });
       res.status(500).json({ error: 'Failed to check budget alerts' });
     }
   }
@@ -218,8 +219,9 @@ export class NotificationController {
           updatedAt: new Date().toISOString()
         });
       }
-    } catch (error) {
-      
+    } catch (error: unknown) {
+      // Error calculating budget alerts - continuing without alerts for this budget
+      logger.error('Failed to calculate budget alert', { error: error instanceof Error ? error.message : 'Unknown error', userId });
     }
 
     return alerts;
@@ -324,8 +326,9 @@ export class NotificationController {
         });
       }
 
-    } catch (error) {
-      
+    } catch (error: unknown) {
+      // Error sending push notification - notification delivery failed
+      logger.error('Failed to send push notification', { error: error instanceof Error ? error.message : 'Unknown error', userId });
     }
   }
 } 

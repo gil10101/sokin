@@ -4,6 +4,7 @@ import https from 'https'
 import http from 'http'
 import { db } from '../config/firebase'
 import cache from '../utils/cache'
+import logger from '../utils/logger'
 
 // Finnhub API configuration
 const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY
@@ -423,7 +424,10 @@ class StocksController {
               candles = candleResult
             }
           } catch (candleError) {
-
+            logger.debug("Failed to fetch candle data", { 
+              symbol,
+              error: candleError instanceof Error ? candleError.message : 'Unknown error' 
+            })
           }
         }
 
