@@ -22,27 +22,26 @@ function TwistedTorus({ isMobile = false }: TwistedTorusProps) {
       const aspectRatio = width / height
       const minDimension = Math.min(width, height)
 
-      // Base scale factor
+      // Simplified scaling based on viewport size
       let factor = 1
 
-      // Adjust for very small screens
-      if (minDimension < 10) {
+      // Scale down for smaller viewports
+      if (minDimension < 12) {
+        factor = 0.7
+      } else if (minDimension < 15) {
         factor = 0.8
-      }
-      // Adjust for medium screens
-      else if (minDimension < 15) {
+      } else if (minDimension < 18) {
         factor = 0.9
       }
-      // Adjust for very wide aspect ratios
-      else if (aspectRatio > 2.2) {
-        factor = 0.85
-      }
-      // Adjust for very tall aspect ratios
-      else if (aspectRatio < 0.8) {
-        factor = 0.95
+
+      // Adjust for extreme aspect ratios
+      if (aspectRatio > 2.5) {
+        factor *= 0.9 // Reduce for very wide screens
+      } else if (aspectRatio < 0.6) {
+        factor *= 1.1 // Increase for very tall screens
       }
 
-      setScaleFactor(factor)
+      setScaleFactor(Math.max(0.5, Math.min(1.2, factor))) // Clamp between 0.5 and 1.2
     }
 
     updateScaleFactor()
@@ -56,14 +55,14 @@ function TwistedTorus({ isMobile = false }: TwistedTorusProps) {
   // Create simple circular arrangement of square panels
   const segments = useMemo(() => {
     const segmentArray = []
-    const numSegments = isMobile ? 60 : 80 // Fewer segments on mobile for performance
-    const baseRadius = isMobile ? 4.5 : 6
+    const numSegments = isMobile ? 50 : 70 // Optimized segment count for better performance
+    const baseRadius = isMobile ? 4 : 5.5
     const radius = baseRadius * scaleFactor // Scale radius based on viewport
-    const basePanelSize = isMobile ? 2.0 : 2.8
+    const basePanelSize = isMobile ? 1.8 : 2.5
     const panelSize = basePanelSize * scaleFactor // Scale panel size
-    const baseThickness = isMobile ? 0.15 : 0.2
+    const baseThickness = isMobile ? 0.12 : 0.18
     const panelThickness = baseThickness * scaleFactor // Scale thickness
-    const twistAmount = (6 * 90) * (Math.PI / 180) // 90 degrees total twist
+    const twistAmount = (5 * 90) * (Math.PI / 180) // 90 degrees total twist
     
     for (let i = 0; i < numSegments; i++) {
       const angle = (i / numSegments) * 2 * Math.PI
@@ -106,12 +105,13 @@ function TwistedTorus({ isMobile = false }: TwistedTorusProps) {
     }
     
     return segmentArray
-  }, [isMobile])
+  }, [isMobile, scaleFactor])
 
   // Animation loop
   useFrame((state) => {
     if (groupRef.current) {
-      groupRef.current.rotation.z = state.clock.elapsedTime / 2.7
+      // Smoother animation speed that's consistent across devices
+      groupRef.current.rotation.z = state.clock.elapsedTime / 3.0
     }
   })
 

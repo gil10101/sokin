@@ -1,7 +1,9 @@
 "use client"
 
 import dynamic from "next/dynamic"
-import { Suspense, useEffect, useState } from "react"
+import { Suspense as ReactSuspense, useEffect, useState } from "react"
+
+const Suspense = ReactSuspense as any
 
 // Dynamically import Canvas to avoid SSR issues
 const Canvas = dynamic(() => import("@react-three/fiber").then(mod => ({ default: mod.Canvas })), {

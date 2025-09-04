@@ -18,16 +18,10 @@ const TwistedTorus = dynamic(() => import("./twisted-torus"), {
 
 function MobileHero3DScene() {
   const [viewportHeight, setViewportHeight] = useState(0)
-  const [isMac, setIsMac] = useState(false)
 
   useEffect(() => {
     const updateDevice = () => {
       setViewportHeight(window.innerHeight)
-
-      // Detect Mac devices for special handling
-      const userAgent = navigator.userAgent.toLowerCase()
-      const isMacDevice = userAgent.includes('mac') && !userAgent.includes('iphone') && !userAgent.includes('ipad')
-      setIsMac(isMacDevice)
     }
 
     updateDevice()
@@ -56,22 +50,13 @@ function MobileHero3DScene() {
 
   const cameraSettings = getCameraSettings()
 
-  // Responsive height calculation with Mac adjustments
+  // Responsive height calculation
   const getResponsiveHeight = () => {
     if (!viewportHeight) return "300px"
 
-    // Mac devices often need slightly different proportions due to menu bar and different aspect ratios
-    const heightPercent = isMac
-      ? (viewportHeight < 600 ? 33 : viewportHeight < 800 ? 30 : 28) // Slightly smaller on Mac for better proportion
-      : (viewportHeight < 600 ? 35 : viewportHeight < 800 ? 32 : 30)
-
-    const minHeight = isMac
-      ? (viewportHeight < 600 ? 240 : viewportHeight < 800 ? 270 : 290) // Adjusted for Mac proportions
-      : (viewportHeight < 600 ? 250 : viewportHeight < 800 ? 280 : 300)
-
-    const maxHeight = isMac
-      ? (viewportHeight < 600 ? 310 : viewportHeight < 800 ? 340 : 360) // Adjusted for Mac proportions
-      : (viewportHeight < 600 ? 320 : viewportHeight < 800 ? 350 : 380)
+    const heightPercent = viewportHeight < 600 ? 35 : viewportHeight < 800 ? 32 : 30
+    const minHeight = viewportHeight < 600 ? 250 : viewportHeight < 800 ? 280 : 300
+    const maxHeight = viewportHeight < 600 ? 320 : viewportHeight < 800 ? 350 : 380
 
     return `clamp(${minHeight}px, ${heightPercent}vh, ${maxHeight}px)`
   }
@@ -81,9 +66,7 @@ function MobileHero3DScene() {
       className="relative w-full pointer-events-none"
       style={{
         height: getResponsiveHeight(),
-        overflow: "hidden",
-        // Mac-specific positioning adjustment
-        marginTop: isMac ? "8px" : "0px" // Slight top margin on Mac to account for menu bar
+        overflow: "hidden"
       }}
     >
       <Suspense fallback={null}>

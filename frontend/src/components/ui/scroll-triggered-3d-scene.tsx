@@ -27,19 +27,13 @@ function ScrollTriggered3DScene() {
   const canvasRef = useRef<HTMLDivElement>(null)
   const [isMobile, setIsMobile] = useState(false)
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 })
-  const [isMac, setIsMac] = useState(false)
 
   useEffect(() => {
     const checkDevice = () => {
       const width = window.innerWidth
       const height = window.innerHeight
 
-      // Detect Mac devices for better positioning
-      const userAgent = navigator.userAgent.toLowerCase()
-      const isMacDevice = userAgent.includes('mac') && !userAgent.includes('iphone') && !userAgent.includes('ipad')
-
       setIsMobile(width < 768)
-      setIsMac(isMacDevice)
       setViewportSize({ width, height })
     }
 
@@ -55,23 +49,21 @@ function ScrollTriggered3DScene() {
 
     const canvas = canvasRef.current
 
-    // Desktop only - initial positioning with Mac adjustments
-    // Since we start from Mac-adjusted center (15% top), we need relative positioning
+    // Desktop only - initial positioning (relative to the 65% top position)
     gsap.set(canvas, {
       x: "25%", // Move right from center
-      y: isMac ? "18%" : "0%", // Adjust Y relative to Mac-adjusted center (35% higher)
+      y: "-15%", // Adjust relative to new base position (65% - 15% = 50% from top)
       scale: 1,
       rotation: 0,
       opacity: 1
     })
 
-    // Desktop only - section-based animations with Mac adjustments
-    // Y values are relative to the Mac-adjusted center position (15% vs 50% = 35% higher)
+    // Desktop only - section-based animations (relative to 65% base position)
     const desktopSections = [
       {
         trigger: "#hero",
         x: "25%",
-        y: isMac ? "28%" : "0%", // Mac: 28% (accounts for 35% center adjustment)
+        y: "-15%", // Maintains the same effective position (65% - 15% = 50%)
         scale: 1,
         rotation: 0,
         opacity: 1
@@ -79,7 +71,7 @@ function ScrollTriggered3DScene() {
       {
         trigger: "#about",
         x: "-25%", // Balanced positioning for 50/50 layout
-        y: isMac ? "25%" : "-5%", // Mac: 25% (accounts for 35% center adjustment)
+        y: "-20%", // Slightly higher than before for better flow
         scale: 0.8,
         rotation: 15,
         opacity: 0.9
@@ -87,7 +79,7 @@ function ScrollTriggered3DScene() {
       {
         trigger: "#features",
         x: "25%",
-        y: isMac ? "40%" : "10%", // Mac: 40% (accounts for 35% center adjustment)
+        y: "-5%", // Adjusted for new base position
         scale: 0.6,
         rotation: -10,
         opacity: 0.7
@@ -95,7 +87,7 @@ function ScrollTriggered3DScene() {
       {
         trigger: "#contact",
         x: "15%",
-        y: isMac ? "52%" : "20%", // Mac: 52% (accounts for 35% center adjustment)
+        y: "5%", // Adjusted for new base position
         scale: 0.5,
         rotation: 25,
         opacity: 0.5
@@ -149,9 +141,7 @@ function ScrollTriggered3DScene() {
       scrollTriggers.push(trigger)
     })
 
-    // Bottom of page effect for desktop with Mac adjustments
-    // Since Mac starts 35% higher, bottom position needs significant adjustment
-    const bottomPageY = isMac ? "50%" : "85%" // Adjust bottom positioning for Mac (35% higher)
+    // Bottom of page effect for desktop (adjusted for 65% base position)
     const bottomPageEffect = ScrollTrigger.create({
       trigger: "footer",
       start: "top bottom-=100px",
@@ -159,7 +149,7 @@ function ScrollTriggered3DScene() {
       onEnter: () => {
         gsap.to(canvas, {
           x: "0%",
-          y: bottomPageY,
+          y: "70%", // Adjusted relative to 65% base position
           scale: 1.6,
           rotation: 0,
           opacity: 0.9,
@@ -240,33 +230,20 @@ function ScrollTriggered3DScene() {
     fov: viewportSize.width < 1200 ? 60 : 55
   }
 
-  // On mobile, render nothing here - we'll handle mobile canvas separately
-  if (isMobile) {
+  // On mobile/tablet, render nothing here - we'll handle mobile canvas separately
+  // Use consistent breakpoint with main component (768px)
+  if (viewportSize.width < 768) {
     return null
   }
 
   const responsiveSize = getResponsiveSize()
 
-  // Use GSAP-only positioning to avoid transform conflicts
-  const getInitialPosition = () => {
-    if (!isMac) {
-      return {
-        top: "50%",
-        left: "50%",
-        transform: "translate(-50%, -50%)"
-      }
-    }
-
-    // On Mac devices, start with significantly adjusted positioning to account for menu bar
-    // Moving 35% higher than standard positioning (50% - 35% = 15%)
-    return {
-      top: "15%", // Move up 35% from 50% to 15% on Mac for better visual centering
-      left: "50%",
-      transform: "translate(-50%, -50%)"
-    }
+  // Position 30% lower than center for better visual balance
+  const initialPosition = {
+    top: "65%", // 50% + 15% lower for better positioning
+    left: "50%",
+    transform: "translate(-50%, -50%)"
   }
-
-  const initialPosition = getInitialPosition()
 
   return (
     <div
