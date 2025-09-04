@@ -137,6 +137,13 @@ export function ExpenseChart({ timeframe = "30days" }: ExpenseChartProps) {
     }
   }
 
+  // Load expense data on component mount and when dependencies change
+  useEffect(() => {
+    if (mounted) {
+      fetchExpenseData()
+    }
+  }, [user, timeframe, mounted])
+
   // Only handle resize without setting state
   useEffect(() => {
     if (!mounted) return

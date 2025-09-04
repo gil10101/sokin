@@ -300,10 +300,15 @@ export function SavingsGoals() {
 
   const getNextMilestone = (goal: SavingsGoal) => {
     const progressPercentage = getProgressPercentage(goal)
-    return goal.milestones?.find(milestone => 
+    return goal.milestones?.find(milestone =>
       milestone.percentage > progressPercentage && !milestone.achievedAt
     )
   }
+
+  // Load savings goals on component mount and when user changes
+  useEffect(() => {
+    fetchSavingsGoals()
+  }, [user])
 
   if (loading) {
     return (

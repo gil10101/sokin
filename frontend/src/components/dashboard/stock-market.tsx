@@ -216,6 +216,11 @@ export function StockMarket() {
     loadStockData()
   }
 
+  // Load stock data on component mount
+  useEffect(() => {
+    loadStockData()
+  }, [user])
+
   // Function to update portfolio stocks with real-time prices
   const updatePortfolioWithRealTimePrices = (portfolio: UserPortfolioStock[]): UserPortfolioStock[] => {
     return portfolio.map(stock => {
