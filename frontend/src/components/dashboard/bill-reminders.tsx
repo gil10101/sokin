@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { Button } from '../ui/button'
 import { Badge } from '../ui/badge'
@@ -34,22 +34,30 @@ import { format, addDays, isWithinInterval, isBefore, isAfter } from 'date-fns'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useToast } from '../../hooks/use-toast'
 
-interface BillReminder {
-  id?: string
-  userId: string
-  name: string
-  amount: number
-  dueDate: string
+// Import BillReminder from API services for consistency
+type ApiBillReminder = {
+  id: string;
+  userId: string;
+  name: string;
+  amount: number;
+  dueDate: string;
+  frequency: 'once' | 'weekly' | 'monthly' | 'yearly';
+  category?: string;
+  notes?: string;
+  isPaid: boolean;
+  paidDate?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+// Extended version with additional UI fields
+interface BillReminder extends Omit<ApiBillReminder, 'frequency' | 'category'> {
   frequency: 'weekly' | 'monthly' | 'quarterly' | 'yearly' | 'one-time'
   category: string
   description?: string
-  isPaid: boolean
-  paidDate?: string
   reminderDays: number[] // [7, 3, 1] days before
   autoPayEnabled: boolean
   linkedAccount?: string
-  createdAt: string
-  updatedAt?: string
 }
 
 interface ReminderNotification {
@@ -75,7 +83,7 @@ export function BillReminders() {
     name: '',
     amount: '',
     dueDate: new Date(),
-    frequency: 'monthly' as const,
+            frequency: 'monthly' as BillReminder['frequency'],
     category: 'utilities',
     description: '',
     reminderDays: [7, 3, 1],
@@ -92,21 +100,22 @@ export function BillReminders() {
     { value: 'other', label: 'Other', icon: FileText }
   ]
 
-  useEffect(() => {
-    fetchBillReminders()
-  }, [])
-
-  useEffect(() => {
-    generateUpcomingReminders()
-  }, [bills])
-
-  const fetchBillReminders = async () => {
+  const fetchBillReminders = useCallback(async () => {
     setLoading(true)
     try {
       // Import the API service
       const { API } = await import('../../lib/api-services')
-      const bills = await API.billReminders.getBillReminders()
-      setBills(bills)
+      const apiBills = await API.billReminders.getBillReminders() as ApiBillReminder[]
+      // Transform API bills to extended BillReminder format
+      const transformedBills: BillReminder[] = apiBills.map(bill => ({
+        ...bill,
+        category: bill.category || 'other',
+        description: bill.notes,
+        reminderDays: [7, 3, 1],
+        autoPayEnabled: false,
+        frequency: bill.frequency === 'once' ? 'one-time' : bill.frequency as BillReminder['frequency']
+      }))
+      setBills(transformedBills)
     } catch (error) {
 
       toast({
@@ -117,9 +126,9 @@ export function BillReminders() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [toast])
 
-  const generateUpcomingReminders = () => {
+  const generateUpcomingReminders = useCallback(() => {
     const today = new Date()
     const reminders: ReminderNotification[] = []
 
@@ -152,16 +161,34 @@ export function BillReminders() {
     })
 
     setUpcomingReminders(reminders.sort((a, b) => a.daysUntilDue - b.daysUntilDue))
-  }
+  }, [bills])
+
+  // Add useEffect hooks after function declarations
+  useEffect(() => {
+    fetchBillReminders()
+  }, [fetchBillReminders])
+
+  useEffect(() => {
+    generateUpcomingReminders()
+  }, [bills, generateUpcomingReminders])
 
   const createBillReminder = async () => {
     try {
       const { API } = await import('../../lib/api-services')
+      // Map UI frequency values to API values
+      const mapFrequencyToApi = (freq: BillReminder['frequency']): ApiBillReminder['frequency'] => {
+        switch (freq) {
+          case 'one-time': return 'once'
+          case 'quarterly': return 'yearly' // Map quarterly to yearly for now
+          default: return freq as ApiBillReminder['frequency']
+        }
+      }
+      
       const billData = {
         name: newBill.name,
         amount: parseFloat(newBill.amount),
         dueDate: newBill.dueDate.toISOString(),
-        frequency: newBill.frequency,
+        frequency: mapFrequencyToApi(newBill.frequency),
         category: newBill.category,
         notes: newBill.description
       }
@@ -363,7 +390,7 @@ export function BillReminders() {
                     <Input
                       id="billName"
                       value={newBill.name}
-                      onChange={(e) => setNewBill({ ...newBill, name: e.target.value })}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewBill({ ...newBill, name: e.target.value })}
                       placeholder="Electric bill, rent, etc."
                       className="mt-1 md:mt-2"
                     />
@@ -374,7 +401,7 @@ export function BillReminders() {
                       id="amount"
                       type="number"
                       value={newBill.amount}
-                      onChange={(e) => setNewBill({ ...newBill, amount: e.target.value })}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewBill({ ...newBill, amount: e.target.value })}
                       placeholder="0.00"
                       className="mt-1 md:mt-2"
                     />
@@ -407,7 +434,7 @@ export function BillReminders() {
                     <Label className="text-sm md:text-base">Frequency</Label>
                     <Select 
                       value={newBill.frequency} 
-                      onValueChange={(value: 'once' | 'weekly' | 'monthly' | 'yearly') => setNewBill({ ...newBill, frequency: value })}
+                      onValueChange={(value: BillReminder['frequency']) => setNewBill({ ...newBill, frequency: value })}
                     >
                       <SelectTrigger className="mt-1 md:mt-2">
                         <SelectValue />

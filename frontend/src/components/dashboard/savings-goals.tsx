@@ -1,5 +1,7 @@
 "use client"
 
+
+
 import { useState, useEffect } from 'react'
 import { collection, query, where, orderBy, getDocs, addDoc, doc, updateDoc } from "firebase/firestore"
 import { db } from '../../lib/firebase'
@@ -79,13 +81,20 @@ export function SavingsGoals() {
   const { toast } = useToast()
 
   // Form state for new goal
-  const [newGoal, setNewGoal] = useState({
+  const [newGoal, setNewGoal] = useState<{
+    name: string
+    description: string
+    targetAmount: string
+    targetDate: Date
+    category: string
+    priority: 'low' | 'medium' | 'high'
+  }>({
     name: '',
     description: '',
     targetAmount: '',
     targetDate: new Date(),
     category: 'emergency',
-    priority: 'medium' as const
+    priority: 'medium'
   })
 
   const categories = [
@@ -103,12 +112,6 @@ export function SavingsGoals() {
     medium: 'bg-yellow-100 text-yellow-800',
     high: 'bg-red-100 text-red-800'
   }
-
-  useEffect(() => {
-    if (user) {
-      fetchSavingsGoals()
-    }
-  }, [user])
 
   const fetchSavingsGoals = async () => {
     if (!user) return
@@ -340,7 +343,8 @@ export function SavingsGoals() {
             </div>
             <h3 className="text-lg font-medium text-cream/80 mb-2">Unable to Load Goals</h3>
             <p className="text-cream/60 mb-6 text-sm">{error}</p>
-            <Button 
+
+            <Button
               onClick={fetchSavingsGoals}
               className="bg-cream/10 hover:bg-cream/20 text-cream/80 border-cream/20"
             >
@@ -374,10 +378,11 @@ export function SavingsGoals() {
             <div className="space-y-6 py-4">
               <div className="space-y-2">
                 <Label htmlFor="name" className="text-sm font-medium">Goal Name</Label>
+    
                 <Input
                   id="name"
                   value={newGoal.name}
-                  onChange={(e) => setNewGoal({ ...newGoal, name: e.target.value })}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewGoal({ ...newGoal, name: e.target.value })}
                   placeholder="Emergency fund, vacation, etc."
                   className="h-11"
                 />
@@ -385,10 +390,11 @@ export function SavingsGoals() {
               
               <div className="space-y-2">
                 <Label htmlFor="description" className="text-sm font-medium">Description (Optional)</Label>
+    
                 <Textarea
                   id="description"
                   value={newGoal.description}
-                  onChange={(e) => setNewGoal({ ...newGoal, description: e.target.value })}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNewGoal({ ...newGoal, description: e.target.value })}
                   placeholder="Details about your goal..."
                   className="min-h-[80px] resize-none"
                 />
@@ -397,11 +403,12 @@ export function SavingsGoals() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="targetAmount" className="text-sm font-medium">Target Amount</Label>
+      
                   <Input
                     id="targetAmount"
                     type="number"
                     value={newGoal.targetAmount}
-                    onChange={(e) => setNewGoal({ ...newGoal, targetAmount: e.target.value })}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewGoal({ ...newGoal, targetAmount: e.target.value })}
                     placeholder="10000"
                     className="h-11"
                   />
@@ -409,6 +416,7 @@ export function SavingsGoals() {
                 
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Target Date</Label>
+      
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button variant="outline" className="w-full justify-start text-left h-11">
@@ -431,8 +439,9 @@ export function SavingsGoals() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Category</Label>
-                  <Select 
-                    value={newGoal.category} 
+      
+                  <Select
+                    value={newGoal.category}
                     onValueChange={(value) => setNewGoal({ ...newGoal, category: value })}
                   >
                     <SelectTrigger className="h-11">
@@ -453,8 +462,9 @@ export function SavingsGoals() {
 
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Priority</Label>
-                  <Select 
-                    value={newGoal.priority} 
+      
+                  <Select
+                    value={newGoal.priority}
                     onValueChange={(value: 'low' | 'medium' | 'high') => setNewGoal({ ...newGoal, priority: value })}
                   >
                     <SelectTrigger className="h-11">
@@ -469,8 +479,9 @@ export function SavingsGoals() {
                 </div>
               </div>
 
-              <Button 
-                onClick={createGoal} 
+  
+              <Button
+                onClick={createGoal}
                 className="w-full h-11 mt-6"
                 disabled={!newGoal.name || !newGoal.targetAmount}
               >
@@ -501,6 +512,7 @@ export function SavingsGoals() {
                 transition={{ duration: 0.2 }}
                 className="w-full"
               >
+    
                 <Card className={cn(
                   "relative overflow-hidden bg-cream/5 border-cream/20 hover:bg-cream/10 transition-colors h-full flex flex-col",
                   goal.isCompleted && "border-cream/40"
@@ -565,16 +577,18 @@ export function SavingsGoals() {
 
                     {/* Action Buttons */}
                     <div className="flex gap-3 pt-2 mt-auto">
-                      <Button 
-                        size="sm" 
-                        className="flex-1 bg-cream/10 hover:bg-cream/20 text-cream/80 border-cream/20 h-10" 
+          
+                      <Button
+                        size="sm"
+                        className="flex-1 bg-cream/10 hover:bg-cream/20 text-cream/80 border-cream/20 h-10"
                         disabled={goal.isCompleted}
                         onClick={() => setSelectedGoal(goal)}
                       >
                         <DollarSign className="mr-2 h-4 w-4" />
                         Add Money
                       </Button>
-                      
+
+          
                       <Button size="sm" variant="outline" className="border-cream/20 text-cream/60 hover:bg-cream/10 h-10 px-3">
                         <TrendingUp className="h-4 w-4" />
                       </Button>
@@ -605,7 +619,8 @@ export function SavingsGoals() {
             <p className="text-cream/50 mb-8 leading-relaxed">
               Create your first savings goal to start tracking your financial progress and build healthy saving habits.
             </p>
-            <Button 
+
+            <Button
               onClick={() => setShowCreateGoal(true)}
               className="bg-cream/10 hover:bg-cream/20 text-cream/80 border-cream/20 h-11 px-6"
             >
@@ -635,11 +650,12 @@ export function SavingsGoals() {
             
             <div className="space-y-2">
               <Label htmlFor="contributionAmount" className="text-sm font-medium">Amount *</Label>
+  
               <Input
                 id="contributionAmount"
                 type="number"
                 value={contributionAmount}
-                onChange={(e) => setContributionAmount(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setContributionAmount(e.target.value)}
                 placeholder="0.00"
                 step="0.01"
                 min="0.01"
@@ -649,25 +665,28 @@ export function SavingsGoals() {
             
             <div className="space-y-2">
               <Label htmlFor="contributionNote" className="text-sm font-medium">Note (Optional)</Label>
+  
               <Input
                 id="contributionNote"
                 value={contributionNote}
-                onChange={(e) => setContributionNote(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setContributionNote(e.target.value)}
                 placeholder="e.g., Bonus money, side hustle..."
                 className="h-11"
               />
             </div>
             
             <div className="flex gap-3 pt-4">
-              <Button 
-                type="button" 
-                variant="outline" 
+  
+              <Button
+                type="button"
+                variant="outline"
                 onClick={() => setSelectedGoal(null)}
                 className="flex-1"
               >
                 Cancel
               </Button>
-              <Button 
+  
+              <Button
                 onClick={addContribution}
                 className="flex-1"
                 disabled={!contributionAmount || parseFloat(contributionAmount) <= 0}

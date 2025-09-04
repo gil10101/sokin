@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useMemo } from "react"
+import { useEffect, useState, useMemo, useCallback } from "react"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell, ResponsiveContainer, LabelList } from "recharts"
 import { motion } from "framer-motion"
 import { collection, query, where, getDocs } from "firebase/firestore"
@@ -104,12 +104,6 @@ export function BudgetProgressChart() {
   }, [isMobile, isTablet])
 
   useEffect(() => {
-    if (user && !expensesLoading) {
-      fetchBudgetData()
-    }
-  }, [user, expensesLoading, expenses])
-
-  useEffect(() => {
     if (data.length > 0) {
       // Start with zero percentages for animation
       const initialData = data.map((item) => ({
@@ -125,10 +119,13 @@ export function BudgetProgressChart() {
       }, 400)
 
       return () => clearTimeout(timer)
+    } else {
+      setAnimatedData([])
+      return () => {}
     }
   }, [data])
 
-  const fetchBudgetData = async () => {
+  const fetchBudgetData = useCallback(async () => {
     if (!user) return
 
     setLoading(true)
@@ -193,7 +190,13 @@ export function BudgetProgressChart() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [user, expenses])
+
+  useEffect(() => {
+    if (user && !expensesLoading) {
+      fetchBudgetData()
+    }
+  }, [user, expensesLoading, expenses, fetchBudgetData])
 
   // Get color based on percentage
   const getColor = (percentage: number) => {

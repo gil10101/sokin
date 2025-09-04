@@ -363,7 +363,7 @@ export function AssetLiabilityForm({ type, editItem, onSuccess, onCancel }: Asse
               <Input
                 id="name"
                 value={type === 'asset' ? assetForm.name : liabilityForm.name}
-                onChange={(e) => {
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                   if (type === 'asset') {
                     setAssetForm(prev => ({ ...prev, name: e.target.value }))
                   } else {
@@ -397,7 +397,7 @@ export function AssetLiabilityForm({ type, editItem, onSuccess, onCancel }: Asse
                     ? (assetForm.currentValue || '') 
                     : (liabilityForm.currentBalance || '')
                   }
-                  onChange={(e) => {
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                     const value = e.target.value
                     if (value === '' || value === '0') {
                       if (type === 'asset') {
@@ -443,7 +443,7 @@ export function AssetLiabilityForm({ type, editItem, onSuccess, onCancel }: Asse
                         min="0"
                         max="100"
                         value={liabilityForm.interestRate || ''}
-                        onChange={(e) => {
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                           const value = e.target.value
                           if (value === '' || value === '0') {
                             setLiabilityForm(prev => ({ ...prev, interestRate: 0 }))
@@ -476,7 +476,7 @@ export function AssetLiabilityForm({ type, editItem, onSuccess, onCancel }: Asse
                         step="0.01"
                         min="0"
                         value={liabilityForm.minimumPayment || ''}
-                        onChange={(e) => {
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                           const value = e.target.value
                           if (value === '' || value === '0') {
                             setLiabilityForm(prev => ({ ...prev, minimumPayment: 0 }))
@@ -502,7 +502,7 @@ export function AssetLiabilityForm({ type, editItem, onSuccess, onCancel }: Asse
                       id="dueDate"
                       type="date"
                       value={liabilityForm.dueDate || ''}
-                      onChange={(e) => {
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                         setLiabilityForm(prev => ({ ...prev, dueDate: e.target.value }))
                       }}
                       className="bg-cream/5 border-cream/10 text-cream pl-10"
@@ -522,12 +522,12 @@ export function AssetLiabilityForm({ type, editItem, onSuccess, onCancel }: Asse
                 <Textarea
                   id="description"
                   value={type === 'asset' ? assetForm.description : liabilityForm.metadata?.notes || ''}
-                  onChange={(e) => {
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
                     if (type === 'asset') {
                       setAssetForm(prev => ({ ...prev, description: e.target.value }))
                     } else {
-                      setLiabilityForm(prev => ({ 
-                        ...prev, 
+                      setLiabilityForm(prev => ({
+                        ...prev,
                         metadata: { ...prev.metadata, notes: e.target.value }
                       }))
                     }

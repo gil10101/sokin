@@ -46,7 +46,7 @@ export function BudgetProgressCard() {
         const budgets = budgetsSnapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
-        }))
+        })) as Budget[]
 
         // Fetch expenses for the current month
         const now = new Date()
@@ -65,7 +65,7 @@ export function BudgetProgressCard() {
         const expenses = expensesSnapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
-        }))
+        })) as Expense[]
 
         // Calculate spending by category
         const spendingByCategory: Record<string, number> = {}
