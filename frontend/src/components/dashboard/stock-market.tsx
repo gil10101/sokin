@@ -145,10 +145,6 @@ export function StockMarket() {
     enabled: portfolioSymbols.length > 0,
   })
 
-  useEffect(() => {
-    loadStockData()
-  }, [user])
-
   const loadStockData = async () => {
     try {
       setLoading(true)

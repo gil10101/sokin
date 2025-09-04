@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useCallback } from "react"
 import { TrendingUp, TrendingDown, Activity, PieChart, ArrowUpDown, DollarSign, Clock, AlertTriangle } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
 import { Badge } from "../ui/badge"
@@ -46,20 +46,7 @@ export const UserPortfolio: React.FC<UserPortfolioProps> = ({ className, onRefre
   const [sortField, setSortField] = useState<'symbol' | 'totalValue' | 'gainLoss' | 'gainLossPercent'>('totalValue')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
 
-  useEffect(() => {
-    if (user) {
-      loadPortfolioData()
-    } else {
-      // Clear data when user logs out
-      setUserPortfolio([])
-      setPortfolioHoldings([])
-      setRecentTransactions([])
-      setLoading(false)
-      setError(null)
-    }
-  }, [user])
-
-  const loadPortfolioData = async () => {
+  const loadPortfolioData = useCallback(async () => {
     if (!user) return
 
     try {
@@ -81,7 +68,20 @@ export const UserPortfolio: React.FC<UserPortfolioProps> = ({ className, onRefre
     } finally {
       setLoading(false)
     }
-  }
+  }, [user])
+
+  useEffect(() => {
+    if (user) {
+      loadPortfolioData()
+    } else {
+      // Clear data when user logs out
+      setUserPortfolio([])
+      setPortfolioHoldings([])
+      setRecentTransactions([])
+      setLoading(false)
+      setError(null)
+    }
+  }, [user, loadPortfolioData])
 
   const handleRefresh = async () => {
     setRefreshing(true)

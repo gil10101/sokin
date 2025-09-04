@@ -155,7 +155,7 @@ export function ReceiptScanner({ onDataExtracted, onExpenseCreated }: ReceiptSca
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       handleFileSelect(e.dataTransfer.files[0])
     }
-  }, [])
+  }, [handleFileSelect])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -376,7 +376,7 @@ export function ReceiptScanner({ onDataExtracted, onExpenseCreated }: ReceiptSca
                   <Input
                     id="name"
                     value={expenseForm.name}
-                    onChange={(e) => setExpenseForm(prev => ({ ...prev, name: e.target.value }))}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setExpenseForm(prev => ({ ...prev, name: e.target.value }))}
                     placeholder="Enter expense name"
                   />
                 </div>
@@ -389,7 +389,7 @@ export function ReceiptScanner({ onDataExtracted, onExpenseCreated }: ReceiptSca
                       type="number"
                       step="0.01"
                       value={expenseForm.amount}
-                      onChange={(e) => setExpenseForm(prev => ({ ...prev, amount: parseFloat(e.target.value) || 0 }))}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setExpenseForm(prev => ({ ...prev, amount: parseFloat(e.target.value) || 0 }))}
                       placeholder="0.00"
                     />
                   </div>
@@ -399,7 +399,7 @@ export function ReceiptScanner({ onDataExtracted, onExpenseCreated }: ReceiptSca
                       id="date"
                       type="date"
                       value={expenseForm.date}
-                      onChange={(e) => setExpenseForm(prev => ({ ...prev, date: e.target.value }))}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setExpenseForm(prev => ({ ...prev, date: e.target.value }))}
                     />
                   </div>
                 </div>
@@ -428,7 +428,7 @@ export function ReceiptScanner({ onDataExtracted, onExpenseCreated }: ReceiptSca
                   <Input
                     id="description"
                     value={expenseForm.description}
-                    onChange={(e) => setExpenseForm(prev => ({ ...prev, description: e.target.value }))}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setExpenseForm(prev => ({ ...prev, description: e.target.value }))}
                     placeholder="Optional description"
                   />
                 </div>
