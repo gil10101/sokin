@@ -38,9 +38,11 @@ app.use(express.urlencoded({ extended: true }));
 
 // Apply rate limiting to all requests
 // More lenient in development mode
-const maxRequests = process.env.NODE_ENV === 'development' ? 1000 : 100;
-const windowMs = process.env.NODE_ENV === 'development' ? 60 * 1000 : 15 * 60 * 1000; // 1 minute in dev, 15 minutes in prod
-app.use(rateLimiter(maxRequests, windowMs));
+const rateLimiterConfig = process.env.NODE_ENV === 'development'
+  ? rateLimiter(1000, 60 * 1000) // 1000 requests per minute in dev
+  : rateLimiter(100, 15 * 60 * 1000); // 100 requests per 15 minutes in prod
+
+app.use(rateLimiterConfig);
 
 // Lazy load routes for better startup performance
 const lazyRoutes = {
@@ -89,9 +91,14 @@ app.get('/health', (req: Request, res: Response) => {
 
 // Development endpoint to clear rate limits
 if (process.env.NODE_ENV === 'development') {
-  app.post('/dev/clear-rate-limits', (req: Request, res: Response) => {
-    clearRateLimits();
-    res.json({ message: 'Rate limits cleared' });
+  app.post('/dev/clear-rate-limits', async (req: Request, res: Response) => {
+    try {
+      await clearRateLimits();
+      res.json({ message: 'Rate limits cleared successfully' });
+    } catch (error) {
+      logger.error('Error clearing rate limits:', { error });
+      res.status(500).json({ error: 'Failed to clear rate limits' });
+    }
   });
 }
 

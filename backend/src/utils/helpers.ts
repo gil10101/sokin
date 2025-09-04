@@ -61,7 +61,7 @@ export const removeUndefined = <T extends Record<string, unknown>>(obj: T): Part
   return Object.entries(obj)
     .filter(([_, value]) => value !== undefined)
     .reduce((result, [key, value]) => {
-      result[key as keyof T] = value;
+      result[key as keyof T] = value as T[keyof T];
       return result;
     }, {} as Partial<T>);
 }; 
