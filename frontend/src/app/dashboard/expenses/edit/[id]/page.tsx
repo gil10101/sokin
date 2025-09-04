@@ -167,7 +167,7 @@ export default function EditExpensePage() {
     } finally {
       setLoading(false)
     }
-  }, [user, expenseId, router])
+  }, [user, expenseId, router, toast])
 
   useEffect(() => {
     if (user && mounted) {
@@ -266,7 +266,7 @@ export default function EditExpensePage() {
                   id="name"
                   type="text"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
                   placeholder="What is this expense for?"
                   required
                   className="bg-cream/5 border-cream/10 text-cream placeholder:text-cream/40 focus-visible:ring-cream/20"
@@ -283,7 +283,7 @@ export default function EditExpensePage() {
                     id="amount"
                     type="number"
                     value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAmount(e.target.value)}
                     placeholder="0.00"
                     step="0.01"
                     min="0"
@@ -318,7 +318,7 @@ export default function EditExpensePage() {
                               <CommandItem
                                 key={cat}
                                 value={cat}
-                                onSelect={(currentValue) => {
+                                onSelect={(currentValue: string) => {
                                   setCategory(currentValue)
                                   setOpenCategoryPopover(false)
                                 }}
@@ -370,7 +370,7 @@ export default function EditExpensePage() {
                 <Textarea
                   id="description"
                   value={description}
-                  onChange={(e) => setDescription(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setDescription(e.target.value)}
                   placeholder="Add any additional details..."
                   className="bg-cream/5 border-cream/10 text-cream placeholder:text-cream/40 focus-visible:ring-cream/20 min-h-[100px]"
                 />

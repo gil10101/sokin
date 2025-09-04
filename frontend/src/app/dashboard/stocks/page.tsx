@@ -1,6 +1,8 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+
+
+import React, { useState, useEffect, useCallback } from "react"
 import { ChevronRight, Search, TrendingUp, TrendingDown, Activity, ArrowUpDown, Plus, Minus, Star, DollarSign } from "lucide-react"
 import { DashboardSidebar } from "../../../components/dashboard/sidebar"
 import { UserPortfolio } from "../../../components/dashboard/user-portfolio"
@@ -171,15 +173,7 @@ const TransactionDialog: React.FC<TransactionDialogProps> = ({ stock, isOpen, on
   // Quick amount buttons - different for currency vs shares
   const quickAmounts = inputMode === 'currency' ? [1, 10, 100, 500, 1000] : [1, 5, 10, 50, 100]
 
-  useEffect(() => {
-    if (stock && user && transactionType === 'sell') {
-      loadMaxSellInfo()
-    } else {
-      setMaxSellInfo(null)
-    }
-  }, [stock, user, transactionType])
-
-  const loadMaxSellInfo = async () => {
+  const loadMaxSellInfo = useCallback(async () => {
     if (!stock || !user) return
     
     try {
@@ -195,7 +189,15 @@ const TransactionDialog: React.FC<TransactionDialogProps> = ({ stock, isOpen, on
     } finally {
       setLoading(false)
     }
-  }
+  }, [stock, user])
+
+  useEffect(() => {
+    if (stock && user && transactionType === 'sell') {
+      loadMaxSellInfo()
+    } else {
+      setMaxSellInfo(null)
+    }
+  }, [stock, user, transactionType, loadMaxSellInfo])
 
   const handleSubmit = () => {
     if (!stock || amount <= 0) return
@@ -372,7 +374,7 @@ const TransactionDialog: React.FC<TransactionDialogProps> = ({ stock, isOpen, on
               min="0"
               step={inputMode === 'currency' ? '0.01' : '1'}
               value={amount || ''}
-              onChange={(e) => {
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                 const value = e.target.value
                 if (value === '' || value === '0') {
                   setAmount(0)
@@ -484,10 +486,47 @@ export default function StocksPage() {
   // Debounced search
   const debounceTimer = React.useRef<NodeJS.Timeout | null>(null)
 
+  const loadStockData = useCallback(async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      const stocks = await StockAPI.getTrendingStocks()
+      setTrendingStocks(stocks)
+    } catch (err) {
+
+      setError('Failed to load stock data. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  const loadWatchlist = useCallback(async () => {
+    if (!user) {
+      // For anonymous users, use localStorage
+      const saved = localStorage.getItem(`watchlist_anonymous`)
+      if (saved) {
+        setWatchlist(JSON.parse(saved))
+      }
+      return
+    }
+
+    try {
+      // For authenticated users, load from Firestore
+      const firestoreWatchlist = await StockAPI.getUserWatchlist(user.uid)
+      setWatchlist(firestoreWatchlist)
+    } catch (err) {
+      logger.error("Error loading watchlist", {
+        userId: user?.uid,
+        error: err instanceof Error ? err.message : 'Unknown error'
+      })
+    }
+  }, [user])
+
   useEffect(() => {
     loadStockData()
     loadWatchlist()
-  }, [])
+  }, [loadStockData, loadWatchlist])
 
   useEffect(() => {
     // Clear previous timer
@@ -514,48 +553,100 @@ export default function StocksPage() {
     }
   }, [searchQuery])
 
+  // Function to merge real-time prices with stock data
+  const updateStockWithRealTimePrice = (stock: StockData): StockData => {
+    const realTimePrice = realTimePrices[stock.symbol]
+    if (realTimePrice) {
+      return {
+        ...stock,
+        price: realTimePrice.price,
+        change: realTimePrice.change,
+        changePercent: realTimePrice.changePercent,
+      }
+    }
+    return stock
+  }
+
+  const filterAndSortStocks = useCallback(() => {
+    let stocks: StockData[] = []
+
+    switch (activeTab) {
+      case 'trending-now':
+        stocks = trendingStocks.map(updateStockWithRealTimePrice)
+        break
+      case 'search-results':
+        stocks = searchResults.map(updateStockWithRealTimePrice)
+        break
+      case 'watchlist':
+        stocks = trendingStocks.filter(stock => watchlist.includes(stock.symbol)).map(updateStockWithRealTimePrice)
+        break
+      case 'most-active':
+        stocks = [...trendingStocks].map(updateStockWithRealTimePrice).sort((a, b) => b.volume - a.volume)
+        break
+      case 'top-gainers':
+        stocks = [...trendingStocks].map(updateStockWithRealTimePrice).sort((a, b) => b.changePercent - a.changePercent).slice(0, 10)
+        break
+      case 'top-losers':
+        stocks = [...trendingStocks].map(updateStockWithRealTimePrice).sort((a, b) => a.changePercent - b.changePercent).slice(0, 10)
+        break
+      default:
+        stocks = trendingStocks.map(updateStockWithRealTimePrice)
+    }
+
+    // Apply sorting
+    const sortedStocks = [...stocks].sort((a, b) => {
+      let aValue: number | string = 0
+      let bValue: number | string = 0
+
+      switch (sortField) {
+        case 'symbol':
+          aValue = a.symbol
+          bValue = b.symbol
+          break
+        case 'price':
+          aValue = a.price
+          bValue = b.price
+          break
+        case 'change':
+          aValue = a.changePercent
+          bValue = b.changePercent
+          break
+        case 'volume':
+          aValue = a.volume
+          bValue = b.volume
+          break
+        case 'weekHigh52':
+          aValue = a.weekHigh52
+          bValue = b.weekHigh52
+          break
+        case 'weekLow52':
+          aValue = a.weekLow52
+          bValue = b.weekLow52
+          break
+        default:
+          aValue = a.changePercent
+          bValue = b.changePercent
+      }
+
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        return sortDirection === 'asc'
+          ? aValue.localeCompare(bValue)
+          : bValue.localeCompare(aValue)
+      }
+
+      return sortDirection === 'asc'
+        ? (aValue as number) - (bValue as number)
+        : (bValue as number) - (aValue as number)
+    })
+
+    setFilteredStocks(sortedStocks)
+  }, [activeTab, trendingStocks, searchResults, sortField, sortDirection, watchlist, updateStockWithRealTimePrice])
+
   useEffect(() => {
     filterAndSortStocks()
-  }, [trendingStocks, searchResults, activeTab, sortField, sortDirection, watchlist])
+  }, [trendingStocks, searchResults, activeTab, sortField, sortDirection, watchlist, filterAndSortStocks])
 
-  const loadStockData = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-      
-      const stocks = await StockAPI.getTrendingStocks()
-      setTrendingStocks(stocks)
-    } catch (err) {
 
-      setError('Failed to load stock data. Please try again.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const loadWatchlist = async () => {
-    if (!user) {
-      // For anonymous users, use localStorage
-      const saved = localStorage.getItem(`watchlist_anonymous`)
-      if (saved) {
-        setWatchlist(JSON.parse(saved))
-      }
-      return
-    }
-
-    try {
-      // For authenticated users, load from Firestore
-      const firestoreWatchlist = await StockAPI.getUserWatchlist(user.uid)
-      setWatchlist(firestoreWatchlist)
-    } catch (error) {
-
-      // Fallback to localStorage
-      const saved = localStorage.getItem(`watchlist_${user.uid}`)
-      if (saved) {
-        setWatchlist(JSON.parse(saved))
-      }
-    }
-  }
 
   const performSearch = async (query: string) => {
     try {
@@ -615,19 +706,7 @@ export default function StocksPage() {
     }
   }
 
-  // Function to merge real-time prices with stock data
-  const updateStockWithRealTimePrice = (stock: StockData): StockData => {
-    const realTimePrice = realTimePrices[stock.symbol]
-    if (realTimePrice) {
-      return {
-        ...stock,
-        price: realTimePrice.price,
-        change: realTimePrice.change,
-        changePercent: realTimePrice.changePercent,
-      }
-    }
-    return stock
-  }
+
 
   const handleTransaction = async (transaction: CurrencyTransaction) => {
     if (!user) {
@@ -661,85 +740,6 @@ export default function StocksPage() {
     }
   }
 
-  const filterAndSortStocks = () => {
-    let stocks: StockData[] = []
-    
-    switch (activeTab) {
-      case 'trending-now':
-        stocks = trendingStocks.map(updateStockWithRealTimePrice)
-        break
-      case 'search-results':
-        stocks = searchResults.map(updateStockWithRealTimePrice)
-        break
-      case 'watchlist':
-        stocks = trendingStocks.filter(stock => watchlist.includes(stock.symbol)).map(updateStockWithRealTimePrice)
-        break
-      case 'most-active':
-        stocks = [...trendingStocks].map(updateStockWithRealTimePrice).sort((a, b) => b.volume - a.volume)
-        break
-      case 'top-gainers':
-        stocks = [...trendingStocks].map(updateStockWithRealTimePrice).sort((a, b) => b.changePercent - a.changePercent).slice(0, 10)
-        break
-      case 'top-losers':
-        stocks = [...trendingStocks].map(updateStockWithRealTimePrice).sort((a, b) => a.changePercent - b.changePercent).slice(0, 10)
-        break
-      default:
-        stocks = trendingStocks.map(updateStockWithRealTimePrice)
-    }
-
-    // Apply sorting
-    const sortedStocks = [...stocks].sort((a, b) => {
-      let aValue: number | string = 0
-      let bValue: number | string = 0
-
-      switch (sortField) {
-        case 'symbol':
-          aValue = a.symbol
-          bValue = b.symbol
-          break
-        case 'price':
-          aValue = a.price
-          bValue = b.price
-          break
-        case 'change':
-          aValue = a.change
-          bValue = b.change
-          break
-        case 'changePercent':
-          aValue = a.changePercent
-          bValue = b.changePercent
-          break
-        case 'volume':
-          aValue = a.volume
-          bValue = b.volume
-          break
-        case 'weekHigh52':
-          aValue = a.weekHigh52
-          bValue = b.weekHigh52
-          break
-        case 'weekLow52':
-          aValue = a.weekLow52
-          bValue = b.weekLow52
-          break
-        default:
-          aValue = a.changePercent
-          bValue = b.changePercent
-      }
-
-      if (typeof aValue === 'string' && typeof bValue === 'string') {
-        return sortDirection === 'asc' 
-          ? aValue.localeCompare(bValue)
-          : bValue.localeCompare(aValue)
-      }
-
-      return sortDirection === 'asc' 
-        ? (aValue as number) - (bValue as number)
-        : (bValue as number) - (aValue as number)
-    })
-
-    setFilteredStocks(sortedStocks)
-  }
-
   const handleSort = (field: SortField) => {
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
@@ -748,6 +748,8 @@ export default function StocksPage() {
       setSortDirection('desc')
     }
   }
+
+
 
   const getSortIcon = (field: SortField) => {
     if (sortField !== field) return <ArrowUpDown className="h-4 w-4 opacity-40" />
@@ -828,7 +830,7 @@ export default function StocksPage() {
                     <Input
                       placeholder="Search stocks..."
                       value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
                       className="pl-10 bg-cream/5 border-cream/10 text-cream placeholder:text-cream/60"
                     />
                     {searchLoading && (
@@ -1083,7 +1085,7 @@ export default function StocksPage() {
                     <Input
                       placeholder="Search stocks..."
                       value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
                       className="pl-10 bg-cream/5 border-cream/10 text-cream placeholder:text-cream/60"
                     />
                     {searchLoading && (

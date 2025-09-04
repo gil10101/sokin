@@ -4,7 +4,7 @@ import { AlertDialogTrigger } from "../../../components/ui/alert-dialog"
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { collection, query, where, orderBy, getDocs, addDoc, doc, deleteDoc } from "firebase/firestore"
 import { db } from "../../../lib/firebase"
@@ -344,13 +344,6 @@ export default function SubscriptionsPage() {
     setMounted(true)
   }, [])
 
-  // Fetch subscriptions when user is available
-  useEffect(() => {
-    if (user && mounted) {
-      fetchSubscriptions()
-    }
-  }, [user, mounted])
-
   // Filter and sort subscriptions when data changes
   useEffect(() => {
     let result = [...subscriptions]
@@ -411,7 +404,7 @@ export default function SubscriptionsPage() {
   }, [subscriptions, searchQuery, categoryFilter, sortBy, sortDirection])
 
   // Fetch subscriptions from Firestore
-  const fetchSubscriptions = async () => {
+  const fetchSubscriptions = useCallback(async () => {
     if (!user) return
 
     setLoading(true)
@@ -443,7 +436,14 @@ export default function SubscriptionsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [user, toast])
+
+  // Fetch subscriptions when user is available
+  useEffect(() => {
+    if (user && mounted) {
+      fetchSubscriptions()
+    }
+  }, [user, mounted, fetchSubscriptions])
 
   // Handle form input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -718,7 +718,7 @@ export default function SubscriptionsPage() {
                   <Input
                     placeholder="Search subscriptions..."
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
                     className="pl-10 bg-cream/5 border-cream/10 text-cream placeholder:text-cream/40 focus-visible:ring-cream/20"
                   />
                 </div>
