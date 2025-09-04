@@ -1,7 +1,19 @@
 import { getMessaging, getToken, onMessage, Messaging } from 'firebase/messaging';
 import { auth } from './firebase';
-import { notificationsAPI } from './api-services';
 import { logger } from './logger';
+
+// Lazy import to avoid circular dependencies
+let notificationsAPI: {
+  registerFCMToken: (token: string) => Promise<void>;
+} | null = null;
+
+const getNotificationsAPI = async () => {
+  if (!notificationsAPI) {
+    const { notificationsAPI: api } = await import('./api-services');
+    notificationsAPI = api;
+  }
+  return notificationsAPI;
+};
 
 // Firebase messaging interfaces
 interface FirebaseNotification {
@@ -25,10 +37,17 @@ let messaging: Messaging | null = null;
 const initializeMessagingInstance = () => {
   if (typeof window !== 'undefined' && !messaging) {
     try {
-      messaging = getMessaging();
+      // Check if Firebase is properly initialized
+      if (!auth || !auth.app) {
+        logger.error('Firebase not properly initialized for messaging');
+        return null;
+      }
+
+      messaging = getMessaging(auth.app);
     } catch (error: unknown) {
       // Failed to initialize Firebase messaging - push notifications unavailable
       logger.error('Failed to initialize Firebase messaging', { error: error instanceof Error ? error.message : 'Unknown error' });
+      messaging = null;
     }
   }
   return messaging;
@@ -39,21 +58,21 @@ export const requestNotificationPermission = async (): Promise<string | null> =>
   try {
     // Check if we're in a browser environment
     if (typeof window === 'undefined' || !('Notification' in window)) {
-      ('Notifications not supported in this environment');
+      logger.warn('Notifications not supported in this environment');
       return null;
     }
 
     const messagingInstance = initializeMessagingInstance();
     if (!messagingInstance) {
-      ('Firebase messaging not available');
+      logger.warn('Firebase messaging not available');
       return null;
     }
 
     // Request permission
     const permission = await Notification.requestPermission();
-    
+
     if (permission === 'granted') {
-      ('Notification permission granted.');
+      logger.info('Notification permission granted');
       
       // Get FCM token
       const token = await getToken(messagingInstance, {
@@ -85,8 +104,9 @@ const registerFCMToken = async (token: string) => {
   try {
     const user = auth.currentUser;
     if (!user) return;
-    
-    await notificationsAPI.registerFCMToken(token);
+
+    const api = await getNotificationsAPI();
+    await api.registerFCMToken(token);
   } catch (error: unknown) {
     // Failed to register FCM token - push notifications may not work properly
     logger.error('Failed to register FCM token', { error: error instanceof Error ? error.message : 'Unknown error' });
@@ -124,27 +144,34 @@ export const showForegroundNotification = (payload: FirebaseMessagePayload) => {
 export const initializeMessaging = async () => {
   // Check if we're in a browser environment
   if (typeof window === 'undefined' || typeof navigator === 'undefined') {
-    ('Not in browser environment, skipping FCM initialization');
+    logger.info('Not in browser environment, skipping FCM initialization');
     return;
   }
 
   if ('serviceWorker' in navigator) {
     try {
-      // Register service worker
-      const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+      // Check if Firebase is properly initialized before proceeding
+      if (!auth || !auth.app) {
+        logger.error('Firebase not properly initialized, skipping messaging setup');
+        return;
+      }
 
-      
+      // Register service worker
+      await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+      logger.info('Service worker registered for Firebase messaging');
+
       // Request notification permission and get token
       await requestNotificationPermission();
-      
+
       // Setup foreground message listener
       setupForegroundMessageListener(showForegroundNotification);
-      
+
     } catch (error: unknown) {
       // Failed to initialize Firebase messaging service - push notifications unavailable
       logger.error('Failed to initialize messaging service', { error: error instanceof Error ? error.message : 'Unknown error' });
     }
   } else {
     // Service Worker not supported in this browser
+    logger.warn('Service Worker not supported in this browser');
   }
 }; 

@@ -107,7 +107,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         clearTimeout(timeoutRef.current)
       }
     }
-  }, [])
+  }, [loading])
 
   const signUp = async (name: string, email: string, password: string) => {
     try {

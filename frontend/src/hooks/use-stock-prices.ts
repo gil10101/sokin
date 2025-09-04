@@ -153,7 +153,7 @@ export function useStockPrices({
       setError('Failed to process price update')
       onError?.('Failed to process price update')
     }
-  }, [connected, onConnectionChange, onError])
+  }, [connected, onConnectionChange, onError, symbols])
 
   /**
    * Manually reconnect to WebSocket
@@ -270,6 +270,17 @@ export function useStockPrices({
       onError?.(errorMsg)
       setConnected(false)
       onConnectionChange?.(false)
+    }
+
+    // Cleanup function
+    return () => {
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current()
+        unsubscribeRef.current = null
+      }
+      if (connectionTimeoutRef.current) {
+        clearTimeout(connectionTimeoutRef.current)
+      }
     }
   }, [symbols, enabled, handlePriceUpdate, onError, onConnectionChange, prices])
 
