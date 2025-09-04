@@ -112,7 +112,7 @@ export function MonthlyTrendsChart({ data }: MonthlyTrendsChartProps) {
               tickFormatter={(value) => isMobile ? `$${Math.round(value)}` : `$${value}`}
               width={chartConfig.yAxisWidth}
             />
-            <ChartTooltip 
+            <ChartTooltip
               content={<ChartTooltipContent />}
               labelFormatter={(value) => `Month: ${value}`}
               formatter={(value: number) => [`$${value.toLocaleString()}`]}

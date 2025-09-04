@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
 import { Badge } from '../ui/badge'
@@ -51,13 +51,7 @@ export function NetWorthTrends({
   const [trendData, setTrendData] = useState<TrendData[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    if (user) {
-      fetchTrendData()
-    }
-  }, [user, timeframe])
-
-  const fetchTrendData = async () => {
+  const fetchTrendData = useCallback(async () => {
     try {
       setLoading(true)
       const token = await user?.getIdToken()
@@ -79,7 +73,13 @@ export function NetWorthTrends({
     } finally {
       setLoading(false)
     }
-  }
+  }, [user, timeframe])
+
+  useEffect(() => {
+    if (user) {
+      fetchTrendData()
+    }
+  }, [user, timeframe, fetchTrendData])
 
   const generateTrendData = (trends: NetWorthTrend[], months: number): TrendData[] => {
     const result: TrendData[] = []

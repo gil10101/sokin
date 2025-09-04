@@ -45,12 +45,6 @@ export function ExpenseChart({ timeframe = "30days" }: ExpenseChartProps) {
     setMounted(true)
   }, [])
 
-  useEffect(() => {
-    if (user && mounted) {
-      fetchExpenseData()
-    }
-  }, [user, mounted, timeframe])
-
   const fetchExpenseData = async () => {
     if (!user) return
 

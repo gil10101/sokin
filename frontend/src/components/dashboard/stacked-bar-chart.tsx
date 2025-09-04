@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState, useRef } from "react"
+import React, { useEffect, useState, useRef, useCallback } from "react"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell, Tooltip } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "../../components/ui/chart"
 import { LoadingSpinner } from "../../components/ui/loading-spinner"
@@ -92,13 +92,7 @@ export function StackedBarChart({ timeframe = "year" }: StackedBarChartProps) {
     setMounted(true)
   }, [])
 
-  useEffect(() => {
-    if (user && mounted && !expensesLoading) {
-      processExpenseData()
-    }
-  }, [user, mounted, timeframe, expensesLoading, allExpenses])
-
-  const processExpenseData = () => {
+  const processExpenseData = useCallback(() => {
     if (!user) return
 
     setLoading(true)
@@ -150,7 +144,13 @@ export function StackedBarChart({ timeframe = "year" }: StackedBarChartProps) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [user, timeframe, allExpenses])
+
+  useEffect(() => {
+    if (user && mounted && !expensesLoading) {
+      processExpenseData()
+    }
+  }, [user, mounted, timeframe, expensesLoading, allExpenses, processExpenseData])
 
   // Only handle resize without setting state
   useEffect(() => {

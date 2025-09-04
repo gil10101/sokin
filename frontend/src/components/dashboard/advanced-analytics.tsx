@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { useIsMobile } from '../../hooks/use-mobile'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs'
@@ -92,13 +92,7 @@ export function AdvancedAnalytics({ budgets, timeframe = "6months" }: AdvancedAn
     setMounted(true)
   }, [])
 
-  useEffect(() => {
-    if (user && mounted) {
-      fetchExpenseData()
-    }
-  }, [user, mounted, timeframe])
-
-  const fetchExpenseData = async () => {
+  const fetchExpenseData = useCallback(async () => {
     if (!user) return
 
     setLoading(true)
@@ -121,7 +115,13 @@ export function AdvancedAnalytics({ budgets, timeframe = "6months" }: AdvancedAn
     } finally {
       setLoading(false)
     }
-  }
+  }, [user, timeframe])
+
+  useEffect(() => {
+    if (user && mounted) {
+      fetchExpenseData()
+    }
+  }, [user, mounted, timeframe, fetchExpenseData])
 
   // Category comparison data - include all categories with expenses
   const categoryComparisonData = useMemo(() => {

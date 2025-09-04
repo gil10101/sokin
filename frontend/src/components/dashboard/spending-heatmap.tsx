@@ -83,12 +83,6 @@ export function SpendingHeatmap() {
 
   const { data: expenses = [], isLoading: expensesLoading } = useExpensesData()
 
-  useEffect(() => {
-    if (user && !expensesLoading) {
-      processExpenseData()
-    }
-  }, [user, expensesLoading, expenses])
-
   const processExpenseData = () => {
     if (!user) return
 
