@@ -1,129 +1,31 @@
 "use client"
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  DollarSign, 
-  Plus, 
-  ChevronDown, 
-  ChevronRight,
-  Banknote,
-  Home,
-  Car,
-  Gem,
-  CreditCard,
-  GraduationCap,
-  Building,
-  AlertCircle,
-  Edit,
-  Trash2,
-  Eye,
-  EyeOff,
+import {
+  DollarSign,
   PlusCircle,
-  ArrowLeft
+  Building,
+  CreditCard
 } from 'lucide-react'
 import { DashboardSidebar } from '../../../components/dashboard/sidebar'
 import { MetricCard } from '../../../components/dashboard/metric-card'
-import { Button } from '../../../components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
-import { Badge } from '../../../components/ui/badge'
 import { useAuth } from '../../../contexts/auth-context'
 import { MotionContainer } from '../../../components/ui/motion-container'
 import { LoadingSpinner } from '../../../components/ui/loading-spinner'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../../../components/ui/dropdown-menu'
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
-import { 
-  Asset, 
-  Liability, 
-  NetWorthCalculation, 
-  NetWorthTrend, 
-  AssetCategory, 
-  LiabilityCategory,
-  AssetType,
-  LiabilityType
+import {
+  Asset,
+  Liability,
+  NetWorthCalculation
 } from '../../../lib/types'
 import { AssetLiabilityBreakdown } from "../../../components/dashboard/asset-liability-breakdown"
 import { NetWorthTrends } from "../../../components/dashboard/net-worth-trends"  
 import { AssetLiabilityForm } from "../../../components/dashboard/asset-liability-form"
 import { api } from "../../../lib/api"
-import { logger } from "../../../lib/logger"
-import Link from "next/link"
 
-// Category configurations for display
-const ASSET_CATEGORY_CONFIG = {
-  bank_accounts: {
-    label: 'Bank Accounts',
-    icon: Banknote,
-    color: 'text-cream/60',
-    types: ['checking', 'savings', 'money_market', 'cd']
-  },
-  investment_accounts: {
-    label: 'Investment Accounts',
-    icon: TrendingUp,
-    color: 'text-cream/60',
-    types: ['stocks', 'crypto', 'retirement_401k', 'retirement_ira', 'mutual_funds', 'bonds', 'brokerage']
-  },
-  real_estate: {
-    label: 'Real Estate',
-    icon: Home,
-    color: 'text-cream/60',
-    types: ['primary_residence', 'rental_property', 'commercial_property', 'land']
-  },
-  vehicles: {
-    label: 'Vehicles',
-    icon: Car,
-    color: 'text-cream/60',
-    types: ['car', 'truck', 'motorcycle', 'boat', 'rv']
-  },
-  other_valuables: {
-    label: 'Other Valuables',
-    icon: Gem,
-    color: 'text-cream/60',
-    types: ['collectibles', 'business_ownership', 'jewelry', 'art', 'other']
-  }
-}
 
-const LIABILITY_CATEGORY_CONFIG = {
-  credit_cards: {
-    label: 'Credit Cards',
-    icon: CreditCard,
-    color: 'text-cream/60',
-    types: ['credit_card', 'store_card', 'business_card']
-  },
-  mortgages: {
-    label: 'Mortgages',
-    icon: Home,
-    color: 'text-cream/60',
-    types: ['primary_mortgage', 'second_mortgage', 'heloc']
-  },
-  student_loans: {
-    label: 'Student Loans',
-    icon: GraduationCap,
-    color: 'text-cream/60',
-    types: ['federal_student_loan', 'private_student_loan']
-  },
-  auto_loans: {
-    label: 'Auto Loans',
-    icon: Car,
-    color: 'text-cream/60',
-    types: ['car_loan', 'truck_loan', 'motorcycle_loan']
-  },
-  personal_loans: {
-    label: 'Personal Loans',
-    icon: DollarSign,
-    color: 'text-cream/60',
-    types: ['personal_loan', 'payday_loan', 'medical_debt']
-  },
-  other_debts: {
-    label: 'Other Debts',
-    icon: Building,
-    color: 'text-cream/60',
-    types: ['business_loan', 'family_loan', 'other']
-  }
-}
 
 // Helper functions
 const formatCurrency = (amount: number): string => {
@@ -139,11 +41,7 @@ const formatPercent = (percent: number): string => {
   return `${percent >= 0 ? '+' : ''}${percent.toFixed(1)}%`
 }
 
-const getTypeLabel = (type: AssetType | LiabilityType): string => {
-  return type.split('_').map(word => 
-    word.charAt(0).toUpperCase() + word.slice(1)
-  ).join(' ')
-}
+
 
 // Animation variants
 const container = {
@@ -173,22 +71,11 @@ export default function NetWorthPage() {
   const [formType, setFormType] = useState<'asset' | 'liability'>('asset')
   const [editingItem, setEditingItem] = useState<Asset | Liability | null>(null)
 
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/auth/login')
-      return
-    }
-    
-    if (user) {
-      fetchNetWorthData()
-    }
-  }, [user, authLoading, router])
-
-  const fetchNetWorthData = async () => {
+  const fetchNetWorthData = useCallback(async () => {
     try {
       setLoading(true)
       const token = await user?.getIdToken()
-      
+
       // Fetch net worth calculation
       const netWorthData = await api.get('net-worth/calculate', { token }) as { data: NetWorthCalculation }
 
@@ -196,14 +83,21 @@ export default function NetWorthPage() {
       setAssets(netWorthData.data.assets || [])
       setLiabilities(netWorthData.data.liabilities || [])
     } catch (error) {
-      logger.error("Error fetching net worth data", {
-        userId: user?.uid,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      })
+
     } finally {
       setLoading(false)
     }
-  }
+  }, [user])
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/auth/login')
+      return
+    }
+    if (user) {
+      fetchNetWorthData()
+    }
+  }, [user, authLoading, router, fetchNetWorthData])
 
   const handleAddNew = (type: 'asset' | 'liability') => {
     setFormType(type)
@@ -229,11 +123,7 @@ export default function NetWorthPage() {
       await api.delete(`net-worth/assets/${assetId}`, { token })
       fetchNetWorthData() // Refresh data
     } catch (error) {
-      logger.error("Error deleting asset", {
-        userId: user?.uid,
-        assetId,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      })
+
     }
   }
 
@@ -243,11 +133,7 @@ export default function NetWorthPage() {
       await api.delete(`net-worth/liabilities/${liabilityId}`, { token })
       fetchNetWorthData() // Refresh data
     } catch (error) {
-      logger.error("Error deleting liability", {
-        userId: user?.uid,
-        liabilityId,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      })
+
     }
   }
 
@@ -517,4 +403,4 @@ export default function NetWorthPage() {
       </main>
     </div>
   )
-} 
+}

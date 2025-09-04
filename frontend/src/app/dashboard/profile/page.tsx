@@ -243,7 +243,7 @@ export default function ProfilePage() {
                       id="name"
                       type="text"
                       value={name}
-                      onChange={(e) => setName(e.target.value)}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
                       placeholder="Your name"
                       required
                       className="bg-cream/5 border-cream/10 text-cream placeholder:text-cream/40 focus-visible:ring-cream/20"
@@ -258,7 +258,7 @@ export default function ProfilePage() {
                       id="email"
                       type="email"
                       value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
                       placeholder="Your email"
                       required
                       className="bg-cream/5 border-cream/10 text-cream placeholder:text-cream/40 focus-visible:ring-cream/20"
@@ -297,7 +297,7 @@ export default function ProfilePage() {
                         id="current-password"
                         type={showCurrentPassword ? "text" : "password"}
                         value={currentPassword}
-                        onChange={(e) => setCurrentPassword(e.target.value)}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCurrentPassword(e.target.value)}
                         placeholder="••••••••"
                         required
                         className="bg-cream/5 border-cream/10 text-cream placeholder:text-cream/40 focus-visible:ring-cream/20 pr-10"
@@ -321,7 +321,7 @@ export default function ProfilePage() {
                         id="new-password"
                         type={showNewPassword ? "text" : "password"}
                         value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewPassword(e.target.value)}
                         placeholder="••••••••"
                         required
                         minLength={6}
@@ -346,7 +346,7 @@ export default function ProfilePage() {
                         id="confirm-password"
                         type={showConfirmPassword ? "text" : "password"}
                         value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfirmPassword(e.target.value)}
                         placeholder="••••••••"
                         required
                         minLength={6}

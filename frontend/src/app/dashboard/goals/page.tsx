@@ -1,7 +1,7 @@
 "use client"
 
 import React from "react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { collection, query, where, orderBy, getDocs, addDoc, doc, updateDoc, deleteDoc } from "firebase/firestore"
 import { db } from "../../../lib/firebase"
@@ -153,13 +153,7 @@ export default function GoalsPage() {
     priority: 'medium'
   })
 
-  useEffect(() => {
-    if (user) {
-      fetchGoals()
-    }
-  }, [user])
-
-  const fetchGoals = async () => {
+  const fetchGoals = useCallback(async () => {
     if (!user) return
 
     setLoading(true)
@@ -188,7 +182,13 @@ export default function GoalsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [user, toast])
+
+  useEffect(() => {
+    if (user) {
+      fetchGoals()
+    }
+  }, [user, fetchGoals])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -998,7 +998,7 @@ export default function GoalsPage() {
                     id="contributionAmount"
                     type="number"
                     value={contributionAmount}
-                    onChange={(e) => setContributionAmount(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setContributionAmount(e.target.value)}
                     placeholder="0.00"
                     step="0.01"
                     min="0.01"
@@ -1011,7 +1011,7 @@ export default function GoalsPage() {
                   <Input
                     id="contributionNote"
                     value={contributionNote}
-                    onChange={(e) => setContributionNote(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setContributionNote(e.target.value)}
                     placeholder="e.g., Bonus money, side hustle..."
                     className="h-11"
                   />

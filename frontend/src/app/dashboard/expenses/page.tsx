@@ -153,7 +153,7 @@ export default function ExpensesPage() {
     } finally {
       setLoading(false)
     }
-  }, [user])
+  }, [user, toast])
 
   useEffect(() => {
     if (user && mounted) {
@@ -342,7 +342,7 @@ export default function ExpensesPage() {
                 <Input
                   placeholder="Search expenses..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
                   className="pl-10 bg-cream/5 border-cream/10 text-cream placeholder:text-cream/40 focus-visible:ring-cream/20"
                 />
               </div>
@@ -523,7 +523,7 @@ export default function ExpensesPage() {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                onClick={(e) => {
+                                onClick={(e: React.MouseEvent<HTMLElement>) => {
                                   e.stopPropagation()
                                   router.push(`/dashboard/expenses/edit/${expense.id}`)
                                 }}
