@@ -554,7 +554,7 @@ export default function StocksPage() {
   }, [searchQuery])
 
   // Function to merge real-time prices with stock data
-  const updateStockWithRealTimePrice = (stock: StockData): StockData => {
+  const updateStockWithRealTimePrice = useCallback((stock: StockData): StockData => {
     const realTimePrice = realTimePrices[stock.symbol]
     if (realTimePrice) {
       return {
@@ -565,7 +565,7 @@ export default function StocksPage() {
       }
     }
     return stock
-  }
+  }, [realTimePrices])
 
   const filterAndSortStocks = useCallback(() => {
     let stocks: StockData[] = []
@@ -644,7 +644,7 @@ export default function StocksPage() {
 
   useEffect(() => {
     filterAndSortStocks()
-  }, [trendingStocks, searchResults, activeTab, sortField, sortDirection, watchlist, filterAndSortStocks])
+  }, [trendingStocks, searchResults, activeTab, sortField, sortDirection, watchlist, updateStockWithRealTimePrice])
 
 
 
