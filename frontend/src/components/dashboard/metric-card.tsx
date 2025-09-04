@@ -1,4 +1,3 @@
-import type { ReactNode } from "react"
 import { ArrowUpRight, ArrowDownRight } from "lucide-react"
 
 interface MetricCardProps {
@@ -8,7 +7,7 @@ interface MetricCardProps {
   change?: string
   trend?: "up" | "down"
   period?: string
-  icon: ReactNode
+  icon: React.ReactElement
 }
 
 export function MetricCard({ title, value, secondaryValue, change, trend, period, icon }: MetricCardProps) {
@@ -16,7 +15,10 @@ export function MetricCard({ title, value, secondaryValue, change, trend, period
     <div className="bg-cream/5 rounded-xl border border-cream/10 p-5 hover:bg-cream/10 transition-colors">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm text-cream/60 font-outfit">{title}</h3>
-        <div className="h-8 w-8 rounded-full bg-cream/5 flex items-center justify-center">{icon}</div>
+        <div className="h-8 w-8 rounded-full bg-cream/5 flex items-center justify-center">
+
+          {icon}
+        </div>
       </div>
       <div className="space-y-1">
         <p className="text-2xl font-medium font-outfit">{value}</p>

@@ -50,7 +50,7 @@ export function CategoryComparisonChart({ data }: CategoryComparisonChartProps) 
         showLabels: true,
       }
     }
-  }, [isMobile, isTablet, topCategories.length])
+  }, [isMobile, isTablet, topCategories.length, topCategories])
 
   useEffect(() => {
     // Start with zero values for animation

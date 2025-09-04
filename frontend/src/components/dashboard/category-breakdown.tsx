@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useMemo } from "react"
+import { useEffect, useState, useMemo, useCallback } from "react"
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts"
 import { ChevronRight, X, Calendar, Filter, ShoppingBag, Coffee, Home, Car, Utensils, ArrowDown, LucideIcon } from "lucide-react"
 import { useRouter } from "next/navigation"
@@ -101,13 +101,7 @@ export function CategoryBreakdown() {
 
   const { data: expenses = [], isLoading: expensesLoading } = useExpensesData()
 
-  useEffect(() => {
-    if (user && mounted && !expensesLoading) {
-      processCategoryData()
-    }
-  }, [user, mounted, dateRange, expensesLoading, expenses])
-
-  const processCategoryData = () => {
+  const processCategoryData = useCallback(() => {
     if (!user) return
 
     setLoading(true)
@@ -177,8 +171,14 @@ export function CategoryBreakdown() {
     } finally {
       setLoading(false)
     }
-  }
-  
+  }, [user, dateRange, expenses])
+
+  useEffect(() => {
+    if (user && mounted && !expensesLoading) {
+      processCategoryData()
+    }
+  }, [user, mounted, dateRange, expensesLoading, expenses, processCategoryData])
+
   // Memoize total calculation to prevent recalculation on each render
   const total = useMemo(() => categoryData.reduce((sum, item) => sum + item.value, 0), [categoryData])
   

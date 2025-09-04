@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { ShoppingBag, Coffee, Home, Car, Utensils, LucideIcon } from "lucide-react"
 import { collection, query, where, orderBy, limit, getDocs } from "firebase/firestore"
 import { db } from "../../lib/firebase"
@@ -70,13 +70,7 @@ export function RecentTransactions() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    if (user) {
-      fetchRecentTransactions()
-    }
-  }, [user])
-
-  const fetchRecentTransactions = async () => {
+  const fetchRecentTransactions = useCallback(async () => {
     if (!user) return
 
     setLoading(true)
@@ -102,7 +96,13 @@ export function RecentTransactions() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [user])
+
+  useEffect(() => {
+    if (user) {
+      fetchRecentTransactions()
+    }
+  }, [user, fetchRecentTransactions])
 
   if (loading) {
     return (

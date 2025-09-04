@@ -1,9 +1,19 @@
 import type { ReactNode } from "react"
 
+type RenderableReactNode =
+  | React.ReactElement
+  | string
+  | number
+  | React.ReactFragment
+  | React.ReactPortal
+  | boolean
+  | null
+  | undefined
+
 interface PageHeaderProps {
   title: string
   description?: string
-  action?: ReactNode
+  action?: RenderableReactNode
 }
 
 export function PageHeader({ title, description, action }: PageHeaderProps) {
