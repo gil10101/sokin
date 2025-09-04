@@ -15,14 +15,18 @@ export default function FontLoader() {
     const link = document.querySelector('link[rel="stylesheet"][media="print"]') as HTMLLinkElement
     if (link && link.sheet) {
       handleFontLoad()
-    } else {
-      // Add event listener for when font loads
-      const fontLink = document.querySelector('link[rel="stylesheet"][href*="fonts.googleapis.com"]') as HTMLLinkElement
-      if (fontLink) {
-        fontLink.addEventListener('load', handleFontLoad)
-        return () => fontLink.removeEventListener('load', handleFontLoad)
-      }
+      return // No cleanup needed
     }
+
+    // Add event listener for when font loads
+    const fontLink = document.querySelector('link[rel="stylesheet"][href*="fonts.googleapis.com"]') as HTMLLinkElement
+    if (fontLink) {
+      fontLink.addEventListener('load', handleFontLoad)
+      return () => fontLink.removeEventListener('load', handleFontLoad)
+    }
+
+    // Explicitly return undefined if no cleanup needed
+    return undefined
   }, [])
 
   return null

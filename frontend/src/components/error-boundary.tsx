@@ -24,11 +24,11 @@ export class ErrorBoundary extends React.Component<Props, State> {
     return { hasError: true, error }
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+  override componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     captureError(error, { componentStack: errorInfo.componentStack })
   }
 
-  render() {
+  override render() {
     if (this.state.hasError) {
       return <ErrorFallback error={this.state.error} />
     }
