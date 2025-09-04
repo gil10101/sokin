@@ -55,28 +55,36 @@ const coreFeatures = [
   },
 ]
 
-// Custom hook for responsive 3D breakpoints
-const useResponsiveBreakpoint = () => {
-  const [breakpoint, setBreakpoint] = useState<'mobile' | 'tablet' | 'desktop'>('desktop')
+// Custom hook for responsive viewport detection
+const useResponsiveViewport = () => {
+  const [viewport, setViewport] = useState({
+    width: 0,
+    height: 0,
+    isMobile: false,
+    isTablet: false,
+    isDesktop: false
+  })
 
   useEffect(() => {
-    const updateBreakpoint = () => {
+    const updateViewport = () => {
       const width = window.innerWidth
-      if (width < 640) {
-        setBreakpoint('mobile')
-      } else if (width < 1024) {
-        setBreakpoint('tablet')
-      } else {
-        setBreakpoint('desktop')
-      }
+      const height = window.innerHeight
+
+      setViewport({
+        width,
+        height,
+        isMobile: width < 768,
+        isTablet: width >= 768 && width < 1024,
+        isDesktop: width >= 1024
+      })
     }
 
-    updateBreakpoint()
-    window.addEventListener('resize', updateBreakpoint)
-    return () => window.removeEventListener('resize', updateBreakpoint)
+    updateViewport()
+    window.addEventListener('resize', updateViewport)
+    return () => window.removeEventListener('resize', updateViewport)
   }, [])
 
-  return breakpoint
+  return viewport
 }
 
 export default function LandingPage() {
@@ -90,7 +98,7 @@ export default function LandingPage() {
   const { user, loading } = useAuth()
   const [mounted, setMounted] = useState(false)
   const isMobile = useIsMobile()
-  const breakpoint = useResponsiveBreakpoint()
+  const viewport = useResponsiveViewport()
   const [currentFeature, setCurrentFeature] = useState(0)
   const [touchStart, setTouchStart] = useState(0)
   const [touchEnd, setTouchEnd] = useState(0)
@@ -357,7 +365,7 @@ export default function LandingPage() {
       <main className="flex-1 relative z-10">
         <section id="hero" className={`min-h-screen flex flex-col justify-center relative ${isMobile ? 'pt-16 pb-12' : 'pt-12 sm:pt-16 pb-8'}`}>
           {/* Responsive 3D Scene - mobile/tablet get inline scene */}
-          {(breakpoint === 'mobile' || breakpoint === 'tablet') && (
+          {(viewport.isMobile || viewport.isTablet) && (
             <div className="relative z-10 mt-4 mb-8">
               <MobileHero3DScene />
             </div>
@@ -396,7 +404,7 @@ export default function LandingPage() {
               </motion.div>
 
               {/* Right side - Space for 3D Scene (desktop only) */}
-              {breakpoint === 'desktop' && (
+              {viewport.isDesktop && (
                 <div className="relative w-full lg:w-1/2 h-[60vh] min-h-[500px] max-h-[800px] order-1 lg:order-2 -mt-4 lg:mt-0 pointer-events-none">
                   {/* This space is reserved for the 3D scene which now floats in the background */}
                 </div>
