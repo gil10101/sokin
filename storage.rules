@@ -1,16 +1,81 @@
 rules_version = '2';
 
-// Firebase Storage Security Rules
+/**
+ * Firebase Storage Security Rules for Sokin Finance App
+ *
+ * Security Principles:
+ * - Only authenticated users can access files
+ * - Users can only read/write files in their own user directory
+ * - Receipt images are private to each user
+ * - Additional file types can be added with proper validation
+ */
 service firebase.storage {
   match /b/{bucket}/o {
-    // Allow public read access to all files (for viewing receipts)
-    match /{allPaths=**} {
-      allow read: if true;
+
+    /**
+     * Helper function to check if user is authenticated
+     */
+    function isAuthenticated() {
+      return request.auth != null;
     }
-    
-    // Allow authenticated users to upload receipts to their own folder
+
+    /**
+     * Helper function to check if user owns the resource
+     */
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    /**
+     * User receipts directory - Private to each user
+     * Users can upload and view their own receipt images
+     */
     match /receipts/{userId}/{allPaths=**} {
-      allow write: if request.auth != null && request.auth.uid == userId;
+      // Only authenticated users can access files
+      allow read, write: if isOwner(userId);
+
+      // Additional validation for uploads
+      allow create: if isOwner(userId) &&
+        // Limit file size to 10MB
+        request.resource.size < 10 * 1024 * 1024 &&
+        // Allow only image files
+        request.resource.contentType.matches('image/.*');
+
+      allow update: if isOwner(userId) &&
+        request.resource.size < 10 * 1024 * 1024;
+    }
+
+    /**
+     * User profile images directory - Private to each user
+     */
+    match /profile-images/{userId}/{allPaths=**} {
+      allow read, write: if isOwner(userId);
+
+      allow create: if isOwner(userId) &&
+        request.resource.size < 5 * 1024 * 1024 && // 5MB limit
+        request.resource.contentType.matches('image/.*');
+
+      allow update: if isOwner(userId) &&
+        request.resource.size < 5 * 1024 * 1024;
+    }
+
+    /**
+     * Public assets directory (if needed for marketing images, etc.)
+     * These should be carefully managed and not contain sensitive data
+     */
+    match /public/{allPaths=**} {
+      // Only allow read access to public assets
+      allow read: if true;
+
+      // Only allow writes from authenticated admin users (if implemented)
+      allow write: if false; // Disable all writes, manage via Firebase console
+    }
+
+    /**
+     * Block all other access by default
+     */
+    match /{allPaths=**} {
+      allow read, write: if false;
     }
   }
 }

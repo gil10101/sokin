@@ -315,7 +315,7 @@ service cloud.firestore {
      */
     match /netWorthSnapshots/{snapshotId} {
       allow read, write: if isAuthenticated() && request.auth.uid == resource.data.userId;
-      allow create: if isAuthenticated() && 
+      allow create: if isAuthenticated() &&
         request.auth.uid == request.resource.data.userId &&
         hasRequiredFields(['userId', 'netWorth', 'assets', 'liabilities']) &&
         isValidAmount(request.resource.data.netWorth) &&
@@ -324,14 +324,24 @@ service cloud.firestore {
         // Validate net worth calculation
         request.resource.data.netWorth == (request.resource.data.assets - request.resource.data.liabilities) &&
         hasValidTimestamps();
-        
-      allow update: if isAuthenticated() && 
+
+      allow update: if isAuthenticated() &&
         request.auth.uid == resource.data.userId &&
         request.auth.uid == request.resource.data.userId &&
         isValidAmount(request.resource.data.netWorth) &&
         isValidAmount(request.resource.data.assets) &&
         isValidAmount(request.resource.data.liabilities) &&
         hasValidTimestamps();
+    }
+
+    /**
+     * Rate limits collection - Server-side rate limiting data
+     * Security: Only server-side access, no client access allowed
+     * This collection is managed by the backend server only
+     */
+    match /rateLimits/{rateLimitId} {
+      // Block all client-side access to rate limiting data
+      allow read, write: if false;
     }
   }
 }
