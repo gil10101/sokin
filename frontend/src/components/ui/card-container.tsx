@@ -4,8 +4,18 @@ import type { ReactNode } from "react"
 import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
 
+type RenderableReactNode =
+  | React.ReactElement
+  | string
+  | number
+  | React.ReactFragment
+  | React.ReactPortal
+  | boolean
+  | null
+  | undefined
+
 interface CardContainerProps {
-  children: ReactNode
+  children: RenderableReactNode
   className?: string
   hoverEffect?: boolean
 }

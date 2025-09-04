@@ -3,9 +3,19 @@ import Link from "next/link"
 import type { ReactNode } from "react"
 import { cn } from "@/lib/utils"
 
+type RenderableReactNode =
+  | React.ReactElement
+  | string
+  | number
+  | React.ReactFragment
+  | React.ReactPortal
+  | boolean
+  | null
+  | undefined
+
 interface AnimatedButtonProps {
   href: string
-  children: ReactNode
+  children: RenderableReactNode
   variant?: "default" | "outline" | "ghost"
   className?: string
 }
