@@ -1,11 +1,15 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GoalsController = void 0;
 const firebase_1 = require("../config/firebase");
+const logger_1 = __importDefault(require("../utils/logger"));
 class GoalsController {
     // Get user's savings goals
     static async getUserGoals(req, res) {
-        var _a;
+        var _a, _b;
         try {
             const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.uid;
             if (!userId) {
@@ -23,12 +27,13 @@ class GoalsController {
             res.json({ goals });
         }
         catch (error) {
+            logger_1.default.error('Error fetching goals', { error: error instanceof Error ? error.message : 'Unknown error', userId: (_b = req.user) === null || _b === void 0 ? void 0 : _b.uid });
             res.status(500).json({ error: 'Failed to fetch goals' });
         }
     }
     // Create new savings goal
     static async createGoal(req, res) {
-        var _a;
+        var _a, _b;
         try {
             const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.uid;
             if (!userId) {
@@ -61,12 +66,13 @@ class GoalsController {
             res.status(201).json({ goal: newGoal });
         }
         catch (error) {
+            logger_1.default.error('Error creating goal', { error: error instanceof Error ? error.message : 'Unknown error', userId: (_b = req.user) === null || _b === void 0 ? void 0 : _b.uid });
             res.status(500).json({ error: 'Failed to create goal' });
         }
     }
     // Add contribution to goal
     static async addContribution(req, res) {
-        var _a, _b;
+        var _a, _b, _c;
         try {
             const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.uid;
             const { goalId } = req.params;
@@ -118,12 +124,13 @@ class GoalsController {
             });
         }
         catch (error) {
+            logger_1.default.error('Error adding contribution', { error: error instanceof Error ? error.message : 'Unknown error', goalId: req.params.goalId, userId: (_c = req.user) === null || _c === void 0 ? void 0 : _c.uid });
             res.status(500).json({ error: 'Failed to add contribution' });
         }
     }
     // Update goal
     static async updateGoal(req, res) {
-        var _a;
+        var _a, _b;
         try {
             const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.uid;
             const { goalId } = req.params;
@@ -150,12 +157,13 @@ class GoalsController {
             res.json({ success: true });
         }
         catch (error) {
+            logger_1.default.error('Error updating goal', { error: error instanceof Error ? error.message : 'Unknown error', goalId: req.params.goalId, userId: (_b = req.user) === null || _b === void 0 ? void 0 : _b.uid });
             res.status(500).json({ error: 'Failed to update goal' });
         }
     }
     // Delete goal
     static async deleteGoal(req, res) {
-        var _a;
+        var _a, _b;
         try {
             const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.uid;
             const { goalId } = req.params;
@@ -178,6 +186,7 @@ class GoalsController {
             res.json({ success: true });
         }
         catch (error) {
+            logger_1.default.error('Error deleting goal', { error: error instanceof Error ? error.message : 'Unknown error', goalId: req.params.goalId, userId: (_b = req.user) === null || _b === void 0 ? void 0 : _b.uid });
             res.status(500).json({ error: 'Failed to delete goal' });
         }
     }

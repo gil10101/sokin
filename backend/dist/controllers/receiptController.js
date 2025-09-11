@@ -69,9 +69,10 @@ class ReceiptController {
             });
         }
         catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
             res.status(500).json({
                 error: 'Failed to process receipt',
-                details: error.message
+                details: errorMessage
             });
         }
     }
@@ -82,8 +83,10 @@ class ReceiptController {
             }
             // Get the default bucket or use the project bucket
             const bucketName = process.env.FIREBASE_STORAGE_BUCKET ||
-                process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
-                `${process.env.FIREBASE_PROJECT_ID}`;
+                process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+            if (!bucketName) {
+                throw new Error('Firebase storage bucket not configured. Please set FIREBASE_STORAGE_BUCKET or NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET environment variable');
+            }
             const bucket = firebase_1.storage.bucket(bucketName);
             // Generate unique filename
             const timestamp = Date.now();
@@ -105,7 +108,8 @@ class ReceiptController {
             return `https://storage.googleapis.com/${bucketName}/${fileName}`;
         }
         catch (error) {
-            throw new Error(`Failed to upload receipt image: ${error.message}`);
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+            throw new Error(`Failed to upload receipt image: ${errorMessage}`);
         }
     }
     static async parseReceiptText(text) {

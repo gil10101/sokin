@@ -1,7 +1,11 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.runTransaction = exports.db = void 0;
 const firestore_1 = require("firebase-admin/firestore");
+const logger_1 = __importDefault(require("../utils/logger"));
 // Configure Firestore settings for better performance
 const configureFirestore = () => {
     const db = (0, firestore_1.getFirestore)();
@@ -21,6 +25,10 @@ const configureFirestore = () => {
         db.settings(settings);
     }
     catch (error) {
+        // Settings already applied, this is expected in some environments
+        logger_1.default.debug("Firestore settings already configured", {
+            error: error instanceof Error ? error.message : 'Unknown error'
+        });
     }
     return db;
 };

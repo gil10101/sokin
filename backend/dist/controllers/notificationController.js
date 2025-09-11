@@ -1,12 +1,16 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.NotificationController = void 0;
 const firebase_1 = require("../config/firebase");
 const messaging_1 = require("firebase-admin/messaging");
+const logger_1 = __importDefault(require("../utils/logger"));
 class NotificationController {
     // Get user notifications
     static async getUserNotifications(req, res) {
-        var _a;
+        var _a, _b;
         try {
             const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.uid;
             if (!userId) {
@@ -25,12 +29,13 @@ class NotificationController {
             res.json({ notifications });
         }
         catch (error) {
+            logger_1.default.error('Error fetching notifications', { error: error instanceof Error ? error.message : 'Unknown error', userId: (_b = req.user) === null || _b === void 0 ? void 0 : _b.uid });
             res.status(500).json({ error: 'Failed to fetch notifications' });
         }
     }
     // Mark notification as read
     static async markAsRead(req, res) {
-        var _a;
+        var _a, _b;
         try {
             const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.uid;
             const { notificationId } = req.params;
@@ -47,12 +52,13 @@ class NotificationController {
             res.json({ success: true });
         }
         catch (error) {
+            logger_1.default.error('Error updating notification', { error: error instanceof Error ? error.message : 'Unknown error', notificationId: req.params.notificationId, userId: (_b = req.user) === null || _b === void 0 ? void 0 : _b.uid });
             res.status(500).json({ error: 'Failed to update notification' });
         }
     }
     // Update notification preferences
     static async updatePreferences(req, res) {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
         try {
             const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.uid;
             if (!userId) {
@@ -80,12 +86,13 @@ class NotificationController {
             res.json({ preferences });
         }
         catch (error) {
+            logger_1.default.error('Error updating preferences', { error: error instanceof Error ? error.message : 'Unknown error', userId: (_l = req.user) === null || _l === void 0 ? void 0 : _l.uid });
             res.status(500).json({ error: 'Failed to update preferences' });
         }
     }
     // Register FCM token for push notifications
     static async registerFCMToken(req, res) {
-        var _a;
+        var _a, _b;
         try {
             const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.uid;
             const { token } = req.body;
@@ -110,6 +117,7 @@ class NotificationController {
             res.json({ success: true });
         }
         catch (error) {
+            logger_1.default.error('Error registering FCM token', { error: error instanceof Error ? error.message : 'Unknown error', userId: (_b = req.user) === null || _b === void 0 ? void 0 : _b.uid });
             res.status(500).json({ error: 'Failed to register token' });
         }
     }
@@ -124,6 +132,7 @@ class NotificationController {
             res.json({ alerts });
         }
         catch (error) {
+            logger_1.default.error('Error checking budget alerts', { error: error instanceof Error ? error.message : 'Unknown error', userId: req.body.userId });
             res.status(500).json({ error: 'Failed to check budget alerts' });
         }
     }
@@ -186,6 +195,8 @@ class NotificationController {
             }
         }
         catch (error) {
+            // Error calculating budget alerts - continuing without alerts for this budget
+            logger_1.default.error('Failed to calculate budget alert', { error: error instanceof Error ? error.message : 'Unknown error', userId });
         }
         return alerts;
     }
@@ -277,6 +288,8 @@ class NotificationController {
             }
         }
         catch (error) {
+            // Error sending push notification - notification delivery failed
+            logger_1.default.error('Failed to send push notification', { error: error instanceof Error ? error.message : 'Unknown error', userId });
         }
     }
 }

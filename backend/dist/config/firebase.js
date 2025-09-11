@@ -85,11 +85,23 @@ const initializeFirebaseAdmin = () => {
                     projectId: process.env.FIREBASE_PROJECT_ID,
                     storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
                 });
+                if (!process.env.FIREBASE_PROJECT_ID) {
+                    throw new Error('FIREBASE_PROJECT_ID environment variable is not configured');
+                }
+                if (!process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET) {
+                    throw new Error('NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET environment variable is not configured');
+                }
                 logger_1.default.info('Firebase Admin initialized with service account JSON');
                 return app;
             }
             // Development mode fallback
             if (process.env.NODE_ENV === 'development' || process.env.FIRESTORE_EMULATOR_HOST) {
+                if (!process.env.FIREBASE_PROJECT_ID) {
+                    throw new Error('FIREBASE_PROJECT_ID environment variable is not configured');
+                }
+                if (!process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET) {
+                    throw new Error('NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET environment variable is not configured');
+                }
                 const app = (0, app_1.initializeApp)({
                     projectId: process.env.FIREBASE_PROJECT_ID,
                     storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,

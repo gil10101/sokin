@@ -1,7 +1,11 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.updateNetWorthSnapshot = exports.calculateUserNetWorth = exports.getNetWorthInsights = exports.getNetWorthTrends = exports.getNetWorthHistory = exports.calculateNetWorth = exports.deleteLiability = exports.updateLiability = exports.createLiability = exports.getUserLiabilities = exports.deleteAsset = exports.updateAsset = exports.createAsset = exports.getUserAssets = void 0;
 const firebase_1 = require("../config/firebase");
+const logger_1 = __importDefault(require("../utils/logger"));
 /**
  * Asset Management Controllers
  */
@@ -607,6 +611,9 @@ const updateNetWorthSnapshot = async (userId) => {
         }
     }
     catch (error) {
+        logger_1.default.error("Error updating net worth snapshot", {
+            error: error instanceof Error ? error.message : 'Unknown error'
+        });
     }
 };
 exports.updateNetWorthSnapshot = updateNetWorthSnapshot;

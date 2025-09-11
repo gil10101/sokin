@@ -4,13 +4,16 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const https_1 = __importDefault(require("https"));
-const http_1 = __importDefault(require("http"));
 const firebase_1 = require("../config/firebase");
 const cache_1 = __importDefault(require("../utils/cache"));
+const logger_1 = __importDefault(require("../utils/logger"));
 // Finnhub API configuration
-const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY || 'd2lo1khr01qr27gk695gd2lo1khr01qr27gk6960';
+const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY;
+if (!FINNHUB_API_KEY) {
+    throw new Error('FINNHUB_API_KEY environment variable is not configured');
+}
 const FINNHUB_BASE_URL = 'https://finnhub.io/api/v1';
-// Python yfinance service configuration (fallback)
+// Python yfinance service configuration
 const PYTHON_STOCK_SERVICE_URL = process.env.PYTHON_STOCK_SERVICE_URL || 'http://localhost:5000';
 // Cache durations for different data types (in seconds)
 const CACHE_DURATIONS = {
@@ -25,7 +28,7 @@ const CACHE_DURATIONS = {
 const REQUEST_BATCH_SIZE = 5; // Maximum concurrent requests to Finnhub
 /**
  * StocksController handles all stock-related API endpoints
- * Uses Finnhub API as primary data source with yfinance service as fallback
+ * Uses Finnhub API as primary data source (Python fallback disabled)
  *
  * @example
  * ```typescript
@@ -135,68 +138,84 @@ class StocksController {
         return results;
     }
     /**
-     * Helper method to securely call Python yfinance service (fallback)
-     * Forwards authentication headers and implements timeout handling
+     * Helper method for Python yfinance service (currently disabled)
+     * Kept for future integration - throws error when called
      *
      * @template T - The expected response type
      * @param endpoint - The API endpoint to call (e.g., '/api/stock/AAPL')
      * @param req - Express request object for forwarding auth headers
      * @returns Promise with the parsed response data
      *
-     * @throws {Error} When Python service is unavailable
-     * @throws {Error} When response parsing fails
-     * @throws {Error} When authentication fails
+     * @throws {Error} Always throws error indicating service is disabled
      *
      * @example
      * ```typescript
-     * const stockData = await this.callPythonService<StockData>('/api/stock/AAPL', req)
+     * // This method is currently disabled
+     * // const stockData = await this.callPythonService<StockData>('/api/stock/AAPL', req)
      * ```
      */
     async callPythonService(endpoint, req) {
-        return new Promise((resolve, reject) => {
-            const url = `${PYTHON_STOCK_SERVICE_URL}${endpoint}`;
-            const client = url.startsWith('https') ? https_1.default : http_1.default;
-            // Set up headers with proper security
-            const headers = {
-                'Content-Type': 'application/json',
-                'User-Agent': 'Sokin-Backend/1.0',
-            };
-            // Forward Authorization header if available (for authenticated endpoints)
-            if (req === null || req === void 0 ? void 0 : req.headers.authorization) {
-                headers.Authorization = req.headers.authorization;
-            }
-            const options = {
-                headers,
-                timeout: 30000, // 30 second timeout
-            };
-            const request = client.get(url, options, (res) => {
-                let data = '';
-                res.on('data', (chunk) => {
-                    data += chunk;
-                });
-                res.on('end', () => {
-                    try {
-                        if (res.statusCode !== 200) {
-                            const errorMsg = `Python service error: ${res.statusCode} - ${res.statusMessage}`;
-                            reject(new Error(errorMsg));
-                            return;
-                        }
-                        const jsonData = JSON.parse(data);
-                        resolve(jsonData);
-                    }
-                    catch (error) {
-                        reject(new Error('Invalid response from stock service'));
-                    }
-                });
-            });
-            request.on('error', (error) => {
-                reject(new Error('Stock service unavailable'));
-            });
-            request.on('timeout', () => {
-                request.destroy();
-                reject(new Error('Stock service timeout'));
-            });
-        });
+        // Python stock service is currently disabled
+        throw new Error('Python stock service is disabled - only Finnhub API is available');
+        // Original implementation (commented out for future use):
+        // return new Promise((resolve, reject) => {
+        //   const url = `${PYTHON_STOCK_SERVICE_URL}${endpoint}`
+        //
+        //   const client = url.startsWith('https') ? https : http
+        //
+        //   // Set up headers with proper security
+        //   const headers: Record<string, string> = {
+        //     'Content-Type': 'application/json',
+        //     'User-Agent': 'Sokin-Backend/1.0',
+        //   }
+        //
+        //   // Forward Authorization header if available (for authenticated endpoints)
+        //   if (req?.headers.authorization) {
+        //     headers.Authorization = req.headers.authorization
+        //   }
+        //
+        //   const options = {
+        //     headers,
+        //     timeout: 30000, // 30 second timeout
+        //   }
+        //
+        //   const request = client.get(url, options, (res) => {
+        //     let data = ''
+        //
+        //     res.on('data', (chunk) => {
+        //       data += chunk
+        //     })
+        //
+        //     res.on('end', () => {
+        //       try {
+        //         if (res.statusCode !== 200) {
+        //           const errorMsg = `Python service error: ${res.statusCode} - ${res.statusMessage}`
+        //
+        //           reject(new Error(errorMsg))
+        //           return
+        //         }
+        //
+        //         const jsonData = JSON.parse(data)
+        //
+        //         resolve(jsonData)
+        //       } catch (error) {
+        //
+        //         reject(new Error('Invalid response from stock service'))
+        //       }
+        //     })
+        //   })
+        //
+        //   request.on('error', (error) => {
+        //
+        //     reject(new Error('Stock service unavailable'))
+        //   })
+        //
+        //   request.on('timeout', () => {
+        //
+        //     request.destroy()
+        //     reject(new Error('Stock service timeout'))
+        //   })
+        // })
     }
     /**
      * Convert Finnhub quote and profile data to our StockData format
@@ -266,18 +285,12 @@ class StocksController {
             throw new Error('Invalid Finnhub response or no data available');
         }
         catch (finnhubError) {
-            // Fallback to yfinance service
-            try {
-                const stockData = await this.callPythonService(`/api/stock/${symbol}`);
-                return stockData;
-            }
-            catch (yfinanceError) {
-                return null;
-            }
+            // Python fallback service is disabled
+            return null;
         }
     }
     /**
-     * Get stock data from Finnhub with fallback to yfinance
+     * Get stock data from Finnhub API (Python fallback disabled)
      *
      * @param symbol - Stock symbol
      * @param includeHistorical - Whether to include historical data for 52-week calculations
@@ -303,6 +316,10 @@ class StocksController {
                         }
                     }
                     catch (candleError) {
+                        logger_1.default.debug("Failed to fetch candle data", {
+                            symbol,
+                            error: candleError instanceof Error ? candleError.message : 'Unknown error'
+                        });
                     }
                 }
                 const profileData = profile.status === 'fulfilled' ? profile.value : undefined;
@@ -311,19 +328,13 @@ class StocksController {
             throw new Error('Invalid Finnhub response or no data available');
         }
         catch (finnhubError) {
-            // Fallback to yfinance service
-            try {
-                const stockData = await this.callPythonService(`/api/stock/${symbol}`);
-                return stockData;
-            }
-            catch (yfinanceError) {
-                throw new Error(`Failed to fetch stock data for ${symbol} from both APIs`);
-            }
+            // Python fallback service is disabled
+            throw new Error(`Failed to fetch stock data for ${symbol} from Finnhub API (Python fallback disabled)`);
         }
     }
     /**
      * Get market indices (NASDAQ, S&P 500, Dow Jones)
-     * Uses Finnhub API with fallback to yfinance service
+     * Uses Finnhub API (Python fallback disabled)
      * Public endpoint - no authentication required
      *
      * @param req - Express request object
@@ -397,12 +408,8 @@ class StocksController {
                 throw new Error('Some indices missing from Finnhub response');
             }
             catch (finnhubError) {
-                // Fallback to yfinance service
-                const indicesFromYfinance = await this.callPythonService('/api/market-indices', req);
-                res.json({
-                    success: true,
-                    data: indicesFromYfinance,
-                });
+                // Python fallback service is disabled
+                throw new Error('Failed to fetch market indices from Finnhub API (Python fallback disabled)');
             }
         }
         catch (error) {
@@ -414,7 +421,7 @@ class StocksController {
     }
     /**
      * Get trending stocks based on popular symbols
-     * Uses predefined list of popular stocks with Finnhub data, fallback to yfinance
+     * Uses predefined list of popular stocks with Finnhub data (Python fallback disabled)
      * Public endpoint with optional limit parameter
      *
      * @param req - Express request object
@@ -489,12 +496,8 @@ class StocksController {
                 throw new Error('No trending stocks data available from Finnhub');
             }
             catch (finnhubError) {
-                // Fallback to yfinance service
-                const stocks = await this.callPythonService(`/api/trending-stocks?limit=${parsedLimit}`, req);
-                res.json({
-                    success: true,
-                    data: stocks,
-                });
+                // Python fallback service is disabled
+                throw new Error('Failed to fetch trending stocks from Finnhub API (Python fallback disabled)');
             }
         }
         catch (error) {
@@ -733,12 +736,8 @@ class StocksController {
                 throw new Error('No valid search results from Finnhub');
             }
             catch (finnhubError) {
-                // Fallback to yfinance service
-                const results = await this.callPythonService(`/api/search?q=${encodeURIComponent(sanitizedQuery)}&limit=${parsedLimit}`, req);
-                res.json({
-                    success: true,
-                    data: results,
-                });
+                // Python fallback service is disabled
+                throw new Error('Failed to search stocks from Finnhub API (Python fallback disabled)');
             }
         }
         catch (error) {
