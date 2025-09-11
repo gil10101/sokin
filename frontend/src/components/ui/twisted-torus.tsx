@@ -112,6 +112,9 @@ function TwistedTorus({ isMobile = false }: TwistedTorusProps) {
     if (groupRef.current) {
       // Smoother animation speed that's consistent across devices
       groupRef.current.rotation.z = state.clock.elapsedTime / 3.0
+      
+      // Add subtle floating animation
+      groupRef.current.position.y = Math.sin(state.clock.elapsedTime * 0.5) * 0.1
     }
   })
 

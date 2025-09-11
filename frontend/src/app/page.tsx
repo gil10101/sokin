@@ -9,11 +9,11 @@ import { useAuth } from "../contexts/auth-context"
 import dynamic from "next/dynamic"
 
 // Lazy load 3D components only when needed on landing page
-const ScrollTriggered3DScene = dynamic(() => import("../components/ui/scroll-triggered-3d-scene"), {
+const ScrollTriggered3DScene = dynamic(() => import("../components/ui/scroll-triggered-3d-scene").then(mod => ({ default: mod.default })), {
   ssr: false,
   loading: () => null
 })
-const MobileHero3DScene = dynamic(() => import("../components/ui/mobile-hero-3d-scene"), {
+const MobileHero3DScene = dynamic(() => import("../components/ui/mobile-hero-3d-scene").then(mod => ({ default: mod.default })), {
   ssr: false,
   loading: () => null
 })
@@ -97,6 +97,7 @@ export default function LandingPage() {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
   const { user, loading } = useAuth()
   const [mounted, setMounted] = useState(false)
+  const [componentsLoaded, setComponentsLoaded] = useState(false)
   const isMobile = useIsMobile()
   const viewport = useResponsiveViewport()
   const [currentFeature, setCurrentFeature] = useState(0)
@@ -105,6 +106,11 @@ export default function LandingPage() {
 
   useEffect(() => {
     setMounted(true)
+    // Add a small delay to ensure components are ready
+    const timer = setTimeout(() => {
+      setComponentsLoaded(true)
+    }, 100)
+    return () => clearTimeout(timer)
   }, [])
 
   useEffect(() => {
@@ -237,8 +243,8 @@ export default function LandingPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-dark text-cream relative overflow-hidden">
-      {/* Fixed 3D Scene Background */}
-      <ScrollTriggered3DScene />
+      {/* Fixed 3D Scene Background - only render when components are loaded */}
+      {mounted && componentsLoaded && <ScrollTriggered3DScene />}
       
       <header className="fixed top-0 z-50 w-full bg-dark/80 backdrop-blur-sm">
         <div className="container mx-auto px-4 sm:px-6 md:px-12 lg:px-16 flex h-16 sm:h-20 md:h-24 items-center justify-between">
@@ -362,10 +368,10 @@ export default function LandingPage() {
           </motion.div>
         )}
       </header>
-      <main className="flex-1 relative z-10">
+      <main className="flex-1 relative z-20">
         <section id="hero" className={`min-h-screen flex flex-col justify-center relative ${isMobile ? 'pt-16 pb-12' : 'pt-12 sm:pt-16 pb-8'}`}>
           {/* Responsive 3D Scene - mobile/tablet get inline scene */}
-          {(viewport.isMobile || viewport.isTablet) && (
+          {(viewport.isMobile || viewport.isTablet) && mounted && componentsLoaded && (
             <div className="relative z-10 mt-4 mb-8">
               <MobileHero3DScene />
             </div>
@@ -610,7 +616,7 @@ export default function LandingPage() {
           </div>
         </section>
       </main>
-      <footer className={`${isMobile ? 'py-8' : 'py-12'} relative z-10`}>
+      <footer id="footer" className={`${isMobile ? 'py-8' : 'py-12'} relative z-20`}>
         <div className="container mx-auto px-6 md:px-12 lg:px-16">
           <div className={`flex flex-col ${isMobile ? 'items-center text-center gap-8' : 'md:flex-row justify-between items-start gap-6'} max-w-3xl mx-auto`}>
             <div>

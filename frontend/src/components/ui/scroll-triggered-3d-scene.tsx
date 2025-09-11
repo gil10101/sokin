@@ -27,6 +27,7 @@ function ScrollTriggered3DScene() {
   const canvasRef = useRef<HTMLDivElement>(null)
   const [isMobile, setIsMobile] = useState(false)
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 })
+  const [isLoaded, setIsLoaded] = useState(false)
 
   useEffect(() => {
     const checkDevice = () => {
@@ -46,151 +47,199 @@ function ScrollTriggered3DScene() {
     // Don't run desktop animations on mobile
     if (isMobile) return
     if (!canvasRef.current) return
+    if (!isLoaded) return
 
     const canvas = canvasRef.current
 
-    // Desktop only - initial positioning (relative to the 65% top position)
+    // Set initial position
     gsap.set(canvas, {
-      x: "25%", // Move right from center
-      y: "-15%", // Adjust relative to new base position (65% - 15% = 50% from top)
+      x: "25%",
+      y: "-15%",
       scale: 1,
       rotation: 0,
       opacity: 1
     })
 
-    // Desktop only - section-based animations (relative to 65% base position)
-    const desktopSections = [
-      {
-        trigger: "#hero",
-        x: "25%",
-        y: "-15%", // Maintains the same effective position (65% - 15% = 50%)
-        scale: 1,
-        rotation: 0,
-        opacity: 1
-      },
-      {
-        trigger: "#about",
-        x: "-25%", // Balanced positioning for 50/50 layout
-        y: "-20%", // Slightly higher than before for better flow
-        scale: 0.8,
-        rotation: 15,
-        opacity: 0.9
-      },
-      {
-        trigger: "#features",
-        x: "25%",
-        y: "-5%", // Adjusted for new base position
-        scale: 0.6,
-        rotation: -10,
-        opacity: 0.7
-      },
-      {
-        trigger: "#contact",
-        x: "15%",
-        y: "5%", // Adjusted for new base position
-        scale: 0.5,
-        rotation: 25,
-        opacity: 0.5
-      }
-    ]
-
+    // Create scroll-triggered animations
     const scrollTriggers: ScrollTrigger[] = []
 
-    // Immediately position for hero section on load
-    const heroSection = desktopSections[0]
-    gsap.to(canvas, {
-      x: heroSection.x,
-      y: heroSection.y,
-      scale: heroSection.scale,
-      rotation: heroSection.rotation,
-      opacity: heroSection.opacity,
-      duration: 0.5,
-      ease: "power2.out"
-    })
-
-    // DESKTOP: Section-based animations
-    desktopSections.forEach((section, index) => {
-      const trigger = ScrollTrigger.create({
-        trigger: section.trigger,
-        start: index === 0 ? "top top" : "top center",
-        end: "bottom center",
-        onEnter: () => {
-          gsap.to(canvas, {
-            x: section.x,
-            y: section.y,
-            scale: section.scale,
-            rotation: section.rotation,
-            opacity: section.opacity,
-            duration: 1.2,
-            ease: "power2.out"
-          })
-        },
-        onEnterBack: () => {
-          gsap.to(canvas, {
-            x: section.x,
-            y: section.y,
-            scale: section.scale,
-            rotation: section.rotation,
-            opacity: section.opacity,
-            duration: 1.2,
-            ease: "power2.out"
-          })
-        }
+    // Single animation function that handles all transitions
+    const animateToPosition = (animationProps: any) => {
+      return gsap.to(canvas, {
+        ...animationProps,
+        duration: 1.5,
+        ease: "power2.out"
       })
+    }
 
-      scrollTriggers.push(trigger)
+    // Hero section animation
+    const heroTrigger = ScrollTrigger.create({
+      trigger: "#hero",
+      start: "top top",
+      end: "bottom center",
+      onEnter: () => {
+        animateToPosition({
+          x: "25%",
+          y: "-15%",
+          scale: 1,
+          rotation: 0,
+          opacity: 1
+        })
+      },
+      onEnterBack: () => {
+        animateToPosition({
+          x: "25%",
+          y: "-15%",
+          scale: 1,
+          rotation: 0,
+          opacity: 1
+        })
+      }
     })
 
-    // Bottom of page effect for desktop (adjusted for 65% base position)
-    const bottomPageEffect = ScrollTrigger.create({
-      trigger: "footer",
-      start: "top bottom-=100px",
-      end: "bottom bottom",
+    // About section animation
+    const aboutTrigger = ScrollTrigger.create({
+      trigger: "#about",
+      start: "top center",
+      end: "bottom center",
       onEnter: () => {
-        gsap.to(canvas, {
+        animateToPosition({
+          x: "-25%",
+          y: "-20%",
+          scale: 0.8,
+          rotation: 15,
+          opacity: 0.9
+        })
+      },
+      onEnterBack: () => {
+        animateToPosition({
+          x: "-25%",
+          y: "-20%",
+          scale: 0.8,
+          rotation: 15,
+          opacity: 0.9
+        })
+      }
+    })
+
+    // Features section animation
+    const featuresTrigger = ScrollTrigger.create({
+      trigger: "#features",
+      start: "top center",
+      end: "bottom center",
+      onEnter: () => {
+        animateToPosition({
+          x: "25%",
+          y: "-5%",
+          scale: 0.6,
+          rotation: -10,
+          opacity: 0.7
+        })
+      },
+      onEnterBack: () => {
+        animateToPosition({
+          x: "25%",
+          y: "-5%",
+          scale: 0.6,
+          rotation: -10,
+          opacity: 0.7
+        })
+      }
+    })
+
+    // Contact section animation
+    const contactTrigger = ScrollTrigger.create({
+      trigger: "#contact",
+      start: "top center",
+      end: "bottom center",
+      onEnter: () => {
+        animateToPosition({
+          x: "15%",
+          y: "5%",
+          scale: 0.5,
+          rotation: 25,
+          opacity: 0.5
+        })
+      },
+      onEnterBack: () => {
+        animateToPosition({
+          x: "15%",
+          y: "5%",
+          scale: 0.5,
+          rotation: 25,
+          opacity: 0.5
+        })
+      }
+    })
+
+    // Footer section animation - dramatic close-up effect (triggers at end of contact section)
+    const contactElement = document.getElementById("contact")
+    
+    const footerTrigger = ScrollTrigger.create({
+      trigger: "#contact",
+      start: "bottom 80%",
+      end: "bottom 20%",
+      onEnter: () => {
+        animateToPosition({
           x: "0%",
-          y: "70%", // Adjusted relative to 65% base position
-          scale: 1.6,
+          y: "55%",
+          scale: isMobile ? 2.2 : 2.8,
           rotation: 0,
           opacity: 0.9,
-          duration: 1.8,
+          duration: 2.0,
           ease: "power3.out"
         })
       },
-      onLeaveBack: () => {
-        const contactSection = desktopSections[3]
-        gsap.to(canvas, {
-          x: contactSection.x,
-          y: contactSection.y,
-          scale: contactSection.scale,
-          rotation: contactSection.rotation,
-          opacity: contactSection.opacity,
-          duration: 1.2,
-          ease: "power2.out"
+      onEnterBack: () => {
+        animateToPosition({
+          x: "0%",
+          y: "55%",
+          scale: isMobile ? 2.2 : 2.8,
+          rotation: 0,
+          opacity: 0.9,
+          duration: 2.0,
+          ease: "power3.out"
         })
       }
     })
 
-    scrollTriggers.push(bottomPageEffect)
+    scrollTriggers.push(heroTrigger, aboutTrigger, featuresTrigger, contactTrigger, footerTrigger)
 
-    // Refresh ScrollTrigger on window resize
-    const handleResize = () => {
-      ScrollTrigger.refresh()
+
+    // Add fallback scroll listener for footer animation
+    const handleFooterScroll = () => {
+      const scrollY = window.scrollY
+      const windowHeight = window.innerHeight
+      const documentHeight = document.documentElement.scrollHeight
+      const scrollProgress = scrollY / (documentHeight - windowHeight)
+      
+      // Trigger footer animation when scroll progress is > 0.85 (near the end)
+      if (scrollProgress > 0.85) {
+        animateToPosition({
+          x: "0%",
+          y: "55%",
+          scale: isMobile ? 1.4 : 1.6,
+          rotation: 0,
+          opacity: 0.9,
+          duration: 2.0,
+          ease: "power3.out"
+        })
+      }
     }
+    
+    window.addEventListener('scroll', handleFooterScroll)
 
-    window.addEventListener('resize', handleResize)
-
-    // Refresh ScrollTrigger after initial setup
+    // Refresh ScrollTrigger after setup with longer delay to ensure footer is available
     setTimeout(() => {
       ScrollTrigger.refresh()
-    }, 100)
+    }, 500)
 
     return () => {
       scrollTriggers.forEach(trigger => trigger.kill())
-      window.removeEventListener('resize', handleResize)
+      window.removeEventListener('scroll', handleFooterScroll)
       ScrollTrigger.refresh()
     }
-  }, [isMobile])
+  }, [isMobile, isLoaded])
 
   // Calculate responsive dimensions based on viewport
   const getResponsiveSize = () => {
@@ -248,7 +297,7 @@ function ScrollTriggered3DScene() {
   return (
     <div
       ref={canvasRef}
-      className="fixed z-0 pointer-events-none"
+      className="fixed z-10 pointer-events-none"
       style={{
         width: responsiveSize.width,
         height: responsiveSize.height,
@@ -281,6 +330,10 @@ function ScrollTriggered3DScene() {
             }}
             dpr={viewportSize.width < 1200 ? [1, 1.5] : [1, 2]}
             resize={{ scroll: false, debounce: { scroll: 50, resize: 0 } }}
+            onCreated={() => {
+              // Mark as loaded when canvas is created
+              setTimeout(() => setIsLoaded(true), 100)
+            }}
           >
             <Lights />
             <Suspense fallback={null}>
