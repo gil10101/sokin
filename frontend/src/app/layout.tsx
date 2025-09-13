@@ -11,7 +11,7 @@ const ThemeProvider = lazy(() => import("../components/theme-provider").then(mod
 const AuthProvider = lazy(() => import("../contexts/auth-context").then(mod => ({ default: mod.AuthProvider })))
 const Toaster = lazy(() => import("../components/ui/toaster").then(mod => ({ default: mod.Toaster })))
 const TooltipProvider = lazy(() => import("../components/ui/tooltip").then(mod => ({ default: mod.TooltipProvider })))
-const ReactQueryClientProvider = lazy(() => import("../../../lib/react-query-provider").then(mod => ({ default: mod.ReactQueryClientProvider })))
+const ReactQueryClientProvider = lazy(() => import("../lib/react-query-provider").then(mod => ({ default: mod.ReactQueryClientProvider })))
 const AppInitializer = lazy(() => import("../components/app-initializer").then(mod => ({ default: mod.AppInitializer })))
 const PerformanceMonitor = lazy(() => import("../components/performance-monitor").then(mod => ({ default: mod.PerformanceMonitor })))
 
