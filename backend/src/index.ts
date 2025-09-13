@@ -20,6 +20,7 @@ import './config/firebase';
 // Import middleware
 import { rateLimiter, clearRateLimits } from './middleware/rateLimiter';
 import { errorHandler } from './middleware/errorHandler';
+import { validateAuthConfig } from './middleware/auth';
 
 // Create Express app
 const app = express();
@@ -109,6 +110,14 @@ app.use((req: Request, res: Response) => {
 
 // Global error handler
 app.use(errorHandler);
+
+// Validate configuration before starting server
+try {
+  validateAuthConfig();
+} catch (error) {
+  logger.error('Configuration validation failed:', { error: String(error) });
+  process.exit(1);
+}
 
 // Start server
 app.listen(Number(port), () => {
