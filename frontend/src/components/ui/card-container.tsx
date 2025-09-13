@@ -4,15 +4,7 @@ import type { ReactNode } from "react"
 import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
 
-type RenderableReactNode =
-  | React.ReactElement
-  | string
-  | number
-  | React.ReactFragment
-  | React.ReactPortal
-  | boolean
-  | null
-  | undefined
+type RenderableReactNode = ReactNode
 
 interface CardContainerProps {
   children: RenderableReactNode

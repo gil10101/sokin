@@ -1,14 +1,6 @@
 import type { ReactNode } from "react"
 
-type RenderableReactNode =
-  | React.ReactElement
-  | string
-  | number
-  | React.ReactFragment
-  | React.ReactPortal
-  | boolean
-  | null
-  | undefined
+type RenderableReactNode = ReactNode
 
 interface PageHeaderProps {
   title: string
