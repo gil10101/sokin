@@ -282,7 +282,7 @@ export function BudgetProgressChart() {
               <LabelList
                 dataKey="percentage"
                 position="right"
-                formatter={(value: number) => `${value}%`}
+                formatter={(value: React.ReactNode) => `${value}%`}
                 style={{ fill: "rgba(245, 245, 240, 0.7)", fontSize: 11 }}
               />
             )}

@@ -162,7 +162,7 @@ export function CategoryComparisonChart({ data }: CategoryComparisonChartProps) 
                 <LabelList
                   dataKey="amount"
                   position="right"
-                  formatter={(value: number) => `$${value.toFixed(0)}`}
+                  formatter={(value: React.ReactNode) => `$${Number(value).toFixed(0)}`}
                   style={{ fill: "rgba(245, 245, 240, 0.7)", fontSize: 11 }}
                 />
               )}
