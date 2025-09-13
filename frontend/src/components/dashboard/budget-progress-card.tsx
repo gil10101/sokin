@@ -15,7 +15,11 @@ interface BudgetProgress {
   percentage: number
 }
 
-export function BudgetProgressCard() {
+interface BudgetProgressCardProps {
+  refreshTrigger?: number
+}
+
+export function BudgetProgressCard({ refreshTrigger }: BudgetProgressCardProps) {
   const { user } = useAuth()
   const [data, setData] = useState<BudgetProgress[]>([])
   const [loading, setLoading] = useState(true)
@@ -28,12 +32,12 @@ export function BudgetProgressCard() {
       setLoading(true)
       setError(null)
       try {
-        // Fetch active budgets
+        // Fetch active budgets (all periods, not just monthly)
         const budgetsRef = collection(db, "budgets")
         const budgetsQuery = query(
           budgetsRef,
           where("userId", "==", user.uid),
-          where("period", "==", "monthly"), // For simplicity, only showing monthly budgets
+          // Remove period filter to show all budgets
         )
         const budgetsSnapshot = await getDocs(budgetsQuery)
 
@@ -43,53 +47,127 @@ export function BudgetProgressCard() {
           return
         }
 
-        const budgets = budgetsSnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as Budget[]
+        // Parse budget data with robust error handling
+        const budgets = budgetsSnapshot.docs.map((doc) => {
+          const data = doc.data()
+          return {
+            id: doc.id,
+            userId: data.userId || "",
+            category: data.category || "Unknown",
+            amount: typeof data.amount === 'number' ? data.amount : parseFloat(data.amount) || 0,
+            period: data.period || "monthly",
+            startDate: data.startDate || new Date().toISOString(),
+            endDate: data.endDate || null,
+            createdAt: data.createdAt || new Date().toISOString(),
+            updatedAt: data.updatedAt || new Date().toISOString(),
+            notes: data.notes || null,
+          }
+        }).filter(budget => budget.amount > 0) // Filter out invalid budgets
 
-        // Fetch expenses for the current month
-        const now = new Date()
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
-        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString()
-
+        // Fetch all expenses for budget calculations
         const expensesRef = collection(db, "expenses")
         const expensesQuery = query(
           expensesRef,
           where("userId", "==", user.uid),
-          where("date", ">=", startOfMonth),
-          where("date", "<=", endOfMonth),
         )
         const expensesSnapshot = await getDocs(expensesQuery)
 
-        const expenses = expensesSnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as Expense[]
+        // Parse expense data with robust error handling
+        const expenses = expensesSnapshot.docs.map((doc) => {
+          const data = doc.data()
+          return {
+            id: doc.id,
+            userId: data.userId || "",
+            name: data.name || data.description || "Unknown",
+            amount: typeof data.amount === 'number' ? data.amount : parseFloat(data.amount) || 0,
+            date: data.date || new Date().toISOString(),
+            category: data.category || "Other",
+            description: data.description || "",
+            tags: Array.isArray(data.tags) ? data.tags : [],
+            createdAt: data.createdAt || new Date().toISOString(),
+            updatedAt: data.updatedAt || new Date().toISOString(),
+          }
+        }).filter(expense => expense.amount > 0) // Filter out invalid expenses
 
-        // Calculate spending by category
-        const spendingByCategory: Record<string, number> = {}
-        expenses.forEach((expense: Expense) => {
-          const { category, amount } = expense
-          spendingByCategory[category] = (spendingByCategory[category] || 0) + amount
-        })
+        // Helper function to safely parse dates
+        const safeParseDate = (dateValue: unknown): Date | null => {
+          try {
+            if (!dateValue) return null
+            if (dateValue instanceof Date) return dateValue
+            if (typeof dateValue === 'object' && 'toDate' in dateValue) {
+              return (dateValue as any).toDate()
+            }
+            if (typeof dateValue === 'number') return new Date(dateValue)
+            if (typeof dateValue === 'string') {
+              const parsed = new Date(dateValue)
+              return isNaN(parsed.getTime()) ? null : parsed
+            }
+            return null
+          } catch {
+            return null
+          }
+        }
 
-        // Create budget progress data
-        const progressData = budgets.map((budget: Budget) => {
-          const spent = spendingByCategory[budget.category] || 0
-          const percentage = Math.round((spent / budget.amount) * 100)
+        // Create budget progress data with better date handling
+        const progressData = budgets.map((budget) => {
+          const budgetStartDate = safeParseDate(budget.startDate) || new Date()
+          let budgetEndDate = budget.endDate ? safeParseDate(budget.endDate) : null
+
+          // Calculate effective end date based on period
+          if (!budgetEndDate) {
+            const startDate = new Date(budgetStartDate)
+            switch (budget.period) {
+              case "monthly":
+                budgetEndDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, startDate.getDate())
+                break
+              case "yearly":
+                budgetEndDate = new Date(startDate.getFullYear() + 1, startDate.getMonth(), startDate.getDate())
+                break
+              case "weekly":
+                budgetEndDate = new Date(startDate)
+                budgetEndDate.setDate(startDate.getDate() + 7)
+                break
+              case "daily":
+                budgetEndDate = new Date(startDate)
+                budgetEndDate.setDate(startDate.getDate() + 1)
+                break
+              default:
+                // For custom periods, use current date if no end date
+                budgetEndDate = new Date()
+                break
+            }
+          }
+
+          // Filter expenses for this budget's category and date range
+          const relevantExpenses = expenses.filter((expense) => {
+            const expenseDate = safeParseDate(expense.date)
+            if (!expenseDate) return false
+
+            const matchesCategory = expense.category === budget.category
+            const isInDateRange = expenseDate >= budgetStartDate && 
+                                  (budgetEndDate ? expenseDate <= budgetEndDate : true)
+
+            return matchesCategory && isInDateRange
+          })
+
+          // Calculate total spent
+          const spent = relevantExpenses.reduce((total, expense) => total + expense.amount, 0)
+          const percentage = budget.amount > 0 ? Math.round((spent / budget.amount) * 100) : 0
 
           return {
             category: budget.category,
             budget: budget.amount,
             spent,
-            percentage,
+            percentage: Math.max(0, percentage), // Ensure non-negative percentage
           }
         })
 
+        // Sort by percentage descending to show highest usage first
+        progressData.sort((a, b) => b.percentage - a.percentage)
+
         setData(progressData)
       } catch (error) {
-
+        console.error("Error fetching budget progress:", error)
         setError("Failed to load budget data")
         setData([])
       } finally {
@@ -98,7 +176,7 @@ export function BudgetProgressCard() {
     }
 
     fetchBudgetProgress()
-  }, [user])
+  }, [user, refreshTrigger])
 
   // Get color based on percentage
   const getColor = (percentage: number) => {
@@ -162,7 +240,7 @@ export function BudgetProgressCard() {
             <LabelList
               dataKey="percentage"
               position="right"
-              formatter={(value: number) => `${value}%`}
+              formatter={(value: React.ReactNode) => `${value}%`}
               style={{ fill: "rgba(245, 245, 240, 0.8)", fontSize: 12 }}
             />
           </Bar>

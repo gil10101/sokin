@@ -40,7 +40,6 @@ import {
   DialogTitle,
 } from "../../../components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../components/ui/tabs"
-import { motion } from "framer-motion"
 
 // Default categories
 const DEFAULT_CATEGORIES = [
@@ -137,6 +136,7 @@ export default function BudgetsPage() {
   const [editingBudget, setEditingBudget] = useState<Budget | null>(null)
   const [budgetToDelete, setBudgetToDelete] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState("all")
+  const [budgetProgressRefresh, setBudgetProgressRefresh] = useState(0)
 
   // Form state
   const [formData, setFormData] = useState<BudgetFormData>({
@@ -256,6 +256,10 @@ export default function BudgetsPage() {
       notes: "",
     })
     setEditingBudget(null)
+  }
+
+  const triggerBudgetProgressRefresh = () => {
+    setBudgetProgressRefresh(prev => prev + 1)
   }
 
   const openEditDialog = (budget: Budget) => {
@@ -397,6 +401,7 @@ export default function BudgetsPage() {
       setOpenDialog(false)
       fetchBudgets()
       fetchExpenses() // Refresh expenses to recalculate progress
+      triggerBudgetProgressRefresh() // Refresh budget progress chart
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : `There was an error ${editingBudget ? "updating" : "adding"} your budget`
       toast({
@@ -422,6 +427,9 @@ export default function BudgetsPage() {
         title: "Budget deleted",
         description: "The budget has been deleted successfully",
       })
+
+      // Refresh budget progress chart
+      triggerBudgetProgressRefresh()
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : "There was an error deleting the budget"
       toast({
@@ -525,7 +533,7 @@ export default function BudgetsPage() {
 
           <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-6">
             <h2 className="text-xl font-medium mb-6">Budget Progress</h2>
-            <BudgetProgressCard />
+            <BudgetProgressCard refreshTrigger={budgetProgressRefresh} />
           </MotionContainer>
         </div>
       </main>
@@ -795,10 +803,7 @@ function BudgetCard({ budget, onEdit, onDelete, calculateProgress }: BudgetCardP
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
+    <div
       className="bg-cream/5 rounded-xl border border-cream/10 p-6 hover:border-cream/20 transition-all duration-300"
     >
       <div className="flex justify-between items-start mb-4">
@@ -863,7 +868,7 @@ function BudgetCard({ budget, onEdit, onDelete, calculateProgress }: BudgetCardP
           </div>
         )}
       </div>
-    </motion.div>
+    </div>
   )
 }
 
