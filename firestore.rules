@@ -54,12 +54,16 @@ service cloud.firestore {
 
     /**
      * Helper function to check if document has valid timestamp fields
-     * @returns {bool} True if document has proper timestamp fields
+     * @returns {bool} True if document has proper timestamp fields (allows both Firestore timestamps and ISO strings)
      */
     function hasValidTimestamps() {
       return request.resource.data.keys().hasAny(['createdAt', 'updatedAt']) &&
-             (!('createdAt' in request.resource.data) || request.resource.data.createdAt is timestamp) &&
-             (!('updatedAt' in request.resource.data) || request.resource.data.updatedAt is timestamp);
+             (!('createdAt' in request.resource.data) || 
+              request.resource.data.createdAt is timestamp || 
+              request.resource.data.createdAt is string) &&
+             (!('updatedAt' in request.resource.data) || 
+              request.resource.data.updatedAt is timestamp ||
+              request.resource.data.updatedAt is string);
     }
 
     /**
@@ -136,17 +140,41 @@ service cloud.firestore {
       allow read, write: if isAuthenticated() && request.auth.uid == resource.data.userId;
       allow create: if isAuthenticated() && 
         request.auth.uid == request.resource.data.userId &&
-        hasRequiredFields(['userId', 'category', 'amount', 'period']) &&
+        request.resource.data.keys().hasAll(['userId', 'category', 'amount', 'period']) &&
         isValidAmount(request.resource.data.amount) &&
         request.resource.data.category is string &&
-        request.resource.data.period in ['weekly', 'monthly', 'yearly'] &&
-        hasValidTimestamps();
+        request.resource.data.category.size() > 0 &&
+        request.resource.data.period in ['daily', 'weekly', 'monthly', 'yearly', 'custom'] &&
+        // Validate timestamps are strings (ISO format) or timestamps
+        (!('createdAt' in request.resource.data) || 
+         request.resource.data.createdAt is string ||
+         request.resource.data.createdAt is timestamp) &&
+        (!('updatedAt' in request.resource.data) || 
+         request.resource.data.updatedAt is string ||
+         request.resource.data.updatedAt is timestamp) &&
+        // Validate optional fields
+        (!('startDate' in request.resource.data) || 
+         request.resource.data.startDate is string ||
+         request.resource.data.startDate is timestamp) &&
+        (!('endDate' in request.resource.data) || 
+         request.resource.data.endDate == null ||
+         request.resource.data.endDate is string ||
+         request.resource.data.endDate is timestamp) &&
+        (!('notes' in request.resource.data) || 
+         request.resource.data.notes == null ||
+         request.resource.data.notes is string);
         
       allow update: if isAuthenticated() && 
         request.auth.uid == resource.data.userId &&
         request.auth.uid == request.resource.data.userId &&
         isValidAmount(request.resource.data.amount) &&
-        hasValidTimestamps();
+        request.resource.data.category is string &&
+        request.resource.data.category.size() > 0 &&
+        request.resource.data.period in ['daily', 'weekly', 'monthly', 'yearly', 'custom'] &&
+        // Validate timestamps are strings (ISO format) or timestamps
+        (!('updatedAt' in request.resource.data) || 
+         request.resource.data.updatedAt is string ||
+         request.resource.data.updatedAt is timestamp);
     }
     
     /**
