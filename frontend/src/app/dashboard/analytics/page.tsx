@@ -4,13 +4,19 @@ import React, { useState, useEffect } from "react"
 import { collection, query, where, getDocs, Timestamp } from "firebase/firestore"
 import { auth, db } from "../../../lib/firebase"
 import { useAuthState } from "react-firebase-hooks/auth"
-import { format, subMonths, parse } from "date-fns"
-import { motion } from "framer-motion"
+import { formatDate, dateCalc, safeParseDate } from "../../../lib/date-utils"
+import { MotionDiv, MotionMain, MotionHeader } from "../../../components/ui/dynamic-motion"
 import { DashboardSidebar } from "../../../components/dashboard/sidebar"
-import { MonthlyTrendsChart } from "../../../components/dashboard/monthly-trends-chart"
-import { CategoryComparisonChart } from "../../../components/dashboard/category-comparison-chart"
-import { SpendingHeatmap } from "../../../components/dashboard/spending-heatmap"
-import { BudgetProgressChart } from "../../../components/dashboard/budget-progress-chart"
+// Lazy load heavy chart components for better performance
+import { 
+  LazyMonthlyTrendsChart, 
+  LazyCategoryComparisonChart, 
+  LazySpendingHeatmap,
+  LazyWrapper 
+} from "../../../components/ui/lazy-components"
+import { IntersectionLazy } from "../../../components/ui/intersection-lazy"
+import { ChartErrorBoundary } from "../../../components/ui/error-boundary"
+import { BudgetProgressCard } from "../../../components/dashboard/budget-progress-card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/select"
 
 // Properly typed Select components
@@ -36,36 +42,6 @@ interface CategoryTotalData {
 
 
 
-// Helper function to safely parse dates
-const safeParseDate = (dateValue: unknown): Date => {
-  if (!dateValue) return new Date()
-
-  try {
-    // If it's already a Date object
-    if (dateValue instanceof Date) {
-      return dateValue
-    }
-    // If it's a Firebase Timestamp object
-    else if (dateValue && typeof dateValue === 'object' && 'toDate' in dateValue) {
-      const timestampObj = dateValue as { toDate: () => Date }
-      return timestampObj.toDate()
-    }
-    // If it's a numeric timestamp (milliseconds)
-    else if (typeof dateValue === 'number') {
-      return new Date(dateValue)
-    }
-    // If it's a string
-    else if (typeof dateValue === 'string') {
-      const parsedDate = new Date(dateValue)
-      return isNaN(parsedDate.getTime()) ? new Date() : parsedDate
-    }
-
-    return new Date()
-  } catch (error) {
-
-    return new Date()
-  }
-}
 
 export default function AnalyticsPage() {
   const [collapsed, setCollapsed] = useState(false)
@@ -88,14 +64,14 @@ export default function AnalyticsPage() {
 
         switch (timeframe) {
           case "3months":
-            startDate = subMonths(endDate, 3)
+            startDate = dateCalc.subMonths(endDate, 3)
             break
           case "12months":
-            startDate = subMonths(endDate, 12)
+            startDate = dateCalc.subMonths(endDate, 12)
             break
           case "6months":
           default:
-            startDate = subMonths(endDate, 6)
+            startDate = dateCalc.subMonths(endDate, 6)
             break
         }
 
@@ -126,7 +102,7 @@ export default function AnalyticsPage() {
 
         expenses.forEach((expense) => {
           const date = safeParseDate(expense.date)
-          const monthYear = format(date, "MMM yyyy")
+          const monthYear = formatDate.monthYear(date)
 
           // Aggregate monthly data
           if (!monthlyTrends[monthYear]) {
@@ -155,11 +131,17 @@ export default function AnalyticsPage() {
         // Sort monthly data chronologically by parsing the month string back to date
         monthlyDataArray.sort((a, b) => {
           try {
-            const dateA = parse(a.month, "MMM yyyy", new Date())
-            const dateB = parse(b.month, "MMM yyyy", new Date())
-            return dateA.getTime() - dateB.getTime()
+            // Parse format like "Jan 2024" back to Date for comparison
+            const [monthStr, yearStr] = a.month.split(' ')
+            const [monthStrB, yearStrB] = b.month.split(' ')
+            const monthA = new Date(`${monthStr} 1, ${yearStr}`).getMonth()
+            const monthB = new Date(`${monthStrB} 1, ${yearStrB}`).getMonth()
+            const yearA = parseInt(yearStr)
+            const yearB = parseInt(yearStrB)
+            
+            if (yearA !== yearB) return yearA - yearB
+            return monthA - monthB
           } catch (error) {
-
             return 0
           }
         })
@@ -208,7 +190,7 @@ export default function AnalyticsPage() {
 
       <main className="flex-1 overflow-auto p-6 md:p-8 lg:p-10">
         <div className="max-w-7xl mx-auto">
-          <motion.header
+          <MotionHeader
             className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8"
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -236,12 +218,12 @@ export default function AnalyticsPage() {
                 </TypedSelectContent>
               </Select>
             </div>
-          </motion.header>
+          </MotionHeader>
 
           {loading ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
               {[1, 2, 3, 4].map((i) => (
-                <motion.div 
+                <MotionDiv 
                   key={i} 
                   className="bg-cream/5 rounded-xl border border-cream/10 p-6 h-[400px] flex items-center justify-center"
                   initial={{ opacity: 0, scale: 0.95 }}
@@ -249,54 +231,72 @@ export default function AnalyticsPage() {
                   transition={{ duration: 0.3, delay: i * 0.1 }}
                 >
                   <LoadingSpinner variant="pulse" size="md" />
-                </motion.div>
+                </MotionDiv>
               ))}
             </div>
           ) : (
-            <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
+            <MotionDiv variants={container} initial="hidden" animate="show" className="space-y-6">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                <motion.div
+                <MotionDiv
                   variants={item}
                   className="bg-cream/5 rounded-xl border border-cream/10 p-6 hover:border-cream/20 transition-colors duration-300"
                 >
                   <div className="flex items-center justify-between mb-6">
                     <h2 className="text-lg font-medium font-outfit">Monthly Spending Trends</h2>
                   </div>
-                  <MonthlyTrendsChart data={monthlyData} />
-                </motion.div>
+                  <ChartErrorBoundary>
+                    <LazyWrapper>
+                      <IntersectionLazy>
+                        <LazyMonthlyTrendsChart data={monthlyData} />
+                      </IntersectionLazy>
+                    </LazyWrapper>
+                  </ChartErrorBoundary>
+                </MotionDiv>
 
-                <motion.div
+                <MotionDiv
                   variants={item}
                   className="bg-cream/5 rounded-xl border border-cream/10 p-6 hover:border-cream/20 transition-colors duration-300"
                 >
                   <div className="flex items-center justify-between mb-6">
                     <h2 className="text-lg font-medium font-outfit">Spending by Category</h2>
                   </div>
-                  <CategoryComparisonChart data={categoryData} />
-                </motion.div>
+                  <ChartErrorBoundary>
+                    <LazyWrapper>
+                      <IntersectionLazy>
+                        <LazyCategoryComparisonChart data={categoryData} />
+                      </IntersectionLazy>
+                    </LazyWrapper>
+                  </ChartErrorBoundary>
+                </MotionDiv>
 
-                <motion.div
+                <MotionDiv
                   variants={item}
                   className="bg-cream/5 rounded-xl border border-cream/10 p-6 hover:border-cream/20 transition-colors duration-300"
                 >
                   <div className="flex items-center justify-between mb-6">
                     <h2 className="text-lg font-medium font-outfit">Spending Heatmap</h2>
                   </div>
-                  <SpendingHeatmap />
-                </motion.div>
+                  <ChartErrorBoundary>
+                    <LazyWrapper>
+                      <IntersectionLazy>
+                        <LazySpendingHeatmap />
+                      </IntersectionLazy>
+                    </LazyWrapper>
+                  </ChartErrorBoundary>
+                </MotionDiv>
 
-                <motion.div
+                <MotionDiv
                   variants={item}
                   className="bg-cream/5 rounded-xl border border-cream/10 p-6 hover:border-cream/20 transition-colors duration-300"
                 >
                   <div className="flex items-center justify-between mb-6">
                     <h2 className="text-lg font-medium font-outfit">Budget Progress</h2>
                   </div>
-                  <BudgetProgressChart />
-                </motion.div>
+                  <BudgetProgressCard />
+                </MotionDiv>
               </div>
 
-              <motion.div
+              <MotionDiv
                 variants={item}
                 className="bg-cream/5 rounded-xl border border-cream/10 p-6 mb-8 hover:border-cream/20 transition-colors duration-300"
               >
@@ -304,7 +304,7 @@ export default function AnalyticsPage() {
                   <h2 className="text-lg font-medium font-outfit">Spending Insights</h2>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <motion.div
+                  <MotionDiv
                     className="bg-cream/10 rounded-lg p-4 hover:bg-cream/15 transition-colors duration-300"
                     whileHover={{ y: -5 }}
                     transition={{ type: "spring", stiffness: 300 }}
@@ -323,8 +323,8 @@ export default function AnalyticsPage() {
                             .amount.toFixed(2)
                         : "0.00"}
                     </p>
-                  </motion.div>
-                  <motion.div
+                  </MotionDiv>
+                  <MotionDiv
                     className="bg-cream/10 rounded-lg p-4 hover:bg-cream/15 transition-colors duration-300"
                     whileHover={{ y: -5 }}
                     transition={{ type: "spring", stiffness: 300 }}
@@ -334,8 +334,8 @@ export default function AnalyticsPage() {
                     <p className="text-cream/60 text-sm">
                       ${categoryData.length > 0 ? categoryData[0].amount.toFixed(2) : "0.00"}
                     </p>
-                  </motion.div>
-                  <motion.div
+                  </MotionDiv>
+                  <MotionDiv
                     className="bg-cream/10 rounded-lg p-4 hover:bg-cream/15 transition-colors duration-300"
                     whileHover={{ y: -5 }}
                     transition={{ type: "spring", stiffness: 300 }}
@@ -348,10 +348,10 @@ export default function AnalyticsPage() {
                         : "0.00"}
                     </p>
                     <p className="text-cream/60 text-sm">Over {monthlyData.length} months</p>
-                  </motion.div>
+                  </MotionDiv>
                 </div>
-              </motion.div>
-            </motion.div>
+              </MotionDiv>
+            </MotionDiv>
           )}
         </div>
       </main>

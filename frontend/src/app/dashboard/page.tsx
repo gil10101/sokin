@@ -45,6 +45,7 @@ import { useAuth } from "@/contexts/auth-context"
 import { useRouter } from "next/navigation"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../../lib/ui-components"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select"
 import { NotificationsDropdown } from "@/components/notifications/notifications-dropdown"
 import { api } from "@/lib/api"
 import { useQueryClient } from "@tanstack/react-query"
@@ -408,35 +409,25 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-4 lg:gap-6 mb-6 lg:mb-8">
             {/* Spending Trends - Large (6 columns on lg+, full width on md) */}
             <div className="md:col-span-2 lg:col-span-6">
-              <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-4 lg:p-6 h-full min-h-[420px]" delay={0.5}>
+              <MotionContainer className="bg-cream/5 rounded-xl p-4 lg:p-6 h-full min-h-[420px]" delay={0.5}>
                 <div className="flex items-center justify-between mb-4 lg:mb-6">
                   <h2 className="text-lg lg:text-xl font-medium font-outfit">Spending Trends</h2>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger className="flex items-center text-cream/60 text-sm hover:text-cream bg-cream/5 px-3 py-1.5 rounded-md border border-cream/10">
-                      {timeframe === "30days" ? "Last 30 Days" : timeframe === "90days" ? "Last 90 Days" : "This Year"}
-                      <ChevronRight className="h-4 w-4 ml-2 transform rotate-90" />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="bg-dark border-cream/10">
-                      <DropdownMenuItem
-                        className="text-cream hover:bg-cream/10 cursor-pointer"
-                        onClick={() => setTimeframe("30days")}
-                      >
+                  <Select value={timeframe} onValueChange={setTimeframe}>
+                    <SelectTrigger className="bg-cream/5 border-cream/10 text-cream focus:ring-cream/20 w-full md:w-48">
+                      <SelectValue placeholder="Select timeframe" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-dark border-cream/10">
+                      <SelectItem value="30days" className="text-cream hover:bg-cream/10">
                         Last 30 Days
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="text-cream hover:bg-cream/10 cursor-pointer"
-                        onClick={() => setTimeframe("90days")}
-                      >
+                      </SelectItem>
+                      <SelectItem value="90days" className="text-cream hover:bg-cream/10">
                         Last 90 Days
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="text-cream hover:bg-cream/10 cursor-pointer"
-                        onClick={() => setTimeframe("year")}
-                      >
+                      </SelectItem>
+                      <SelectItem value="year" className="text-cream hover:bg-cream/10">
                         This Year
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="h-80 lg:h-96">
                   <ExpenseChart timeframe={timeframe} />
@@ -446,7 +437,7 @@ export default function DashboardPage() {
 
             {/* Category Breakdown - Medium (4 columns on lg+, half width on md) */}
             <div className="md:col-span-1 lg:col-span-4">
-              <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-4 lg:p-6 h-full min-h-[320px]" delay={0.6}>
+              <MotionContainer className="bg-cream/5 rounded-xl p-4 lg:p-6 h-full min-h-[320px]" delay={0.6}>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4 lg:mb-6">
                   <h2 className="text-base lg:text-lg font-medium font-outfit">Spending by Category</h2>
                   <button 
@@ -463,7 +454,7 @@ export default function DashboardPage() {
 
             {/* Bill Reminders - Small (2 columns on lg+, half width on md) */}
             <div className="md:col-span-1 lg:col-span-2">
-              <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-4 lg:p-6 h-full min-h-[280px]" delay={0.7}>
+              <MotionContainer className="bg-cream/5 rounded-xl p-4 lg:p-6 h-full min-h-[280px]" delay={0.7}>
                 <div className="flex flex-col gap-2 mb-4">
                   <h2 className="text-base lg:text-lg font-medium font-outfit">Bills</h2>
                   <button
@@ -482,7 +473,7 @@ export default function DashboardPage() {
           {/* Row 3: 2 Containers - Stock Market (Left), Savings & Analytics (Right) */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 mb-6 lg:mb-8">
             {/* Stock Market - Left Half */}
-            <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-4 lg:p-6 min-h-[400px]" delay={0.8}>
+            <MotionContainer className="bg-cream/5 rounded-xl p-4 lg:p-6 min-h-[400px]" delay={0.8}>  
               <div className="flex items-center justify-between mb-4 lg:mb-6">
                 <h2 className="text-lg lg:text-xl font-medium font-outfit">Stock Market</h2>
                 <button
@@ -499,7 +490,7 @@ export default function DashboardPage() {
             {/* Combined Savings Goals & Analytics - Right Half */}
             <div className="space-y-4 lg:space-y-6">
               {/* Savings Goals */}
-              <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-4 lg:p-6 min-h-[180px]" delay={0.9}>
+              <MotionContainer className="bg-cream/5 rounded-xl p-4 lg:p-6 min-h-[180px]" delay={0.9}>
                 <div className="flex items-center justify-between mb-4 lg:mb-6">
                   <h2 className="text-lg lg:text-xl font-medium font-outfit">Savings Goals</h2>
                   <button
@@ -514,7 +505,7 @@ export default function DashboardPage() {
               </MotionContainer>
 
               {/* Advanced Analytics */}
-              <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-4 lg:p-6 min-h-[180px]" delay={1.0}>
+              <MotionContainer className="bg-cream/5 rounded-xl p-4 lg:p-6 min-h-[180px]" delay={1.0}>
                 <div className="flex items-center justify-between mb-4 lg:mb-6">
                   <h2 className="text-lg lg:text-xl font-medium font-outfit">Analytics Overview</h2>
                   <button
@@ -533,7 +524,7 @@ export default function DashboardPage() {
           {/* Bottom Row: Recent Transactions and Monthly Category Breakdown */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 mb-6 lg:mb-8">
             {/* Recent Transactions - Left */}
-            <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-4 lg:p-6 min-h-[350px] flex flex-col" delay={1.1}>
+            <MotionContainer className="bg-cream/5 rounded-xl p-4 lg:p-6 min-h-[350px] flex flex-col" delay={1.1}>
               <div className="flex items-center justify-between mb-4 lg:mb-6">
                 <h2 className="text-lg lg:text-xl font-medium font-outfit">Recent Transactions</h2>
                 <button
@@ -550,7 +541,7 @@ export default function DashboardPage() {
             </MotionContainer>
 
             {/* Monthly Category Breakdown - Right */}
-            <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-4 lg:p-6 min-h-[350px]" delay={1.2}>
+            <MotionContainer className="bg-cream/5 rounded-xl p-4 lg:p-6 min-h-[350px]" delay={1.2}>
               <div className="flex items-center justify-between mb-4 lg:mb-6">
                 <h2 className="text-lg lg:text-xl font-medium font-outfit">Monthly Category Breakdown</h2>
                 <span className="text-xs bg-cream/10 text-cream/80 px-2 py-1 rounded-full">Last 6 Months</span>
