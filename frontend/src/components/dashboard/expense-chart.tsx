@@ -4,12 +4,12 @@ import { useEffect, useState, useRef, useMemo } from "react"
 import { Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Area, ComposedChart } from "recharts"
 // Removed ChartContainer due to type compatibility issues - using plain div instead
 import { LoadingSpinner } from "../../components/ui/loading-spinner"
-import { motion } from "framer-motion"
+import { MotionDiv } from "../ui/dynamic-motion"
 import { collection, query, where, getDocs } from "firebase/firestore"
 import { db } from "../../lib/firebase"
 import { useAuth } from "../../contexts/auth-context"
 import { useViewport } from "../../hooks/use-mobile"
-import { format, subDays, subMonths, isAfter, eachDayOfInterval, eachMonthOfInterval, startOfDay, startOfMonth } from "date-fns"
+import { format, subDays, subMonths, isAfter } from "date-fns"
 import { safeParseDate } from "../../types/firebase"
 import { logger } from "../../lib/logger"
 
@@ -84,42 +84,48 @@ export function ExpenseChart({ timeframe = "30days" }: ExpenseChartProps) {
         return isAfter(expenseDate, startDate) || expenseDate.getTime() === startDate.getTime()
       })
 
-      // Generate chart data based on timeframe
-      let intervals: Date[]
-      let formatString: string
-
-      if (timeframe === "year") {
-        intervals = eachMonthOfInterval({ start: startDate, end: endDate })
-        formatString = "MMM"
-      } else {
-        const intervalDays = timeframe === "90days" ? 7 : 5
-        intervals = []
-        let currentDate = startDate
-        while (currentDate <= endDate) {
-          intervals.push(currentDate)
-          currentDate = subDays(currentDate, -intervalDays)
+      // Group expenses by actual expense dates only
+      const expensesByDate = new Map<string, { amount: number, date: Date }>()
+      
+      filteredExpenses.forEach((expense) => {
+        const expenseDate = safeParseDate(expense.date)
+        let dateKey: string
+        
+        if (timeframe === "year") {
+          dateKey = format(expenseDate, "MMM yyyy")
+        } else {
+          dateKey = format(expenseDate, "MMM d")
         }
-        formatString = timeframe === "90days" ? "MMM d" : "MMM d"
-      }
+        
+        if (expensesByDate.has(dateKey)) {
+          expensesByDate.get(dateKey)!.amount += expense.amount
+        } else {
+          expensesByDate.set(dateKey, {
+            amount: expense.amount,
+            date: expenseDate
+          })
+        }
+      })
 
-      // Group expenses by intervals
-      const groupedData = intervals.map((interval) => {
-        const intervalStart = timeframe === "year" ? startOfMonth(interval) : startOfDay(interval)
-        const intervalEnd = timeframe === "year" 
-          ? startOfDay(subDays(subMonths(intervalStart, -1), 0))
-          : subDays(intervalStart, -(timeframe === "90days" ? 7 : 5))
+      // Convert to chart data and sort by date
+      const sortedData = Array.from(expensesByDate.entries())
+        .map(([name, { amount, date }]) => ({
+          name,
+          amount,
+          sortDate: date
+        }))
+        .sort((a, b) => a.sortDate.getTime() - b.sortDate.getTime())
 
-        const intervalExpenses = filteredExpenses.filter((expense) => {
-          const expenseDate = safeParseDate(expense.date)
-          return expenseDate >= intervalStart && expenseDate <= intervalEnd
-        })
-
-        const totalAmount = intervalExpenses.reduce((sum, expense) => sum + expense.amount, 0)
-
+      // Calculate proper moving average for each data point
+      const groupedData: ChartDataPoint[] = sortedData.map((item, index) => {
+        // Calculate moving average based on all previous data points including current
+        const relevantAmounts = sortedData.slice(0, index + 1).map(d => d.amount)
+        const movingAverage = relevantAmounts.reduce((sum, amt) => sum + amt, 0) / relevantAmounts.length
+        
         return {
-          name: format(interval, formatString),
-          amount: totalAmount,
-          average: totalAmount * 0.8, // Simple average calculation
+          name: item.name,
+          amount: item.amount,
+          average: movingAverage
         }
       })
 
@@ -144,34 +150,19 @@ export function ExpenseChart({ timeframe = "30days" }: ExpenseChartProps) {
     }
   }, [user, timeframe, mounted])
 
-  // Only handle resize without setting state
-  useEffect(() => {
-    if (!mounted) return
-
-    const handleResize = () => {
-      // No longer setting state here, just force repaint if needed
-      if (chartRef.current) {
-        // Force repaint without state update
-        chartRef.current.style.display = 'none'
-        void chartRef.current.offsetHeight // Force recalculation
-        chartRef.current.style.display = ''
-      }
-    }
-
-    window.addEventListener("resize", handleResize)
-    return () => window.removeEventListener("resize", handleResize)
-  }, [mounted])
+  // ResponsiveContainer automatically handles window resize events
+  // No manual resize handling needed
 
   if (!mounted || loading) {
     return (
       <div className={`${isMobile ? 'h-[280px]' : 'h-[400px]'} flex items-center justify-center`}>
-        <motion.div
+        <MotionDiv
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.3 }}
         >
           <LoadingSpinner size="md" />
-        </motion.div>
+        </MotionDiv>
       </div>
     )
   }
@@ -188,7 +179,7 @@ export function ExpenseChart({ timeframe = "30days" }: ExpenseChartProps) {
   }
 
   return (
-    <motion.div
+    <MotionDiv
       ref={chartRef}
       className={`${isMobile ? 'h-[280px]' : 'h-[400px]'} w-full min-w-0 overflow-hidden`}
       initial={{ opacity: 0 }}
@@ -240,7 +231,7 @@ export function ExpenseChart({ timeframe = "30days" }: ExpenseChartProps) {
                       {payload[1] && (
                         <div className="flex items-center mt-1">
                           <div className="h-2 w-2 rounded-full bg-cream/50 mr-1"></div>
-                          <p className="text-cream/80 text-sm">Average: ${Number(payload[1].value).toFixed(2)}</p>
+                          <p className="text-cream/80 text-sm">Moving Average: ${Number(payload[1].value).toFixed(2)}</p>
                         </div>
                       )}
                     </div>
@@ -272,7 +263,6 @@ export function ExpenseChart({ timeframe = "30days" }: ExpenseChartProps) {
           </ComposedChart>
         </ResponsiveContainer>
       </div>
-    </motion.div>
+    </MotionDiv>
   )
 }
-

@@ -31,7 +31,7 @@ import {
   ChevronRight
 } from 'lucide-react'
 import { format, addDays, isWithinInterval, isBefore, isAfter } from 'date-fns'
-import { motion, AnimatePresence } from 'framer-motion'
+import { MotionDiv, MotionButton, AnimatePresence } from "../../components/ui/dynamic-motion"
 import { useToast } from '../../hooks/use-toast'
 
 // Import BillReminder from API services for consistency
@@ -484,7 +484,7 @@ export function BillReminders() {
                 const IconComponent = categoryInfo?.icon || FileText
 
                 return (
-                  <motion.div
+                  <MotionDiv
                     key={bill.id}
                     layout
                     initial={{ opacity: 0, y: 10 }}
@@ -528,7 +528,7 @@ export function BillReminders() {
                         </div>
                       </div>
                     </div>
-                  </motion.div>
+                  </MotionDiv>
                 )
               })}
             </AnimatePresence>

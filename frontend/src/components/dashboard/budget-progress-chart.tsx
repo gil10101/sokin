@@ -1,8 +1,8 @@
 "use client"
 
-import { useEffect, useState, useMemo, useCallback } from "react"
+import { useEffect, useState, useMemo, useCallback, useRef } from "react"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell, ResponsiveContainer, LabelList } from "recharts"
-import { motion } from "framer-motion"
+import { MotionDiv } from "../ui/dynamic-motion"
 import { collection, query, where, getDocs } from "firebase/firestore"
 import { db } from "../../lib/firebase"
 import { useExpensesData } from "../../hooks/use-expenses-data"
@@ -14,282 +14,301 @@ import { useViewport } from "../../hooks/use-mobile"
 const safeParseDate = (dateValue: unknown): Date => {
   if (!dateValue) return new Date()
   
-  try {
-    // If it's already a Date object
-    if (dateValue instanceof Date) {
-      return dateValue
-    }
-    // If it's a Firebase Timestamp object
-    else if (dateValue && typeof dateValue === 'object' && 'toDate' in dateValue && typeof dateValue.toDate === 'function') {
-      return (dateValue as { toDate(): Date }).toDate()
-    }
-    // If it's a numeric timestamp (milliseconds)
-    else if (typeof dateValue === 'number') {
-      return new Date(dateValue)
-    }
-    // If it's a string
-    else if (typeof dateValue === 'string') {
-      const parsedDate = new Date(dateValue)
-      return isNaN(parsedDate.getTime()) ? new Date() : parsedDate
-    }
-    
-    return new Date()
-  } catch (error) {
-    return new Date()
+  // Handle Firebase Timestamp
+  if (typeof dateValue === 'object' && dateValue !== null && 'toDate' in dateValue) {
+    return (dateValue as { toDate: () => Date }).toDate()
   }
+  
+  // Handle ISO string or Date object
+  const date = new Date(dateValue as string | Date)
+  return isNaN(date.getTime()) ? new Date() : date
 }
 
 interface Budget {
   id: string
-  name?: string
-  amount: number
-  period: string
-  categories: string[]
-  startDate: string
-  endDate?: string
   userId: string
+  category: string
+  amount: number
+  spent?: number
+  month: string
+  year: number
 }
 
 interface Expense {
   id: string
+  name: string
   amount: number
   date: string
   category: string
-  userId: string
 }
 
 interface BudgetProgressData {
   category: string
-  budget: number
+  budgeted: number
   spent: number
+  remaining: number
   percentage: number
 }
 
-export function BudgetProgressChart() {
+interface BudgetProgressChartProps {
+  selectedMonth?: Date
+}
+
+export function BudgetProgressChart({ selectedMonth }: BudgetProgressChartProps) {
+  const [budgets, setBudgets] = useState<Budget[]>([])
+  const [expenses, setExpenses] = useState<Expense[]>([])
+  const [loading, setLoading] = useState(true)
+  const [chartData, setChartData] = useState<BudgetProgressData[]>([])
   const { user } = useAuth()
   const { isMobile, isTablet } = useViewport()
-  const [data, setData] = useState<BudgetProgressData[]>([])
-  const [animatedData, setAnimatedData] = useState<BudgetProgressData[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const { data: expenses = [], isLoading: expensesLoading } = useExpensesData()
 
   // Responsive chart configuration
   const chartConfig = useMemo(() => {
     if (isMobile) {
       return {
-        height: 250,
-        margin: { top: 20, right: 30, left: 60, bottom: 5 },
-        tickFontSize: 10,
-        yAxisWidth: 60,
-        showLabels: false,
+        height: 300,
+        margin: { top: 20, right: 10, left: -10, bottom: 60 },
+        fontSize: 10,
+        barSize: 20,
+        angle: -45,
       }
     } else if (isTablet) {
       return {
-        height: 280,
-        margin: { top: 20, right: 40, left: 70, bottom: 5 },
-        tickFontSize: 11,
-        yAxisWidth: 70,
-        showLabels: true,
+        height: 350,
+        margin: { top: 20, right: 15, left: 0, bottom: 60 },
+        fontSize: 11,
+        barSize: 25,
+        angle: -30,
       }
     } else {
       return {
-        height: 300,
-        margin: { top: 20, right: 50, left: 80, bottom: 5 },
-        tickFontSize: 12,
-        yAxisWidth: 80,
-        showLabels: true,
+        height: 400,
+        margin: { top: 20, right: 20, left: 10, bottom: 80 },
+        fontSize: 12,
+        barSize: 30,
+        angle: -20,
       }
     }
   }, [isMobile, isTablet])
 
-  useEffect(() => {
-    if (data.length > 0) {
-      // Start with zero percentages for animation
-      const initialData = data.map((item) => ({
-        ...item,
-        percentage: 0,
-      }))
-
-      setAnimatedData(initialData)
-
-      // Animate to actual values
-      const timer = setTimeout(() => {
-        setAnimatedData(data)
-      }, 400)
-
-      return () => clearTimeout(timer)
-    } else {
-      setAnimatedData([])
-      return () => {}
-    }
-  }, [data])
-
-  const fetchBudgetData = useCallback(async () => {
+  // Use current month if selectedMonth is not provided
+  const currentMonth = useMemo(() => selectedMonth || new Date(), [selectedMonth])
+  
+  const fetchData = useCallback(async () => {
     if (!user) return
 
-    setLoading(true)
-    setError(null)
     try {
-      // Fetch budgets
-      const budgetsRef = collection(db, "budgets")
-      const budgetsQuery = query(budgetsRef, where("userId", "==", user.uid))
-      const budgetsSnapshot = await getDocs(budgetsQuery)
+      setLoading(true)
       
-      const budgets = budgetsSnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Budget[]
-
-      // Use shared expenses data
-      const sharedExpenses = expenses as Expense[]
-
-      // Process data to create budget progress
-      const currentMonth = new Date()
-      const monthStart = startOfMonth(currentMonth)
-      const monthEnd = endOfMonth(currentMonth)
-
-      const budgetProgress: BudgetProgressData[] = []
-
-      // Group budgets by category or use budget name
-      budgets.forEach((budget) => {
-        // Filter expenses for this budget's timeframe and categories
-        const relevantExpenses = sharedExpenses.filter((expense) => {
-          const expenseDate = safeParseDate(expense.date)
-          const isInTimeRange = isWithinInterval(expenseDate, { start: monthStart, end: monthEnd })
-          
-          // If budget has specific categories, filter by those
-          if (budget.categories && budget.categories.length > 0) {
-            return isInTimeRange && budget.categories.includes(expense.category)
-          }
-          
-          // Otherwise, we'll use the budget name as a category match
-          return isInTimeRange && expense.category.toLowerCase().includes(budget.name?.toLowerCase() || '')
-        })
-
-        const totalSpent = relevantExpenses.reduce((sum, expense) => sum + expense.amount, 0)
-        const percentage = budget.amount > 0 ? Math.round((totalSpent / budget.amount) * 100) : 0
-
-        const categoryName = budget.categories && budget.categories.length > 0 
-          ? budget.categories[0] 
-          : budget.name || 'Unknown'
-
-        budgetProgress.push({
-          category: categoryName,
-          budget: budget.amount,
-          spent: totalSpent,
-          percentage,
+      const month = currentMonth.getMonth() + 1 // 1-12
+      const year = currentMonth.getFullYear()
+      
+      // Fetch budgets for the selected month
+      const budgetsRef = collection(db, "budgets")
+      const budgetsQuery = query(
+        budgetsRef, 
+        where("userId", "==", user.uid),
+        where("month", "==", month.toString()),
+        where("year", "==", year)
+      )
+      
+      const budgetsSnapshot = await getDocs(budgetsQuery)
+      const budgetsData: Budget[] = []
+      
+      budgetsSnapshot.forEach((doc) => {
+        const data = doc.data()
+        budgetsData.push({
+          id: doc.id,
+          userId: data.userId,
+          category: data.category,
+          amount: data.amount || 0,
+          spent: data.spent || 0,
+          month: data.month,
+          year: data.year
         })
       })
-
-      setData(budgetProgress.slice(0, 5)) // Show top 5
+      
+      // Fetch expenses for the selected month
+      const expensesRef = collection(db, "expenses")
+      const expensesQuery = query(expensesRef, where("userId", "==", user.uid))
+      const expensesSnapshot = await getDocs(expensesQuery)
+      
+      const monthStart = startOfMonth(currentMonth)
+      const monthEnd = endOfMonth(currentMonth)
+      
+      const expensesData: Expense[] = []
+      
+      expensesSnapshot.forEach((doc) => {
+        const data = doc.data()
+        const expenseDate = safeParseDate(data.date)
+        
+        if (isWithinInterval(expenseDate, { start: monthStart, end: monthEnd })) {
+          expensesData.push({
+            id: doc.id,
+            name: data.name || 'Unknown',
+            amount: data.amount || 0,
+            date: expenseDate.toISOString(),
+            category: data.category || 'Other'
+          })
+        }
+      })
+      
+      setBudgets(budgetsData)
+      setExpenses(expensesData)
+      
     } catch (error) {
-
-      setError("Failed to load budget data")
-      setData([])
+      // Log error to Sentry instead of console
+      import('@/lib/logger').then(({ logger }) => {
+        logger.error('Error fetching budget data', { error: error instanceof Error ? error.message : String(error) })
+      })
+      setBudgets([])
+      setExpenses([])
     } finally {
       setLoading(false)
     }
-  }, [user, expenses])
+  }, [user, currentMonth])
 
   useEffect(() => {
-    if (user && !expensesLoading) {
-      fetchBudgetData()
-    }
-  }, [user, expensesLoading, expenses, fetchBudgetData])
+    fetchData()
+  }, [fetchData])
 
-  // Get color based on percentage
-  const getColor = (percentage: number) => {
-    if (percentage < 70) return "rgba(245, 245, 240, 0.6)"
-    if (percentage < 90) return "rgba(245, 245, 240, 0.8)"
-    if (percentage < 100) return "rgba(245, 245, 240, 1)"
-    return "rgba(255, 99, 71, 0.8)" // Tomato color for over budget
+  // Process chart data
+  useEffect(() => {
+    if (!budgets.length) {
+      setChartData([])
+      return
+    }
+
+    // Calculate spent amounts by category for the selected month
+    const spentByCategory: { [key: string]: number } = {}
+    
+    expenses.forEach(expense => {
+      const category = expense.category
+      spentByCategory[category] = (spentByCategory[category] || 0) + expense.amount
+    })
+
+    // Create chart data combining budgets and actual spending
+    const processedData: BudgetProgressData[] = budgets.map(budget => {
+      const spent = spentByCategory[budget.category] || 0
+      const remaining = Math.max(0, budget.amount - spent)
+      const percentage = budget.amount > 0 ? Math.min(100, (spent / budget.amount) * 100) : 0
+
+      return {
+        category: budget.category,
+        budgeted: budget.amount,
+        spent: spent,
+        remaining: remaining,
+        percentage: percentage
+      }
+    })
+
+    // Sort by percentage (highest first)
+    processedData.sort((a, b) => b.percentage - a.percentage)
+
+    setChartData(processedData)
+  }, [budgets, expenses])
+
+  const getBarColor = (percentage: number): string => {
+    if (percentage >= 90) return '#ef4444' // Red - over budget or close to it
+    if (percentage >= 70) return '#f59e0b' // Amber - getting close
+    if (percentage >= 50) return '#10b981' // Green - good progress
+    return 'rgba(245, 245, 240, 0.8)' // Light - minimal spending
+  }
+
+  const CustomizedLabel = (props: any) => {
+    const { x, y, width, value } = props
+    const radius = 10
+    
+    return (
+      <g>
+        <text
+          x={x + width / 2}
+          y={y - radius}
+          fill="rgba(245, 245, 240, 0.9)"
+          textAnchor="middle"
+          fontSize={isMobile ? "9" : "10"}
+          dominantBaseline="middle"
+        >
+          {`${Math.round(value)}%`}
+        </text>
+      </g>
+    )
   }
 
   if (loading) {
     return (
-      <div style={{ height: chartConfig.height }} className="flex items-center justify-center">
-        <div className="text-cream/60">Loading budget data...</div>
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-cream/30"></div>
       </div>
     )
   }
 
-  if (error) {
+  if (chartData.length === 0) {
     return (
-      <div style={{ height: chartConfig.height }} className="flex items-center justify-center">
+      <div className="flex items-center justify-center h-64 text-cream/50">
         <div className="text-center">
-          <div className="text-red-400 mb-2">{error}</div>
-          <div className="text-sm text-cream/40">Please try again later</div>
-        </div>
-      </div>
-    )
-  }
-
-  if (data.length === 0) {
-    return (
-      <div style={{ height: chartConfig.height }} className="flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-cream/60 mb-2">No budget data available</div>
-          <div className="text-sm text-cream/40">Create some budgets to see progress here</div>
+          <div className="text-4xl mb-2">📊</div>
+          <p className="text-sm">No budget data available</p>
+          <p className="text-xs opacity-75 mt-1">Set up budgets to track your progress</p>
         </div>
       </div>
     )
   }
 
   return (
-    <motion.div
+    <MotionDiv
       className="w-full"
       style={{ height: chartConfig.height }}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.5, delay: 0.2 }}
+      transition={{ duration: 0.5 }}
     >
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart 
-          data={animatedData} 
-          layout="vertical" 
+        <BarChart
+          data={chartData}
           margin={chartConfig.margin}
+          barCategoryGap="20%"
         >
-          <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="rgba(245, 245, 240, 0.1)" />
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(245, 245, 240, 0.1)" />
+          
           <XAxis
-            type="number"
-            axisLine={false}
-            tickLine={false}
-            tick={{ fill: "rgba(245, 245, 240, 0.6)", fontSize: chartConfig.tickFontSize }}
-            domain={[0, 120]}
-            tickFormatter={(value) => `${value}%`}
-          />
-          <YAxis
-            type="category"
             dataKey="category"
             axisLine={false}
             tickLine={false}
-            tick={{ fill: "rgba(245, 245, 240, 0.6)", fontSize: chartConfig.tickFontSize }}
-            width={chartConfig.yAxisWidth}
-            tickFormatter={(value) => isMobile && value.length > 8 ? `${value.substring(0, 8)}...` : value}
+            tick={{
+              fill: "rgba(245, 245, 240, 0.6)",
+              fontSize: chartConfig.fontSize,
+              textAnchor: "end"
+            }}
+            angle={chartConfig.angle}
+            textAnchor="end"
+            height={80}
+            interval={0}
           />
+          
+          <YAxis
+            axisLine={false}
+            tickLine={false}
+            tick={{
+              fill: "rgba(245, 245, 240, 0.6)",
+              fontSize: chartConfig.fontSize
+            }}
+            tickFormatter={(value) => `${Math.round(value)}%`}
+            domain={[0, 100]}
+          />
+          
           <Bar
             dataKey="percentage"
-            radius={[0, 4, 4, 0]}
-            background={{ fill: "rgba(245, 245, 240, 0.1)" }}
-            animationDuration={1500}
-            animationEasing="ease-out"
+            radius={[4, 4, 0, 0]}
+            maxBarSize={chartConfig.barSize}
           >
-            {animatedData.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={getColor(entry.percentage)} />
+            <LabelList content={<CustomizedLabel />} />
+            {chartData.map((entry, index) => (
+              <Cell key={`cell-${index}`} fill={getBarColor(entry.percentage)} />
             ))}
-            {chartConfig.showLabels && (
-              <LabelList
-                dataKey="percentage"
-                position="right"
-                formatter={(value: React.ReactNode) => `${value}%`}
-                style={{ fill: "rgba(245, 245, 240, 0.7)", fontSize: 11 }}
-              />
-            )}
           </Bar>
         </BarChart>
       </ResponsiveContainer>
-    </motion.div>
+    </MotionDiv>
   )
 }
-

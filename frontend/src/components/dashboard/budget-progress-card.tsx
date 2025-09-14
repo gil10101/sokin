@@ -8,6 +8,42 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell, ResponsiveContainer, 
 import { LoadingSpinner } from "../../components/ui/loading-spinner"
 import { Expense, Budget } from "../../lib/types"
 
+// Date calculation helpers to prevent overflow and use exclusive bounds
+const addMonthsClamp = (date: Date, months: number): Date => {
+  const result = new Date(date);
+  const targetMonth = result.getMonth() + months;
+  const targetYear = result.getFullYear() + Math.floor(targetMonth / 12);
+  const normalizedMonth = targetMonth % 12;
+  
+  // Get the last day of the target month
+  const lastDayOfTargetMonth = new Date(targetYear, normalizedMonth + 1, 0).getDate();
+  const originalDay = result.getDate();
+  
+  // Clamp day to valid range for target month
+  const clampedDay = Math.min(originalDay, lastDayOfTargetMonth);
+  
+  return new Date(targetYear, normalizedMonth, clampedDay, 
+    result.getHours(), result.getMinutes(), result.getSeconds(), result.getMilliseconds());
+};
+
+const addYearsClamp = (date: Date, years: number): Date => {
+  const result = new Date(date);
+  const targetYear = result.getFullYear() + years;
+  const originalDay = result.getDate();
+  const originalMonth = result.getMonth();
+  
+  // Handle leap year edge case for Feb 29
+  if (originalMonth === 1 && originalDay === 29) {
+    const isTargetLeapYear = (targetYear % 4 === 0 && targetYear % 100 !== 0) || (targetYear % 400 === 0);
+    const clampedDay = isTargetLeapYear ? 29 : 28;
+    return new Date(targetYear, originalMonth, clampedDay,
+      result.getHours(), result.getMinutes(), result.getSeconds(), result.getMilliseconds());
+  }
+  
+  return new Date(targetYear, originalMonth, originalDay,
+    result.getHours(), result.getMinutes(), result.getSeconds(), result.getMilliseconds());
+};
+
 interface BudgetProgress {
   category: string
   budget: number
@@ -27,7 +63,12 @@ export function BudgetProgressCard({ refreshTrigger }: BudgetProgressCardProps) 
 
   useEffect(() => {
     const fetchBudgetProgress = async () => {
-      if (!user) return
+      if (!user) {
+        setLoading(false);
+        setData([]);
+        setError(null);
+        return;
+      }
 
       setLoading(true)
       setError(null)
@@ -113,23 +154,21 @@ export function BudgetProgressCard({ refreshTrigger }: BudgetProgressCardProps) 
           const budgetStartDate = safeParseDate(budget.startDate) || new Date()
           let budgetEndDate = budget.endDate ? safeParseDate(budget.endDate) : null
 
-          // Calculate effective end date based on period
+          // Calculate effective end date based on period (exclusive)
           if (!budgetEndDate) {
             const startDate = new Date(budgetStartDate)
             switch (budget.period) {
               case "monthly":
-                budgetEndDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, startDate.getDate())
+                budgetEndDate = addMonthsClamp(startDate, 1)
                 break
               case "yearly":
-                budgetEndDate = new Date(startDate.getFullYear() + 1, startDate.getMonth(), startDate.getDate())
+                budgetEndDate = addYearsClamp(startDate, 1)
                 break
               case "weekly":
-                budgetEndDate = new Date(startDate)
-                budgetEndDate.setDate(startDate.getDate() + 7)
+                budgetEndDate = new Date(startDate.getTime() + 7 * 24 * 60 * 60 * 1000)
                 break
               case "daily":
-                budgetEndDate = new Date(startDate)
-                budgetEndDate.setDate(startDate.getDate() + 1)
+                budgetEndDate = new Date(startDate.getTime() + 24 * 60 * 60 * 1000)
                 break
               default:
                 // For custom periods, use current date if no end date
@@ -145,7 +184,7 @@ export function BudgetProgressCard({ refreshTrigger }: BudgetProgressCardProps) 
 
             const matchesCategory = expense.category === budget.category
             const isInDateRange = expenseDate >= budgetStartDate && 
-                                  (budgetEndDate ? expenseDate <= budgetEndDate : true)
+                                  (budgetEndDate ? expenseDate < budgetEndDate : true)
 
             return matchesCategory && isInDateRange
           })
@@ -167,7 +206,10 @@ export function BudgetProgressCard({ refreshTrigger }: BudgetProgressCardProps) 
 
         setData(progressData)
       } catch (error) {
-        console.error("Error fetching budget progress:", error)
+        // Log error to Sentry instead of console
+        import('@/lib/logger').then(({ logger }) => {
+          logger.error('Error fetching budget progress', { error: error instanceof Error ? error.message : String(error) })
+        })
         setError("Failed to load budget data")
         setData([])
       } finally {
