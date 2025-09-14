@@ -149,16 +149,35 @@ export const auth = async (req: Request, res: Response, next: NextFunction): Pro
   }
 };
 
-// Helper function for timing-safe string comparison
-const timingSafeStringCompare = (a: string, b: string): boolean => {
-  if (a.length !== b.length) {
-    return false;
+// Helper function for normalizing IP addresses
+// Handles proxy headers, IPv6-mapped IPv4, localhost mappings
+const normalizeIp = (ip: string | undefined): string | null => {
+  if (!ip) return null;
+  
+  let normalized = ip.trim();
+  
+  // Map localhost and ::1 to 127.0.0.1
+  if (normalized === 'localhost' || normalized === '::1') {
+    return '127.0.0.1';
   }
   
-  const bufferA = Buffer.from(a, 'utf8');
-  const bufferB = Buffer.from(b, 'utf8');
+  // Strip IPv6-mapped IPv4 prefix (::ffff:)
+  if (normalized.startsWith('::ffff:')) {
+    normalized = normalized.substring(7);
+  }
   
-  return crypto.timingSafeEqual(bufferA, bufferB);
+  return normalized;
+};
+
+// Helper function for timing-safe string comparison
+// Uses SHA-256 hashing to ensure constant-time comparison regardless of input length
+const timingSafeStringCompare = (a: string, b: string): boolean => {
+  // Hash both inputs to create fixed-size buffers (32 bytes for SHA-256)
+  const hashA = crypto.createHash('sha256').update(a, 'utf8').digest();
+  const hashB = crypto.createHash('sha256').update(b, 'utf8').digest();
+  
+  // Compare the fixed-size hash buffers in constant time
+  return crypto.timingSafeEqual(hashA, hashB);
 };
 
 // Cron job authentication middleware for internal services
@@ -166,11 +185,14 @@ export const requireCronAuth = async (req: Request, res: Response, next: NextFun
   try {
     // Check IP allowlist if configured
     if (ALLOWED_CRON_IPS.length > 0) {
-      const clientIp = req.ip || req.socket.remoteAddress;
-      if (!clientIp || !ALLOWED_CRON_IPS.includes(clientIp)) {
+      const rawIp = req.ip || req.socket.remoteAddress;
+      const normalizedIp = normalizeIp(rawIp);
+      
+      if (!normalizedIp || !ALLOWED_CRON_IPS.includes(normalizedIp)) {
         logger.warn('Unauthorized cron job attempt - IP not allowlisted', {
-          ip: clientIp,
-          allowedIps: ALLOWED_CRON_IPS.length > 0 ? '[REDACTED]' : 'none configured',
+          rawIp: rawIp,
+          normalizedIp: normalizedIp,
+          allowedIps: '[REDACTED]',
           userAgent: req.get('User-Agent'),
           endpoint: req.originalUrl
         });
@@ -185,8 +207,11 @@ export const requireCronAuth = async (req: Request, res: Response, next: NextFun
     const cronSecretHeader = req.get('x-cron-secret');
 
     if (!cronSecretHeader) {
+      const rawIp = req.ip || req.socket.remoteAddress;
+      const normalizedIp = normalizeIp(rawIp);
       logger.warn('Unauthorized cron job attempt - missing secret header', {
-        ip: req.ip,
+        rawIp: rawIp,
+        normalizedIp: normalizedIp,
         userAgent: req.get('User-Agent'),
         endpoint: req.originalUrl
       });
@@ -195,19 +220,25 @@ export const requireCronAuth = async (req: Request, res: Response, next: NextFun
 
     // Perform timing-safe comparison
     if (!timingSafeStringCompare(cronSecretHeader, expectedSecret)) {
+      const rawIp = req.ip || req.socket.remoteAddress;
+      const normalizedIp = normalizeIp(rawIp);
       logger.warn('Unauthorized cron job attempt - invalid secret', {
-        ip: req.ip,
+        rawIp: rawIp,
+        normalizedIp: normalizedIp,
         userAgent: req.get('User-Agent'),
         endpoint: req.originalUrl,
-        ipAllowlisted: ALLOWED_CRON_IPS.length > 0 ? ALLOWED_CRON_IPS.includes(req.ip || '') : 'no allowlist configured'
+        ipAllowlisted: ALLOWED_CRON_IPS.length > 0 ? (normalizedIp ? ALLOWED_CRON_IPS.includes(normalizedIp) : false) : 'no allowlist configured'
       });
       throw new AppError('Unauthorized: Invalid cron secret', 401, true);
     }
 
+    const rawIp = req.ip || req.socket.remoteAddress;
+    const normalizedIp = normalizeIp(rawIp);
     logger.info('Cron job authenticated successfully', { 
       endpoint: req.originalUrl,
-      ip: req.ip,
-      ipAllowlisted: ALLOWED_CRON_IPS.length > 0 ? 'yes' : 'no allowlist configured'
+      rawIp: rawIp,
+      normalizedIp: normalizedIp,
+      ipAllowlisted: ALLOWED_CRON_IPS.length > 0 ? (normalizedIp ? ALLOWED_CRON_IPS.includes(normalizedIp) : 'unknown') : 'no allowlist configured'
     });
     next();
   } catch (error) {

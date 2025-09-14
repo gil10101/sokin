@@ -1,5 +1,28 @@
 import Joi from 'joi';
 
+// Security-focused validation patterns
+const patterns = {
+  // Basic alphanumeric + limited safe symbols, no quotes/parentheses for XSS protection
+  safeText: /^[a-zA-Z0-9\s\-_.,!?]{1,200}$/,
+  // Currency amounts (positive numbers with up to 2 decimals)
+  currency: /^\d+(\.\d{1,2})?$/,
+  // Categories (alphanumeric with spaces, hyphens, underscores - strict length limit)
+  category: /^[a-zA-Z0-9\s\-_]{1,50}$/,
+  // Firebase document IDs (exactly 20 URL-safe base64-like characters)
+  firebaseId: /^[a-zA-Z0-9_-]{20}$/
+};
+
+// Common validation helpers
+const commonValidations = {
+  userId: Joi.string().pattern(patterns.firebaseId).required(),
+  amount: Joi.number().positive().max(999999.99).precision(2).required(),
+  category: Joi.string().pattern(patterns.category).min(1).max(50).required(),
+  name: Joi.string().pattern(patterns.safeText).min(1).max(100).required(),
+  description: Joi.string().pattern(patterns.safeText).allow('').max(500),
+  date: Joi.date().max('now').required(),
+  tags: Joi.array().items(Joi.string().pattern(patterns.category).max(30)).max(10)
+};
+
 // Expense schemas
 export const createExpenseSchema = Joi.object({
   name: Joi.string().required().trim(),
@@ -63,6 +86,23 @@ export const updateUserSchema = Joi.object({
     notificationsEnabled: Joi.boolean()
   })
 }).min(1);
+
+// Notification schemas
+export const markNotificationReadParamsSchema = Joi.object({
+  notificationId: Joi.string().trim().min(8).max(128).required()
+});
+
+export const updateNotificationPreferencesSchema = Joi.object({
+  notificationsEnabled: Joi.boolean().required(),
+  push: Joi.boolean(),
+  email: Joi.boolean(),
+  sms: Joi.boolean()
+}).min(1);
+
+export const registerFcmTokenSchema = Joi.object({
+  token: Joi.string().trim().min(20).max(4096).required(),
+  platform: Joi.string().valid('web', 'ios', 'android').required()
+});
 
 // Asset schemas
 export const createAssetSchema = Joi.object({
@@ -227,4 +267,9 @@ export const updateLiabilitySchema = Joi.object({
     autoPayEnabled: Joi.boolean(),
     linkedBankAccount: Joi.string().trim().max(50)
   }).allow(null)
-}).min(1); 
+}).min(1);
+
+// ID validation schema for path parameters
+export const idParamsSchema = Joi.object({
+  id: Joi.string().trim().min(8).max(128).required()
+});
