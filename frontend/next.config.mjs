@@ -36,8 +36,13 @@ const nextConfig = {
       'date-fns',
       '@radix-ui/react-dialog',
       '@radix-ui/react-dropdown-menu',
-      '@radix-ui/react-select'
+      '@radix-ui/react-select',
+      'recharts',
+      'firebase',
+      'framer-motion'
     ],
+    // Enable advanced tree shaking
+    swcPlugins: [],
   },
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
@@ -76,7 +81,7 @@ const nextConfig = {
         recharts: {
           test: /[\\/]node_modules[\\/]recharts[\\/]/,
           name: 'recharts',
-          chunks: 'all',
+          chunks: 'async', // Load on demand for better performance
           priority: 15,
         },
         firebase: {
@@ -88,7 +93,7 @@ const nextConfig = {
         three: {
           test: /[\\/]node_modules[\\/](three|@react-three)[\\/]/,
           name: 'three',
-          chunks: 'all',
+          chunks: 'async', // Only load when needed
           priority: 10,
         },
         framerMotion: {
@@ -107,13 +112,22 @@ const nextConfig = {
       },
     }
 
-    // Add performance hints in production
+    // Stricter performance hints for optimization tracking
     if (!dev && !isServer) {
       config.performance = {
         hints: 'warning',
-        maxAssetSize: 512000, // 512KB
-        maxEntrypointSize: 512000, // 512KB
+        maxAssetSize: 400000, // 400KB - stricter limit
+        maxEntrypointSize: 400000, // 400KB - stricter limit
+        assetFilter: (assetFilename) => {
+          // Ignore source maps and fonts in performance calculations
+          return !assetFilename.endsWith('.map') && !assetFilename.match(/\.(woff|woff2|eot|ttf|otf)$/)
+        }
       }
+      
+      // Advanced tree shaking
+      config.optimization.usedExports = true
+      // Let package.json sideEffects field and webpack handle tree-shaking correctly
+      // Avoid forcing sideEffects = false as it can drop CSS and library initializers
     }
 
     // Optimize CSS extraction
