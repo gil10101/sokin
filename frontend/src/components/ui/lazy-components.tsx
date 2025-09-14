@@ -8,9 +8,10 @@ import { Suspense } from 'react'
 
 // Loading component for suspense fallbacks
 const LoadingSpinner = () => (
-  <div className="flex items-center justify-center p-8">
-    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+  <div className="flex items-center justify-center p-8" role="status" aria-live="polite">
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" aria-hidden="true"></div>
     <span className="ml-2 text-sm text-muted-foreground">Loading...</span>
+    <span className="sr-only">Loading…</span>
   </div>
 )
 
