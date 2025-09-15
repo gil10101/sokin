@@ -2,8 +2,6 @@
 
 import dynamic from "next/dynamic"
 import React, { Suspense, useEffect, useState } from "react"
-import { useThree } from "@react-three/fiber"
-import * as THREE from "three"
 
 // Dynamically import Canvas to avoid SSR issues
 const Canvas = dynamic(() => import("@react-three/fiber").then(mod => ({ default: mod.Canvas })), {
@@ -100,36 +98,24 @@ function MobileHero3DScene() {
   )
 }
 
-// Lights component to avoid JSX type issues
+// Lights component using JSX declarations
 function Lights() {
-  const { scene } = useThree()
-
-  useEffect(() => {
-    // Ambient light
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5)
-    scene.add(ambientLight)
-
-    // Directional light
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6)
-    directionalLight.position.set(5, 5, 5)
-    directionalLight.castShadow = true
-    directionalLight.shadow.mapSize.width = 512
-    directionalLight.shadow.mapSize.height = 512
-    scene.add(directionalLight)
-
-    // Point light
-    const pointLight = new THREE.PointLight(0xffffff, 0.2)
-    pointLight.position.set(-5, -5, -5)
-    scene.add(pointLight)
-
-    return () => {
-      scene.remove(ambientLight)
-      scene.remove(directionalLight)
-      scene.remove(pointLight)
-    }
-  }, [scene])
-
-  return null
+  return (
+    <>
+      <ambientLight args={[0xffffff, 0.5]} />
+      <directionalLight 
+        args={[0xffffff, 0.6]}
+        position={[5, 5, 5]}
+        castShadow
+        shadow-mapSize-width={512}
+        shadow-mapSize-height={512}
+      />
+      <pointLight 
+        args={[0xffffff, 0.2]}
+        position={[-5, -5, -5]}
+      />
+    </>
+  )
 }
 
 export default MobileHero3DScene

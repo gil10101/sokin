@@ -2,10 +2,8 @@
 
 import dynamic from "next/dynamic"
 import React, { Suspense, useEffect, useRef, useState } from "react"
-import { useThree } from "@react-three/fiber"
 import { gsap } from "gsap"
 import { ScrollTrigger } from "gsap/ScrollTrigger"
-import * as THREE from "three"
 
 // Register ScrollTrigger plugin
 if (typeof window !== "undefined") {
@@ -345,36 +343,24 @@ function ScrollTriggered3DScene() {
   )
 }
 
-// Lights component to avoid JSX type issues
+// Lights component using JSX declarations instead of direct Three.js imports
 function Lights() {
-  const { scene } = useThree()
-
-  useEffect(() => {
-    // Ambient light
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.4)
-    scene.add(ambientLight)
-
-    // Directional light
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8)
-    directionalLight.position.set(10, 10, 5)
-    directionalLight.castShadow = true
-    directionalLight.shadow.mapSize.width = 1024
-    directionalLight.shadow.mapSize.height = 1024
-    scene.add(directionalLight)
-
-    // Point light
-    const pointLight = new THREE.PointLight(0xffffff, 0.3)
-    pointLight.position.set(-10, -10, -10)
-    scene.add(pointLight)
-
-    return () => {
-      scene.remove(ambientLight)
-      scene.remove(directionalLight)
-      scene.remove(pointLight)
-    }
-  }, [scene])
-
-  return null
+  return (
+    <>
+      <ambientLight args={[0xffffff, 0.4]} />
+      <directionalLight 
+        args={[0xffffff, 0.8]}
+        position={[10, 10, 5]}
+        castShadow
+        shadow-mapSize-width={1024}
+        shadow-mapSize-height={1024}
+      />
+      <pointLight 
+        args={[0xffffff, 0.3]}
+        position={[-10, -10, -10]}
+      />
+    </>
+  )
 }
 
 export default ScrollTriggered3DScene

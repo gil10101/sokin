@@ -4,7 +4,7 @@ import React, { useEffect, useState, useRef, useCallback } from "react"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell, Tooltip } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "../../components/ui/chart"
 import { LoadingSpinner } from "../../components/ui/loading-spinner"
-import { motion } from "framer-motion"
+import { MotionDiv } from "../ui/dynamic-motion"
 import { collection, query, where, getDocs } from "firebase/firestore"
 import { db } from "../../lib/firebase"
 import { useExpensesData } from "../../hooks/use-expenses-data"
@@ -171,13 +171,13 @@ export function StackedBarChart({ timeframe = "year" }: StackedBarChartProps) {
   if (!mounted || loading) {
     return (
       <div className="h-full flex items-center justify-center">
-        <motion.div
+        <MotionDiv
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.3 }}
         >
           <LoadingSpinner size="sm" />
-        </motion.div>
+        </MotionDiv>
       </div>
     )
   }
@@ -210,7 +210,7 @@ export function StackedBarChart({ timeframe = "year" }: StackedBarChartProps) {
   }
 
   return (
-    <motion.div
+    <MotionDiv
       ref={chartRef}
       className="h-full w-full min-w-0 overflow-hidden"
       initial={{ opacity: 0 }}
@@ -329,6 +329,6 @@ export function StackedBarChart({ timeframe = "year" }: StackedBarChartProps) {
           </BarChart>
         </ResponsiveContainer>
       </ChartContainer>
-    </motion.div>
+    </MotionDiv>
   )
-} 
+}
