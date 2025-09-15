@@ -15,7 +15,7 @@ import {
   Clock,
   ChevronRight
 } from "lucide-react"
-import { motion } from "framer-motion"
+import { MotionDiv, MotionMain, MotionHeader } from "../../../components/ui/dynamic-motion"
 import { useToast } from "../../../hooks/use-toast"
 import { LoadingSpinner } from "../../../components/ui/loading-spinner"
 
@@ -205,7 +205,7 @@ export default function BillsPage() {
       
       <main className="flex-1 overflow-auto p-6 md:p-8 lg:p-10">
         <div className="max-w-7xl mx-auto">
-          <motion.header
+          <MotionHeader
             className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8"
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -215,7 +215,7 @@ export default function BillsPage() {
               <h1 className="text-2xl md:text-3xl font-medium font-outfit">Bill Reminders</h1>
               <p className="text-cream/60 text-sm mt-1 font-outfit">Manage your bills and never miss a payment</p>
             </div>
-          </motion.header>
+          </MotionHeader>
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 sm:mb-8">

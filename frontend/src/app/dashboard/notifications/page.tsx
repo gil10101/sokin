@@ -8,9 +8,9 @@ import { format } from "date-fns"
 import { Button } from "../../../components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../components/ui/tabs"
 import { Info, AlertTriangle, CheckCircle, AlertCircle, Trash2, Check, X } from "lucide-react"
-import { motion, AnimatePresence } from "framer-motion"
+import { MotionDiv, AnimatePresence } from "../../../components/ui/dynamic-motion"
 import Link from "next/link"
-import { cn } from "../../../../../lib/utils"
+import { cn } from "../../../lib/utils"
 import { LoadingSpinner } from "../../../components/ui/loading-spinner"
 
 export default function NotificationsPage() {
@@ -106,7 +106,7 @@ export default function NotificationsPage() {
                   {filteredNotifications.length > 0 ? (
                     <div className="space-y-4">
                       {filteredNotifications.map((notification) => (
-                        <motion.div
+                        <MotionDiv
                           key={notification.id}
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
@@ -168,7 +168,7 @@ export default function NotificationsPage() {
                               </Button>
                             </div>
                           </div>
-                        </motion.div>
+                        </MotionDiv>
                       ))}
                     </div>
                   ) : (

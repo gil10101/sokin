@@ -59,7 +59,7 @@ import {
 import { useToast } from "../../../hooks/use-toast"
 import { MotionContainer } from "../../../components/ui/motion-container"
 import { LoadingSpinner } from "../../../components/ui/loading-spinner"
-import { motion, AnimatePresence } from "framer-motion"
+import { MotionDiv, MotionMain, MotionSection, AnimatePresence } from '../../../components/ui/dynamic-motion'
 import { cn } from "../../../lib/utils"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../../../components/ui/dropdown-menu"
 
@@ -605,7 +605,7 @@ export default function GoalsPage() {
                 const IconComponent = categoryInfo?.icon || Bookmark
 
                 return (
-                  <motion.div
+                  <MotionDiv
                     key={goal.id}
                     layout
                     initial={{ opacity: 0, y: 20 }}
@@ -781,7 +781,7 @@ export default function GoalsPage() {
                         </div>
                       )}
                     </Card>
-                  </motion.div>
+                  </MotionDiv>
                 )
               })}
             </AnimatePresence>

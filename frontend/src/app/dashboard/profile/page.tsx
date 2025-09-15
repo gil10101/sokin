@@ -14,7 +14,7 @@ import {
 } from "firebase/auth"
 import { auth, db } from "../../../lib/firebase"
 import { useAuthState } from "react-firebase-hooks/auth"
-import { motion } from "framer-motion"
+import { MotionDiv, MotionMain } from "../../../components/ui/dynamic-motion"
 import { DashboardSidebar } from "../../../components/dashboard/sidebar"
 import { Input } from "../../../components/ui/input"
 import { Button } from "../../../components/ui/button"
@@ -197,7 +197,7 @@ export default function ProfilePage() {
             </TabsList>
 
             <TabsContent value="account">
-              <motion.div
+              <MotionDiv
                 className="bg-cream/5 rounded-xl border border-cream/10 p-6"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -276,11 +276,11 @@ export default function ProfilePage() {
                     </Button>
                   </div>
                 </form>
-              </motion.div>
+              </MotionDiv>
             </TabsContent>
 
             <TabsContent value="security">
-              <motion.div
+              <MotionDiv
                 className="bg-cream/5 rounded-xl border border-cream/10 p-6"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -373,7 +373,7 @@ export default function ProfilePage() {
                     </Button>
                   </div>
                 </form>
-              </motion.div>
+              </MotionDiv>
             </TabsContent>
           </Tabs>
         </div>

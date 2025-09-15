@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
+import { MotionDiv, MotionHeader, fadeInUp, staggerContainer } from '../../../components/ui/dynamic-motion'
 import {
   DollarSign,
   PlusCircle,
@@ -152,7 +152,7 @@ export default function NetWorthPage() {
       <main className="flex-1 overflow-auto p-4 sm:p-6 md:p-8 lg:p-10">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
-          <motion.header
+          <MotionHeader
             className="flex flex-col gap-4 mb-6 sm:mb-8"
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -192,16 +192,16 @@ export default function NetWorthPage() {
                 </DropdownMenu>
               </div>
             </div>
-          </motion.header>
+          </MotionHeader>
 
           {/* Metrics Cards */}
-          <motion.div 
+          <MotionDiv 
             variants={container}
             initial="hidden"
             animate="show"
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8"
           >
-            <motion.div variants={item}>
+            <MotionDiv variants={item}>
               <MotionContainer delay={0.1}>
                 <MetricCard
                   title="Total Assets"
@@ -209,9 +209,9 @@ export default function NetWorthPage() {
                   icon={<Building className="h-5 w-5" />}
                 />
               </MotionContainer>
-            </motion.div>
+            </MotionDiv>
 
-            <motion.div variants={item}>
+            <MotionDiv variants={item}>
               <MotionContainer delay={0.2}>
                 <MetricCard
                   title="Total Liabilities"
@@ -219,9 +219,9 @@ export default function NetWorthPage() {
                   icon={<CreditCard className="h-5 w-5" />}
                 />
               </MotionContainer>
-            </motion.div>
+            </MotionDiv>
 
-            <motion.div variants={item}>
+            <MotionDiv variants={item}>
               <MotionContainer delay={0.3}>
                 <MetricCard
                   title="Net Worth"
@@ -232,11 +232,11 @@ export default function NetWorthPage() {
                   icon={<DollarSign className="h-5 w-5" />}
                 />
               </MotionContainer>
-            </motion.div>
-          </motion.div>
+            </MotionDiv>
+          </MotionDiv>
 
           {/* Mobile Add Button */}
-          <motion.div 
+          <MotionDiv 
             className="mb-6 md:hidden"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -264,17 +264,17 @@ export default function NetWorthPage() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          </motion.div>
+          </MotionDiv>
 
           {/* Main Content */}
-          <motion.div 
+          <MotionDiv 
             variants={container}
             initial="hidden"
             animate="show"
             className="space-y-8"
           >
             {/* Asset & Liability Breakdown */}
-            <motion.div 
+            <MotionDiv 
               variants={item}
               className="pt-6 first:pt-0"
             >
@@ -296,10 +296,10 @@ export default function NetWorthPage() {
                   onDeleteLiability={handleDeleteLiability}
                 />
               </div>
-            </motion.div>
+            </MotionDiv>
 
             {/* Net Worth Trends */}
-            <motion.div 
+            <MotionDiv 
               variants={item}
               className="pt-6"
             >
@@ -316,10 +316,10 @@ export default function NetWorthPage() {
                   monthlyChangePercent={netWorth?.monthlyChangePercent}
                 />
               </div>
-            </motion.div>
+            </MotionDiv>
 
             {/* Net Worth Insights */}
-            <motion.div 
+            <MotionDiv 
               variants={item}
               className="pt-6"
             >
@@ -328,7 +328,7 @@ export default function NetWorthPage() {
                   <h2 className="text-lg font-medium font-outfit">Financial Insights</h2>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
-                  <motion.div
+                  <MotionDiv
                     className="bg-cream/5 rounded-lg p-4 hover:bg-cream/10 transition-colors duration-300"
                     whileHover={{ y: -2 }}
                     transition={{ type: "spring", stiffness: 300 }}
@@ -341,9 +341,9 @@ export default function NetWorthPage() {
                       }
                     </p>
                     <p className="text-cream/60 text-sm">Asset to debt ratio</p>
-                  </motion.div>
+                  </MotionDiv>
                   
-                  <motion.div
+                  <MotionDiv
                     className="bg-cream/5 rounded-lg p-4 hover:bg-cream/10 transition-colors duration-300"
                     whileHover={{ y: -2 }}
                     transition={{ type: "spring", stiffness: 300 }}
@@ -361,9 +361,9 @@ export default function NetWorthPage() {
                         : '$0.00'
                       }
                     </p>
-                  </motion.div>
+                  </MotionDiv>
                   
-                  <motion.div
+                  <MotionDiv
                     className="bg-cream/5 rounded-lg p-4 hover:bg-cream/10 transition-colors duration-300"
                     whileHover={{ y: -2 }}
                     transition={{ type: "spring", stiffness: 300 }}
@@ -381,11 +381,11 @@ export default function NetWorthPage() {
                         : '$0.00'
                       }
                     </p>
-                  </motion.div>
+                  </MotionDiv>
                 </div>
               </div>
-            </motion.div>
-          </motion.div>
+            </MotionDiv>
+          </MotionDiv>
 
           {/* Asset/Liability Form Modal */}
           {showAddForm && (
