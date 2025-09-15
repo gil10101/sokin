@@ -83,8 +83,12 @@ export function SpendingHeatmap() {
 
   const { data: expenses = [], isLoading: expensesLoading } = useExpensesData()
 
-  const processExpenseData = () => {
-    if (!user) return
+  useEffect(() => {
+    if (!user) {
+      setData({})
+      setLoading(false)
+      return
+    }
 
     setLoading(true)
     try {
@@ -99,7 +103,7 @@ export function SpendingHeatmap() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [user, expenses])
 
   // Generate weeks array (responsive count)
   const weeks = []
@@ -135,7 +139,7 @@ export function SpendingHeatmap() {
   // Day labels
   const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
 
-  if (loading) {
+  if (loading || expensesLoading) {
     return (
       <div className="flex items-center justify-center" style={{ height: heatmapConfig.height }}>
         <div className="text-cream/60">Loading spending data...</div>

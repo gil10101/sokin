@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react"
 import { doc, getDoc, updateDoc } from "firebase/firestore"
 import { auth, db } from "@/lib/firebase"
 import { useAuthState } from "react-firebase-hooks/auth"
-import { motion } from "framer-motion"
+import { MotionDiv, MotionMain } from "../../../components/ui/dynamic-motion"
 import { DashboardSidebar } from "@/components/dashboard/sidebar"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
@@ -171,7 +171,7 @@ export default function SettingsPage() {
               </TypedTabsList>
 
               <TypedTabsContent value="general">
-                <motion.div
+                <MotionDiv
                   className="bg-cream/5 rounded-xl border border-cream/10 p-6"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -238,11 +238,11 @@ export default function SettingsPage() {
                       </Select>
                     </div>
                   </div>
-                </motion.div>
+                </MotionDiv>
               </TypedTabsContent>
 
               <TypedTabsContent value="notifications">
-                <motion.div
+                <MotionDiv
                   className="bg-cream/5 rounded-xl border border-cream/10 p-6"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -299,11 +299,11 @@ export default function SettingsPage() {
                       />
                     </div>
                   </div>
-                </motion.div>
+                </MotionDiv>
               </TypedTabsContent>
 
               <TypedTabsContent value="budgets">
-                <motion.div
+                <MotionDiv
                   className="bg-cream/5 rounded-xl border border-cream/10 p-6"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -326,7 +326,7 @@ export default function SettingsPage() {
                       <TypedButton className="bg-cream text-dark hover:bg-cream/90">Set Up Budgets</TypedButton>
                     </div>
                   </div>
-                </motion.div>
+                </MotionDiv>
               </TypedTabsContent>
             </Tabs>
           )}

@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useRef, useMemo } from "react"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell, LabelList, RectangleProps } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "../../components/ui/chart"
-import { motion } from "framer-motion"
+import { MotionDiv } from "../ui/dynamic-motion"
 import { useViewport } from "../../hooks/use-mobile"
 
 interface CategoryComparisonChartProps {
@@ -13,84 +13,87 @@ interface CategoryComparisonChartProps {
 export function CategoryComparisonChart({ data }: CategoryComparisonChartProps) {
   const { isMobile, isTablet } = useViewport()
   
-  // Show all categories (no limit)
-  const topCategories = data
-  const [animatedData, setAnimatedData] = useState<Array<{ category: string; amount: number }>>([])
-  const [hoverIndex, setHoverIndex] = useState<number | null>(null)
-
-  // Responsive chart configuration - adjust height based on number of categories
+  // Responsive chart configuration
   const chartConfig = useMemo(() => {
-    const categoryCount = topCategories.length
-    const baseHeight = isMobile ? 40 : 50 // Height per category
-    const minHeight = isMobile ? 200 : 250 // Minimum height
-    const calculatedHeight = Math.max(minHeight, categoryCount * baseHeight + 60) // +60 for margins
-    
     if (isMobile) {
       return {
-        height: calculatedHeight,
-        margin: { top: 10, right: 5, left: 60, bottom: 20 },
-        tickFontSize: 10,
-        yAxisWidth: 60,
-        showLabels: false,
+        height: 280,
+        margin: { top: 10, right: 5, left: -10, bottom: 50 },
+        fontSize: 9,
+        barSize: 25,
+        angle: -45,
       }
     } else if (isTablet) {
       return {
-        height: calculatedHeight,
-        margin: { top: 10, right: 8, left: 70, bottom: 20 },
-        tickFontSize: 11,
-        yAxisWidth: 70,
-        showLabels: true,
+        height: 320,
+        margin: { top: 15, right: 10, left: 0, bottom: 60 },
+        fontSize: 10,
+        barSize: 30,
+        angle: -30,
       }
     } else {
       return {
-        height: calculatedHeight,
-        margin: { top: 10, right: 10, left: 80, bottom: 20 },
-        tickFontSize: 12,
-        yAxisWidth: 80,
-        showLabels: true,
+        height: 350,
+        margin: { top: 20, right: 15, left: 10, bottom: 70 },
+        fontSize: 11,
+        barSize: 35,
+        angle: -20,
       }
     }
-  }, [isMobile, isTablet, topCategories.length, topCategories])
+  }, [isMobile, isTablet])
 
-  useEffect(() => {
-    // Start with zero values for animation
-    const initialData = topCategories.map((item) => ({
-      ...item,
-      amount: 0,
-    }))
+  // Generate colors for different categories
+  const getBarColor = (index: number): string => {
+    const colors = [
+      'rgba(245, 245, 240, 0.9)', // cream
+      'rgba(245, 245, 240, 0.7)', // cream lighter
+      'rgba(245, 245, 240, 0.5)', // cream even lighter
+      'rgba(245, 245, 240, 0.3)', // cream very light
+      'rgba(245, 245, 240, 0.8)', // cream medium
+      'rgba(245, 245, 240, 0.6)', // cream medium light
+    ]
+    return colors[index % colors.length]
+  }
 
-    setAnimatedData(initialData)
-
-    // Animate to actual values
-    const timer = setTimeout(() => {
-      setAnimatedData(topCategories)
-    }, 400)
-
-    return () => clearTimeout(timer)
-  }, [data])
-
-  const CustomCursor = (props: RectangleProps) => {
-    const { x, y, width, height } = props;
-
+  // Custom label component
+  const CustomizedLabel = (props: any) => {
+    const { x, y, width, value } = props
+    const radius = 10
+    
     return (
-      <rect
-        x={x || 0}
-        y={(y || 0) - 5}
-        width="100%"
-        height={(height || 0) + 10}
-        fill="#353535"
-        fillOpacity={0.9}
-      />
-    );
-  };
+      <g>
+        <text
+          x={x + width / 2}
+          y={y - radius}
+          fill="rgba(245, 245, 240, 0.9)"
+          textAnchor="middle"
+          fontSize={isMobile ? "8" : "9"}
+          dominantBaseline="middle"
+        >
+          ${Math.round(value)}
+        </text>
+      </g>
+    )
+  }
+
+  if (!data || data.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-64 text-cream/50">
+        <div className="text-center">
+          <div className="text-4xl mb-2">📊</div>
+          <p className="text-sm">No category data available</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.5, delay: 0.1 }}
+    <MotionDiv
       className="w-full"
       style={{ height: chartConfig.height }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
     >
       <ChartContainer
         config={{
@@ -103,74 +106,61 @@ export function CategoryComparisonChart({ data }: CategoryComparisonChartProps) 
         style={{ height: chartConfig.height }}
       >
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart 
-            data={animatedData} 
-            layout="vertical" 
+          <BarChart
+            data={data}
             margin={chartConfig.margin}
-            onMouseLeave={() => setHoverIndex(null)}
+            barCategoryGap="20%"
           >
-            <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="rgba(245, 245, 240, 0.1)" />
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(245, 245, 240, 0.1)" vertical={false} />
+            
             <XAxis
-              type="number"
-              axisLine={false}
-              tickLine={false}
-              tick={{ fill: "rgba(245, 245, 240, 0.6)", fontSize: chartConfig.tickFontSize }}
-              tickFormatter={(value) => isMobile ? `$${Math.round(value / 1000)}k` : `$${value}`}
-            />
-            <YAxis
-              type="category"
               dataKey="category"
               axisLine={false}
               tickLine={false}
-              tick={{ fill: "rgba(245, 245, 240, 0.6)", fontSize: chartConfig.tickFontSize }}
-              width={chartConfig.yAxisWidth}
-              tickFormatter={(value) => isMobile && value.length > 8 ? `${value.substring(0, 8)}...` : value}
+              tick={{
+                fill: "rgba(245, 245, 240, 0.6)",
+                fontSize: chartConfig.fontSize,
+                textAnchor: "end"
+              }}
+              angle={chartConfig.angle}
+              textAnchor="end"
+              height={70}
+              interval={0}
             />
-            <ChartTooltip 
-              content={<ChartTooltipContent />} 
-              cursor={<CustomCursor />}
-              formatter={(value: number) => [`$${value.toLocaleString()}`]}
+            
+            <YAxis
+              axisLine={false}
+              tickLine={false}
+              tick={{
+                fill: "rgba(245, 245, 240, 0.6)",
+                fontSize: chartConfig.fontSize
+              }}
+              tickFormatter={(value) => isMobile ? `$${Math.round(value/1000)}k` : `$${value.toLocaleString()}`}
+              width={isMobile ? 35 : 60}
+            />
+            
+            <ChartTooltip
+              content={<ChartTooltipContent />}
               labelFormatter={(value) => `Category: ${value}`}
+              formatter={(value: number) => [`$${value.toLocaleString()}`, 'Amount']}
             />
-            <Bar 
-              dataKey="amount" 
-              radius={[0, 4, 4, 0]} 
-              animationDuration={1500} 
-              animationEasing="ease-out"
+            
+            <Bar
+              dataKey="amount"
+              radius={[4, 4, 0, 0]}
+              maxBarSize={chartConfig.barSize}
             >
-              {animatedData.map((entry, index) => {
-                // Create a more visible opacity gradient that doesn't go below 0.3
-                const minOpacity = 0.3;
-                const maxOpacity = 1;
-                const opacityRange = maxOpacity - minOpacity;
-                const totalCategories = animatedData.length;
-                
-                // Calculate opacity to ensure all bars are visible
-                const opacity = totalCategories === 1 
-                  ? maxOpacity 
-                  : maxOpacity - (index / (totalCategories - 1)) * opacityRange;
-                
-                return (
-                  <Cell 
-                    key={`cell-${index}`} 
-                    fill={`rgba(245, 245, 240, ${Math.max(opacity, minOpacity)})`}
-                    onMouseEnter={() => setHoverIndex(index)}
-                  />
-                )
-              })}
-              {chartConfig.showLabels && (
-                <LabelList
-                  dataKey="amount"
-                  position="right"
-                  formatter={(value: React.ReactNode) => `$${Number(value).toFixed(0)}`}
-                  style={{ fill: "rgba(245, 245, 240, 0.7)", fontSize: 11 }}
+              <LabelList content={<CustomizedLabel />} />
+              {data.map((entry, index) => (
+                <Cell 
+                  key={`cell-${index}`} 
+                  fill={getBarColor(index)} 
                 />
-              )}
+              ))}
             </Bar>
           </BarChart>
         </ResponsiveContainer>
       </ChartContainer>
-    </motion.div>
+    </MotionDiv>
   )
 }
-

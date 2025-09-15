@@ -1,9 +1,9 @@
 "use client"
 
 import { useEffect, useState, useMemo } from "react"
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Area } from "recharts"
+import { AreaChart, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Area } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "../../components/ui/chart"
-import { motion } from "framer-motion"
+import { MotionDiv } from "../ui/dynamic-motion"
 import { useViewport } from "../../hooks/use-mobile"
 
 interface MonthlyTrendsChartProps {
@@ -62,7 +62,7 @@ export function MonthlyTrendsChart({ data }: MonthlyTrendsChartProps) {
   }, [data])
 
   return (
-    <motion.div 
+    <MotionDiv 
       initial={{ opacity: 0 }} 
       animate={{ opacity: 1 }} 
       transition={{ duration: 0.5 }} 
@@ -80,7 +80,7 @@ export function MonthlyTrendsChart({ data }: MonthlyTrendsChartProps) {
         style={{ height: chartConfig.height }}
       >
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={animatedData} margin={chartConfig.margin}>
+          <AreaChart data={animatedData} margin={chartConfig.margin}>
             <defs>
               <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="rgba(245, 245, 240, 0.8)" stopOpacity={0.8} />
@@ -127,20 +127,9 @@ export function MonthlyTrendsChart({ data }: MonthlyTrendsChartProps) {
               animationDuration={1500}
               animationEasing="ease-out"
             />
-            <Line
-              type="monotone"
-              dataKey="amount"
-              stroke="rgba(245, 245, 240, 0.8)"
-              strokeWidth={chartConfig.strokeWidth}
-              dot={{ fill: "rgba(245, 245, 240, 0.8)", r: chartConfig.dotRadius }}
-              activeDot={{ r: chartConfig.activeDotRadius, fill: "#F5F5F0" }}
-              animationDuration={1500}
-              animationEasing="ease-out"
-            />
-          </LineChart>
+          </AreaChart>
         </ResponsiveContainer>
       </ChartContainer>
-    </motion.div>
+    </MotionDiv>
   )
 }
-
