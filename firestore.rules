@@ -49,7 +49,7 @@ service cloud.firestore {
      * @returns {bool} True if all required fields are present
      */
     function hasRequiredFields(fields) {
-      return fields.hasAll(request.resource.data.keys());
+      return request.resource.data.keys().hasAll(fields);
     }
 
     /**
@@ -118,16 +118,30 @@ service cloud.firestore {
       allow read, write: if isAuthenticated() && request.auth.uid == resource.data.userId;
       allow create: if isAuthenticated() && 
         request.auth.uid == request.resource.data.userId &&
-        hasRequiredFields(['userId', 'amount', 'category', 'description']) &&
+        hasRequiredFields(['userId', 'name', 'amount', 'category']) &&
         isValidAmount(request.resource.data.amount) &&
+        request.resource.data.name is string &&
         request.resource.data.category is string &&
-        request.resource.data.description is string &&
+        // Description is optional, but if present must be a string
+        (!('description' in request.resource.data) || 
+         request.resource.data.description is string) &&
+        // Date field validation (can be string or timestamp)
+        (!('date' in request.resource.data) || 
+         request.resource.data.date is string ||
+         request.resource.data.date is timestamp) &&
+        // Optional receipt fields validation
+        (!('receiptImageUrl' in request.resource.data) || 
+         request.resource.data.receiptImageUrl is string) &&
         hasValidTimestamps();
       
       allow update: if isAuthenticated() && 
         request.auth.uid == resource.data.userId &&
         request.auth.uid == request.resource.data.userId &&
         isValidAmount(request.resource.data.amount) &&
+        request.resource.data.name is string &&
+        request.resource.data.category is string &&
+        (!('description' in request.resource.data) || 
+         request.resource.data.description is string) &&
         hasValidTimestamps();
     }
     
