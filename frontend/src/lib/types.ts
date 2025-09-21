@@ -26,11 +26,14 @@ export interface UserProfile {
 export interface Expense {
   id: string;
   userId: string;
+  name?: string;
   amount: number;
-  date: string;
+  date: string | number | Date | { toDate: () => Date };
   category: string;
-  description: string;
+  description?: string;
   tags?: string[];
+  receiptImageUrl?: string;
+  receiptData?: any;
   createdAt: string;
   updatedAt?: string;
   receipt?: string;
