@@ -53,6 +53,7 @@ require("./config/firebase");
 // Import middleware
 const rateLimiter_1 = require("./middleware/rateLimiter");
 const errorHandler_1 = require("./middleware/errorHandler");
+const auth_1 = require("./middleware/auth");
 // Create Express app
 const app = (0, express_1.default)();
 const port = process.env.PORT || '5001';
@@ -133,6 +134,14 @@ app.use((req, res) => {
 });
 // Global error handler
 app.use(errorHandler_1.errorHandler);
+// Validate configuration before starting server
+try {
+    (0, auth_1.validateAuthConfig)();
+}
+catch (error) {
+    logger_1.default.error('Configuration validation failed:', { error: String(error) });
+    process.exit(1);
+}
 // Start server
 app.listen(Number(port), () => {
     logger_1.default.info(`Server running on port ${port}`);

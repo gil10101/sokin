@@ -3,8 +3,29 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateLiabilitySchema = exports.createLiabilitySchema = exports.updateAssetSchema = exports.createAssetSchema = exports.updateUserSchema = exports.updateBudgetSchema = exports.createBudgetSchema = exports.updateExpenseSchema = exports.createExpenseSchema = void 0;
+exports.idParamsSchema = exports.updateLiabilitySchema = exports.createLiabilitySchema = exports.updateAssetSchema = exports.createAssetSchema = exports.registerFcmTokenSchema = exports.updateNotificationPreferencesSchema = exports.markNotificationReadParamsSchema = exports.updateUserSchema = exports.updateBudgetSchema = exports.createBudgetSchema = exports.updateExpenseSchema = exports.createExpenseSchema = void 0;
 const joi_1 = __importDefault(require("joi"));
+// Security-focused validation patterns
+const patterns = {
+    // Basic alphanumeric + limited safe symbols, no quotes/parentheses for XSS protection
+    safeText: /^[a-zA-Z0-9\s\-_.,!?]{1,200}$/,
+    // Currency amounts (positive numbers with up to 2 decimals)
+    currency: /^\d+(\.\d{1,2})?$/,
+    // Categories (alphanumeric with spaces, hyphens, underscores - strict length limit)
+    category: /^[a-zA-Z0-9\s\-_]{1,50}$/,
+    // Firebase document IDs (exactly 20 URL-safe base64-like characters)
+    firebaseId: /^[a-zA-Z0-9_-]{20}$/
+};
+// Common validation helpers
+const commonValidations = {
+    userId: joi_1.default.string().pattern(patterns.firebaseId).required(),
+    amount: joi_1.default.number().positive().max(999999.99).precision(2).required(),
+    category: joi_1.default.string().pattern(patterns.category).min(1).max(50).required(),
+    name: joi_1.default.string().pattern(patterns.safeText).min(1).max(100).required(),
+    description: joi_1.default.string().pattern(patterns.safeText).allow('').max(500),
+    date: joi_1.default.date().max('now').required(),
+    tags: joi_1.default.array().items(joi_1.default.string().pattern(patterns.category).max(30)).max(10)
+};
 // Expense schemas
 exports.createExpenseSchema = joi_1.default.object({
     name: joi_1.default.string().required().trim(),
@@ -64,6 +85,20 @@ exports.updateUserSchema = joi_1.default.object({
         notificationsEnabled: joi_1.default.boolean()
     })
 }).min(1);
+// Notification schemas
+exports.markNotificationReadParamsSchema = joi_1.default.object({
+    notificationId: joi_1.default.string().trim().min(8).max(128).required()
+});
+exports.updateNotificationPreferencesSchema = joi_1.default.object({
+    notificationsEnabled: joi_1.default.boolean().required(),
+    push: joi_1.default.boolean(),
+    email: joi_1.default.boolean(),
+    sms: joi_1.default.boolean()
+}).min(1);
+exports.registerFcmTokenSchema = joi_1.default.object({
+    token: joi_1.default.string().trim().min(20).max(4096).required(),
+    platform: joi_1.default.string().valid('web', 'ios', 'android').required()
+});
 // Asset schemas
 exports.createAssetSchema = joi_1.default.object({
     type: joi_1.default.string().required().valid(
@@ -205,3 +240,7 @@ exports.updateLiabilitySchema = joi_1.default.object({
         linkedBankAccount: joi_1.default.string().trim().max(50)
     }).allow(null)
 }).min(1);
+// ID validation schema for path parameters
+exports.idParamsSchema = joi_1.default.object({
+    id: joi_1.default.string().trim().min(8).max(128).required()
+});
