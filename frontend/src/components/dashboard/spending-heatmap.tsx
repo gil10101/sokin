@@ -47,8 +47,6 @@ interface Expense {
 export function SpendingHeatmap() {
   const { user } = useAuth()
   const { isMobile, isTablet } = useViewport()
-  const [data, setData] = useState<Record<string, number>>({})
-  const [loading, setLoading] = useState(true)
   const today = new Date()
   const startDate = startOfWeek(subWeeks(today, isMobile ? 7 : 11)) // Show fewer weeks on mobile
 
@@ -83,25 +81,21 @@ export function SpendingHeatmap() {
 
   const { data: expenses = [], isLoading: expensesLoading } = useExpensesData()
 
-  useEffect(() => {
-    if (!user) {
-      setData({})
-      setLoading(false)
-      return
+  // Process expenses data using useMemo to avoid infinite loops
+  const data = useMemo(() => {
+    if (!user || !expenses.length) {
+      return {}
     }
 
-    setLoading(true)
     try {
       const expensesByDate: Record<string, number> = {}
       ;(expenses as Expense[]).forEach((expense) => {
         const dateKey = format(safeParseDate(expense.date), "yyyy-MM-dd")
         expensesByDate[dateKey] = (expensesByDate[dateKey] || 0) + expense.amount
       })
-      setData(expensesByDate)
+      return expensesByDate
     } catch (error) {
-      setData({})
-    } finally {
-      setLoading(false)
+      return {}
     }
   }, [user, expenses])
 
@@ -139,7 +133,7 @@ export function SpendingHeatmap() {
   // Day labels
   const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
 
-  if (loading || expensesLoading) {
+  if (expensesLoading) {
     return (
       <div className="flex items-center justify-center" style={{ height: heatmapConfig.height }}>
         <div className="text-cream/60">Loading spending data...</div>

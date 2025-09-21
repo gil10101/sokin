@@ -5,7 +5,7 @@ interface MetricCardProps {
   value: string
   secondaryValue?: string
   change?: string
-  trend?: "up" | "down"
+  trend?: "up" | "down" | "neutral"
   period?: string
   icon: React.ReactElement
 }
@@ -25,8 +25,18 @@ export function MetricCard({ title, value, secondaryValue, change, trend, period
         {secondaryValue && <p className="text-sm text-cream/60">{secondaryValue}</p>}
         {change && (
           <div className="flex items-center">
-            <span className={`text-sm flex items-center ${trend === "up" ? "text-red-400" : "text-green-400"}`}>
-              {trend === "up" ? <ArrowUpRight className="h-3 w-3 mr-1" /> : <ArrowDownRight className="h-3 w-3 mr-1" />}
+            <span className={`text-sm flex items-center ${
+              trend === "up" ? "text-red-400" : 
+              trend === "down" ? "text-green-400" : 
+              "text-cream/60"
+            }`}>
+              {trend === "up" ? (
+                <ArrowUpRight className="h-3 w-3 mr-1" />
+              ) : trend === "down" ? (
+                <ArrowDownRight className="h-3 w-3 mr-1" />
+              ) : (
+                <div className="w-3 h-0.5 bg-cream/60 rounded mr-1"></div>
+              )}
               {change}
             </span>
             {period && <span className="text-xs text-cream/40 ml-1">{period}</span>}

@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useRef, useMemo } from "react"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell, LabelList, RectangleProps } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "../../components/ui/chart"
-import { MotionDiv } from "../ui/dynamic-motion"
+import { MotionDiv } from "../../components/ui/dynamic-motion"
 import { useViewport } from "../../hooks/use-mobile"
 
 interface CategoryComparisonChartProps {
@@ -142,7 +142,7 @@ export function CategoryComparisonChart({ data }: CategoryComparisonChartProps) 
             <ChartTooltip
               content={<ChartTooltipContent />}
               labelFormatter={(value) => `Category: ${value}`}
-              formatter={(value: number) => [`$${value.toLocaleString()}`, 'Amount']}
+              formatter={(value: number) => [`$${value.toLocaleString()}`]}
             />
             
             <Bar
