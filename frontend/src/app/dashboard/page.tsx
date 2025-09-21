@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { PlusCircle, CreditCard, ChevronRight, Calendar, Search, TrendingUp } from "../../lib/icons"
 import { DashboardSidebar } from "@/components/dashboard/sidebar"
 import dynamic from "next/dynamic"
@@ -44,6 +44,7 @@ import { Input } from "@/components/ui/input"
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter } from "next/navigation"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { useUpcomingBills } from "../../hooks/use-upcoming-bills"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../../lib/ui-components"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select"
 import { NotificationsDropdown } from "@/components/notifications/notifications-dropdown"
@@ -86,6 +87,91 @@ export default function DashboardPage() {
   const [budgets, setBudgets] = useState<Budget[]>([])
   const [netWorth, setNetWorth] = useState<NetWorthCalculation | null>(null)
   const [notifications, setNotifications] = useState<Notification[]>([])
+
+  // Get upcoming bills data
+  const { data: billsData } = useUpcomingBills()
+
+  // Helper function to safely parse expense dates
+  const parseExpenseDate = useCallback((dateValue: any): Date => {
+    if (!dateValue) return new Date()
+    
+    try {
+      // If it's already a Date object
+      if (dateValue instanceof Date) return dateValue
+      
+      // If it's a Firebase Timestamp
+      if (dateValue && typeof dateValue === 'object' && 'toDate' in dateValue) {
+        return dateValue.toDate()
+      }
+      
+      // If it's a string or number, parse it
+      const parsed = new Date(dateValue)
+      return isNaN(parsed.getTime()) ? new Date() : parsed
+    } catch {
+      return new Date()
+    }
+  }, [])
+
+  // Calculate real metrics from user expense data
+  const metrics = useMemo(() => {
+    if (!expenses.length) {
+      return {
+        totalExpenses: 0,
+        monthlyAverage: 0,
+        monthlyChange: 0,
+        averageChange: 0
+      }
+    }
+
+    // Calculate total expenses for current period
+    const now = new Date()
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+    const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0)
+
+    // Current month expenses
+    const currentMonthExpenses = expenses.filter(expense => {
+      const expenseDate = parseExpenseDate(expense.date)
+      return expenseDate >= startOfMonth
+    })
+
+    // Last month expenses 
+    const lastMonthExpenses = expenses.filter(expense => {
+      const expenseDate = parseExpenseDate(expense.date)
+      return expenseDate >= startOfLastMonth && expenseDate <= endOfLastMonth
+    })
+
+    // Last 6 months for average calculation
+    const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 6, 1)
+    const recentExpenses = expenses.filter(expense => {
+      const expenseDate = parseExpenseDate(expense.date)
+      return expenseDate >= sixMonthsAgo
+    })
+
+    const totalExpenses = currentMonthExpenses.reduce((sum, expense) => sum + expense.amount, 0)
+    const lastMonthTotal = lastMonthExpenses.reduce((sum, expense) => sum + expense.amount, 0)
+    const monthlyChange = lastMonthTotal > 0 ? ((totalExpenses - lastMonthTotal) / lastMonthTotal) * 100 : 0
+
+    // Calculate monthly average from recent expenses
+    const monthlyAverage = recentExpenses.length > 0 ? recentExpenses.reduce((sum, expense) => sum + expense.amount, 0) / 6 : 0
+    
+    // Previous 6 months for comparison
+    const twelveMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 12, 1)
+    const olderExpenses = expenses.filter(expense => {
+      const expenseDate = parseExpenseDate(expense.date)
+      return expenseDate >= twelveMonthsAgo && expenseDate < sixMonthsAgo
+    })
+    
+    const olderAverage = olderExpenses.length > 0 ? olderExpenses.reduce((sum, expense) => sum + expense.amount, 0) / 6 : 0
+    const averageChange = olderAverage > 0 ? ((monthlyAverage - olderAverage) / olderAverage) * 100 : 0
+
+    return {
+      totalExpenses,
+      monthlyAverage,
+      monthlyChange,
+      averageChange
+    }
+  }, [expenses, parseExpenseDate])
 
   // Fix hydration issues by only rendering after mount
   useEffect(() => {
@@ -339,7 +425,12 @@ export default function DashboardPage() {
                           </div>
                           <div className="flex justify-between text-xs text-cream/60">
                             <span>{result.category}</span>
-                            <span>{new Date(result.date).toLocaleDateString()}</span>
+                            <span>
+                              {(() => {
+                                const date = parseExpenseDate(result.date)
+                                return isNaN(date.getTime()) ? 'Invalid date' : date.toLocaleDateString()
+                              })()}
+                            </span>
                           </div>
                         </div>
                       ))}
@@ -361,14 +452,17 @@ export default function DashboardPage() {
             </div>
           </header>
 
-          {/* Row 1: 4 Equal Metric Cards */}
+          {/* Row 1: 4 Equal Metric Cards - Real User Data */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-6 lg:mb-8">
             <MotionContainer delay={0.1}>
               <MetricCard
                 title="Total Expenses"
-                value="$4,250.00"
-                change="+12.5%"
-                trend="up"
+                value={formatCurrency(metrics.totalExpenses)}
+                change={formatPercent(metrics.monthlyChange)}
+                trend={
+                  metrics.monthlyChange === 0 ? "neutral" :
+                  metrics.monthlyChange > 0 ? "up" : "down"
+                }
                 period="vs last month"
                 icon={<CreditCard className="h-5 w-5" />}
               />
@@ -376,10 +470,13 @@ export default function DashboardPage() {
             <MotionContainer delay={0.2}>
               <MetricCard
                 title="Monthly Average"
-                value="$1,840.00"
-                change="-3.2%"
-                trend="down"
-                period="vs last month"
+                value={formatCurrency(metrics.monthlyAverage)}
+                change={formatPercent(metrics.averageChange)}
+                trend={
+                  metrics.averageChange === 0 ? "neutral" :
+                  metrics.averageChange > 0 ? "up" : "down"
+                }
+                period="vs last 6 months"
                 icon={<Calendar className="h-5 w-5" />}
               />
             </MotionContainer>
@@ -389,7 +486,10 @@ export default function DashboardPage() {
                   title="Net Worth"
                   value={netWorth ? formatCurrency(netWorth.netWorth) : "$0.00"}
                   change={netWorth?.monthlyChangePercent ? formatPercent(netWorth.monthlyChangePercent) : "0.0%"}
-                  trend={netWorth?.monthlyChange ? (netWorth.monthlyChange >= 0 ? "up" : "down") : "up"}
+                  trend={
+                    !netWorth?.monthlyChange || netWorth.monthlyChange === 0 ? "neutral" :
+                    netWorth.monthlyChange > 0 ? "up" : "down"
+                  }
                   period="vs last month"
                   icon={<TrendingUp className="h-5 w-5" />}
                 />
@@ -398,8 +498,8 @@ export default function DashboardPage() {
             <MotionContainer delay={0.4}>
               <MetricCard
                 title="Upcoming Bills"
-                value="$1,250.00"
-                secondaryValue="3 bills due"
+                value={billsData ? formatCurrency(billsData.totalUpcoming) : "$0.00"}
+                secondaryValue={billsData ? `${billsData.upcomingBills.length} bills due` : "No bills"}
                 icon={<Calendar className="h-5 w-5" />}
               />
             </MotionContainer>
