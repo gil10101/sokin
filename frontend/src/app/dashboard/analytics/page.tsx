@@ -1,10 +1,10 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
-import { collection, query, where, getDocs, Timestamp } from "firebase/firestore"
-import { auth, db } from "../../../lib/firebase"
+import React, { useState } from "react"
+import { auth } from "../../../lib/firebase"
 import { useAuthState } from "react-firebase-hooks/auth"
-import { formatDate, dateCalc, safeParseDate } from "../../../lib/date-utils"
+import { useAnalyticsData } from "../../../hooks/use-analytics-data"
+import { useUpcomingBills } from "../../../hooks/use-upcoming-bills"
 import { MotionDiv, MotionMain, MotionHeader } from "../../../components/ui/dynamic-motion"
 import { DashboardSidebar } from "../../../components/dashboard/sidebar"
 // Lazy load heavy chart components for better performance
@@ -23,22 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 const TypedSelectTrigger = SelectTrigger
 const TypedSelectContent = SelectContent
 const TypedSelectItem = SelectItem
-import { useToast } from "../../../hooks/use-toast"
 import { LoadingSpinner } from "../../../components/ui/loading-spinner"
-import { Expense } from "../../../lib/types"
-
-// Types for analytics data
-interface MonthlyTrendData {
-  total: number
-  count: number
-  average: number
-}
-
-interface CategoryTotalData {
-  total: number
-  count: number
-  percentage: number
-}
 
 
 
@@ -46,128 +31,27 @@ interface CategoryTotalData {
 export default function AnalyticsPage() {
   const [collapsed, setCollapsed] = useState(false)
   const [user] = useAuthState(auth)
-  const { toast } = useToast()
-  const [loading, setLoading] = useState(true)
-  const [monthlyData, setMonthlyData] = useState<{ month: string; amount: number }[]>([])
-  const [categoryData, setCategoryData] = useState<{ category: string; amount: number }[]>([])
-  const [timeframe, setTimeframe] = useState("6months")
+  const [timeframe, setTimeframe] = useState<"3months" | "6months" | "12months">("6months")
+  
+  const { data: analyticsData, isLoading: loading, error } = useAnalyticsData({ timeframe })
+  const { data: billsData, isLoading: billsLoading } = useUpcomingBills()
+  
+  const monthlyData = analyticsData?.monthlyData ?? []
+  const categoryData = analyticsData?.categoryData ?? []
+  const summary = analyticsData?.summary ?? {
+    totalExpense: 0,
+    monthlyAverage: 0,
+    totalTransactions: 0,
+    highestCategory: 'N/A',
+    highestCategoryAmount: 0
+  }
 
-  useEffect(() => {
-    const fetchAnalyticsData = async () => {
-      if (!user) return
-
-      setLoading(true)
-      try {
-        // Calculate date range based on timeframe
-        const endDate = new Date()
-        let startDate: Date
-
-        switch (timeframe) {
-          case "3months":
-            startDate = dateCalc.subMonths(endDate, 3)
-            break
-          case "12months":
-            startDate = dateCalc.subMonths(endDate, 12)
-            break
-          case "6months":
-          default:
-            startDate = dateCalc.subMonths(endDate, 6)
-            break
-        }
-
-        // Convert to Firestore Timestamp objects for proper comparison
-        const startTimestamp = Timestamp.fromDate(startDate)
-        const endTimestamp = Timestamp.fromDate(endDate)
-
-        // Query expenses within date range
-        const expensesRef = collection(db, "expenses")
-        const q = query(
-          expensesRef,
-          where("userId", "==", user.uid),
-          where("date", ">=", startTimestamp),
-          where("date", "<=", endTimestamp),
-        )
-
-        const querySnapshot = await getDocs(q)
-        const expenses: Expense[] = querySnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as Expense[]
-
-
-
-        // Process data for monthly trends
-        const monthlyTrends: Record<string, number> = {}
-        const categoryTotals: Record<string, number> = {}
-
-        expenses.forEach((expense) => {
-          const date = safeParseDate(expense.date)
-          const monthYear = formatDate.monthYear(date)
-
-          // Aggregate monthly data
-          if (!monthlyTrends[monthYear]) {
-            monthlyTrends[monthYear] = 0
-          }
-          monthlyTrends[monthYear] += expense.amount
-
-          // Aggregate category data
-          if (!categoryTotals[expense.category]) {
-            categoryTotals[expense.category] = 0
-          }
-          categoryTotals[expense.category] += expense.amount
-        })
-
-        // Convert to array format for charts
-        const monthlyDataArray = Object.entries(monthlyTrends).map(([month, amount]) => ({
-          month,
-          amount,
-        }))
-
-        const categoryDataArray = Object.entries(categoryTotals).map(([category, amount]) => ({
-          category,
-          amount,
-        }))
-
-        // Sort monthly data chronologically by parsing the month string back to date
-        monthlyDataArray.sort((a, b) => {
-          try {
-            // Parse format like "Jan 2024" back to Date for comparison
-            const [monthStr, yearStr] = a.month.split(' ')
-            const [monthStrB, yearStrB] = b.month.split(' ')
-            const monthA = new Date(`${monthStr} 1, ${yearStr}`).getMonth()
-            const monthB = new Date(`${monthStrB} 1, ${yearStrB}`).getMonth()
-            const yearA = parseInt(yearStr)
-            const yearB = parseInt(yearStrB)
-            
-            if (yearA !== yearB) return yearA - yearB
-            return monthA - monthB
-          } catch (error) {
-            return 0
-          }
-        })
-
-        // Sort category data by amount (descending)
-        categoryDataArray.sort((a, b) => b.amount - a.amount)
-
-
-
-        setMonthlyData(monthlyDataArray)
-        setCategoryData(categoryDataArray)
-      } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : "There was an error loading your analytics data"
-
-        toast({
-          title: "Error loading analytics",
-          description: errorMessage,
-          variant: "destructive",
-        })
-      } finally {
-        setLoading(false)
-      }
+  // Handle errors from the analytics data hook
+  React.useEffect(() => {
+    if (error) {
+      console.error('Analytics data error:', error)
     }
-
-    fetchAnalyticsData()
-  }, [user, timeframe, toast])
+  }, [error])
 
   const container = {
     hidden: { opacity: 0 },
@@ -201,7 +85,7 @@ export default function AnalyticsPage() {
               <p className="text-cream/60 text-sm mt-1 font-outfit">Detailed insights into your spending patterns</p>
             </div>
             <div>
-              <Select value={timeframe} onValueChange={setTimeframe}>
+              <Select value={timeframe} onValueChange={(value) => setTimeframe(value as "3months" | "6months" | "12months")}>
                 <TypedSelectTrigger className="bg-cream/5 border-cream/10 text-cream focus:ring-cream/20 w-full md:w-48">
                   <SelectValue placeholder="Select timeframe" />
                 </TypedSelectTrigger>
@@ -219,6 +103,73 @@ export default function AnalyticsPage() {
               </Select>
             </div>
           </MotionHeader>
+
+          {/* Top Summary Cards - Clean design matching app aesthetic */}
+          <MotionDiv
+            className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+          >
+            {/* Total Spending Card */}
+            <MotionDiv
+              className="bg-cream/5 rounded-xl border border-cream/10 p-6 hover:border-cream/20 transition-colors duration-300"
+              whileHover={{ y: -2 }}
+              transition={{ type: "spring", stiffness: 300 }}
+            >
+              <div className="space-y-2">
+                <p className="text-cream/60 text-sm font-outfit">Total Spending</p>
+                <p className="text-3xl font-medium text-cream font-outfit">
+                  {loading ? "..." : `$${summary.totalExpense.toFixed(2)}`}
+                </p>
+                <p className="text-cream/50 text-xs">
+                  {loading ? "" : `${summary.totalTransactions} transactions`}
+                </p>
+              </div>
+            </MotionDiv>
+
+            {/* Monthly Average Card */}
+            <MotionDiv
+              className="bg-cream/5 rounded-xl border border-cream/10 p-6 hover:border-cream/20 transition-colors duration-300"
+              whileHover={{ y: -2 }}
+              transition={{ type: "spring", stiffness: 300 }}
+            >
+              <div className="space-y-2">
+                <p className="text-cream/60 text-sm font-outfit">Monthly Average</p>
+                <p className="text-3xl font-medium text-cream font-outfit">
+                  {loading ? "..." : `$${summary.monthlyAverage.toFixed(2)}`}
+                </p>
+                <p className="text-cream/50 text-xs">
+                  {loading ? "" : `${timeframe.replace('months', '')} month period`}
+                </p>
+              </div>
+            </MotionDiv>
+
+            {/* Upcoming Bills Card */}
+            <MotionDiv
+              className="bg-cream/5 rounded-xl border border-cream/10 p-6 hover:border-cream/20 transition-colors duration-300"
+              whileHover={{ y: -2 }}
+              transition={{ type: "spring", stiffness: 300 }}
+            >
+              <div className="space-y-2">
+                <p className="text-cream/60 text-sm font-outfit">Upcoming Bills</p>
+                <p className="text-3xl font-medium text-cream font-outfit">
+                  {billsLoading ? "..." : `$${(billsData?.totalUpcoming ?? 0).toFixed(2)}`}
+                </p>
+                <p className={`text-xs ${
+                  billsData?.overdueCount && billsData.overdueCount > 0 
+                    ? 'text-red-400' 
+                    : 'text-cream/50'
+                }`}>
+                  {billsLoading ? "" : (
+                    billsData?.overdueCount && billsData.overdueCount > 0 
+                      ? `${billsData.overdueCount} overdue`
+                      : `${billsData?.thisWeekCount ?? 0} due this week`
+                  )}
+                </p>
+              </div>
+            </MotionDiv>
+          </MotionDiv>
 
           {loading ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">

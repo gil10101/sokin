@@ -20,6 +20,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { useToast } from "../../../hooks/use-toast"
 import { MotionContainer } from "../../../components/ui/motion-container"
 import { ReceiptScanner } from "../../../components/dashboard/receipt-scanner"
+import { useQueryClient } from "@tanstack/react-query"
 
 // Import the ParsedReceiptData type from receipt-scanner
 interface ParsedReceiptData {
@@ -62,6 +63,7 @@ export default function AddExpensePage() {
   const { user } = useAuth()
   const router = useRouter()
   const { toast } = useToast()
+  const queryClient = useQueryClient()
 
   // Add the useNotifications hook to the component
   const { addNotification } = useNotifications()
@@ -155,19 +157,43 @@ export default function AddExpensePage() {
       return
     }
 
+    // Validate amount
+    const parsedAmount = Number.parseFloat(amount)
+    if (isNaN(parsedAmount) || parsedAmount <= 0) {
+      toast({
+        title: "Invalid amount",
+        description: "Please enter a valid amount greater than 0",
+        variant: "destructive",
+      })
+      return
+    }
+
     setLoading(true)
 
     try {
+      // Prepare receipt data for Firestore (only store serializable data)
+      const serializableReceiptData = receiptData ? {
+        merchant: receiptData.merchant || null,
+        amount: receiptData.amount || null,
+        date: receiptData.date || null,
+        items: receiptData.items || [],
+        confidence: receiptData.confidence || 0,
+        suggestedName: receiptData.suggestedName || null,
+        suggestedCategory: receiptData.suggestedCategory || null,
+        suggestedDescription: receiptData.suggestedDescription || null,
+        imageUrl: receiptData.imageUrl || null,
+      } : null
+
       // Add expense to Firestore
       await addDoc(collection(db, "expenses"), {
         userId: user.uid,
-        name,
-        amount: Number.parseFloat(amount),
-        description: description || null,
-        category,
+        name: name.trim(),
+        amount: parsedAmount,
+        description: description?.trim() || "",
+        category: category.trim(),
         date: date.toISOString(),
-        receiptImageUrl: receiptImageUrl || '',
-        receiptData: receiptData || null,
+        receiptImageUrl: receiptImageUrl?.trim() || "",
+        receiptData: serializableReceiptData,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       })
@@ -175,6 +201,11 @@ export default function AddExpensePage() {
       toast({
         title: "Expense added",
         description: "Your expense has been added successfully",
+      })
+
+      // Invalidate and refetch expenses data to update all components that use expense data
+      await queryClient.invalidateQueries({ 
+        queryKey: ['expenses'] 
       })
 
       // Add notification
@@ -197,7 +228,23 @@ export default function AddExpensePage() {
       // Redirect to expenses page
       router.push("/dashboard/expenses")
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "There was an error adding your expense"
+      console.error("Error adding expense:", error)
+      
+      let errorMessage = "There was an error adding your expense"
+      
+      if (error instanceof Error) {
+        errorMessage = error.message
+        
+        // Handle specific Firestore errors
+        if (error.message.includes("permission-denied")) {
+          errorMessage = "You don't have permission to add expenses. Please check your account status."
+        } else if (error.message.includes("invalid-argument")) {
+          errorMessage = "Invalid data provided. Please check your input and try again."
+        } else if (error.message.includes("unavailable")) {
+          errorMessage = "Service temporarily unavailable. Please try again."
+        }
+      }
+      
       toast({
         title: "Error adding expense",
         description: errorMessage,
@@ -255,10 +302,16 @@ export default function AddExpensePage() {
                     id="amount"
                     type="number"
                     value={amount}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAmount(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                      const value = e.target.value
+                      // Allow empty string or valid positive numbers with up to 2 decimal places
+                      if (value === "" || /^\d*\.?\d{0,2}$/.test(value)) {
+                        setAmount(value)
+                      }
+                    }}
                     placeholder="0.00"
                     step="0.01"
-                    min="0"
+                    min="0.00"
                     required
                     className="bg-cream/5 border-cream/10 text-cream placeholder:text-cream/40 focus-visible:ring-cream/20 pl-8"
                   />
