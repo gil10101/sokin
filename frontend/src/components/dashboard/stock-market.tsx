@@ -125,7 +125,11 @@ const PortfolioSummary: React.FC<{ portfolio: UserPortfolioStock[]; connected?: 
   )
 }
 
-export function StockMarket() {
+interface StockMarketProps {
+  compact?: boolean
+}
+
+export function StockMarket({ compact = false }: StockMarketProps) {
   const { user } = useAuth()
   const [marketIndices, setMarketIndices] = useState<MarketIndex[]>([])
   const [userPortfolio, setUserPortfolio] = useState<UserPortfolioStock[]>([])
@@ -290,6 +294,99 @@ export function StockMarket() {
           </div>
         </CardContent>
       </Card>
+    )
+  }
+
+  // For compact mode, show condensed market indices only
+  if (compact && userPortfolio.length === 0) {
+    return (
+      <div className="space-y-4">
+        <Card className="bg-dark border-cream/10">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base lg:text-lg font-outfit text-cream">Market Overview</CardTitle>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={handleRetry}
+                disabled={isRetrying}
+                className="text-cream/60 hover:text-cream/80 p-1"
+              >
+                <RefreshCw className={`h-3 w-3 ${isRetrying ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            {marketIndices.length > 0 ? (
+              <div className="space-y-3">
+                {marketIndices.slice(0, 3).map((index) => (
+                  <div key={index.symbol} className="flex items-center justify-between p-3 rounded-lg bg-cream/5 border border-cream/10">
+                    <div className="flex items-center space-x-3">
+                      {index.changePercent > 0 ? (
+                        <TrendingUp className="h-4 w-4 text-green-500 flex-shrink-0" />
+                      ) : index.changePercent < 0 ? (
+                        <TrendingDown className="h-4 w-4 text-red-500 flex-shrink-0" />
+                      ) : (
+                        <div className="h-4 w-4 flex items-center justify-center flex-shrink-0">
+                          <div className="w-3 h-0.5 bg-cream/60 rounded"></div>
+                        </div>
+                      )}
+                      <div>
+                        <p className="text-sm font-medium text-cream">{index.symbol}</p>
+                        <p className="text-xs text-cream/60 truncate max-w-[120px]">{index.name}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-cream">{formatPrice(index.price)}</p>
+                      <div className="flex items-center justify-end space-x-1">
+                        <span className={`text-xs font-medium ${
+                          index.change > 0 ? 'text-green-500' : 
+                          index.change < 0 ? 'text-red-500' : 
+                          'text-cream/60'
+                        }`}>
+                          {formatChange(index.change)}
+                        </span>
+                        <Badge 
+                          variant={
+                            index.changePercent > 0 ? "default" : 
+                            index.changePercent < 0 ? "destructive" : 
+                            "secondary"
+                          } 
+                          className="text-xs px-1 py-0 h-4"
+                        >
+                          {formatPercent(index.changePercent)}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-6 text-cream/60">
+                <Activity className="h-6 w-6 mx-auto mb-2 opacity-50" />
+                <p className="text-xs">No market data available</p>
+              </div>
+            )}
+
+            {/* Sign in prompt if not authenticated */}
+            {!user && (
+              <div className="mt-4 pt-4 border-t border-cream/10">
+                <div className="text-center">
+                  <p className="text-xs text-cream/60 mb-2">Track your portfolio</p>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="text-cream/80 hover:text-cream border-cream/20 hover:border-cream/40 text-xs px-3 py-1 h-7"
+                  >
+                    Sign In
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     )
   }
 
