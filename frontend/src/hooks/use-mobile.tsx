@@ -42,12 +42,24 @@ export function useViewport() {
       const isTablet = width >= MOBILE_BREAKPOINT && width < TABLET_BREAKPOINT
       const isDesktop = width >= TABLET_BREAKPOINT
 
-      setViewport({
-        width,
-        height,
-        isMobile,
-        isTablet,
-        isDesktop,
+      setViewport((prev) => {
+        // Only update if values have actually changed to prevent unnecessary re-renders
+        if (
+          prev.width !== width ||
+          prev.height !== height ||
+          prev.isMobile !== isMobile ||
+          prev.isTablet !== isTablet ||
+          prev.isDesktop !== isDesktop
+        ) {
+          return {
+            width,
+            height,
+            isMobile,
+            isTablet,
+            isDesktop,
+          }
+        }
+        return prev
       })
     }
 
