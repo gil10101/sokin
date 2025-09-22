@@ -13,6 +13,7 @@ import { OverviewAnalytics } from './overview-analytics'
 import { TrendsAnalytics } from './trends-analytics'
 import { SpendingHeatmapAnalytics } from './spending-heatmap-analytics'
 import { CategoryComparisonChart } from './category-comparison-chart'
+import { StackedBarChart } from './stacked-bar-chart'
 
 interface AdvancedAnalyticsProps {
   budgets: Budget[]
@@ -283,11 +284,12 @@ export function AdvancedAnalytics({ budgets, timeframe = "6months" }: AdvancedAn
 
       {/* Main Analytics Tabs */}
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4 bg-cream/5 h-12">
-          <TabsTrigger value="overview" className="text-cream/70 data-[state=active]:bg-cream/10 data-[state=active]:text-cream/90 h-10">Overview</TabsTrigger>
-          <TabsTrigger value="trends" className="text-cream/70 data-[state=active]:bg-cream/10 data-[state=active]:text-cream/90 h-10">Trends</TabsTrigger>
-          <TabsTrigger value="categories" className="text-cream/70 data-[state=active]:bg-cream/10 data-[state=active]:text-cream/90 h-10">Categories</TabsTrigger>
-          <TabsTrigger value="patterns" className="text-cream/70 data-[state=active]:bg-cream/10 data-[state=active]:text-cream/90 h-10">Patterns</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-5 bg-cream/5 h-12">
+          <TabsTrigger value="overview" className="text-cream/70 data-[state=active]:bg-cream/10 data-[state=active]:text-cream/90 h-10 text-xs lg:text-sm">Overview</TabsTrigger>
+          <TabsTrigger value="trends" className="text-cream/70 data-[state=active]:bg-cream/10 data-[state=active]:text-cream/90 h-10 text-xs lg:text-sm">Trends</TabsTrigger>
+          <TabsTrigger value="categories" className="text-cream/70 data-[state=active]:bg-cream/10 data-[state=active]:text-cream/90 h-10 text-xs lg:text-sm">Categories</TabsTrigger>
+          <TabsTrigger value="monthly" className="text-cream/70 data-[state=active]:bg-cream/10 data-[state=active]:text-cream/90 h-10 text-xs lg:text-sm">Monthly</TabsTrigger>
+          <TabsTrigger value="patterns" className="text-cream/70 data-[state=active]:bg-cream/10 data-[state=active]:text-cream/90 h-10 text-xs lg:text-sm">Patterns</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-8">
@@ -315,6 +317,25 @@ export function AdvancedAnalytics({ budgets, timeframe = "6months" }: AdvancedAn
               ) : (
                 <CategoryComparisonChart data={categoryComparisonData} />
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="monthly" className="space-y-6">
+          <Card className="bg-cream/5 border-cream/20">
+            <CardHeader className="pb-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-xl text-cream/90">Monthly Category Breakdown</CardTitle>
+                  <p className="text-sm text-cream/60">Monthly spending over the last 6 months by category</p>
+                </div>
+                <span className="text-xs bg-cream/10 text-cream/80 px-2 py-1 rounded-full">Last 6 Months</span>
+              </div>
+            </CardHeader>
+            <CardContent className="pb-6">
+              <div className="h-96">
+                <StackedBarChart timeframe={timeframe} />
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

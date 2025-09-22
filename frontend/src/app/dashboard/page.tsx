@@ -30,16 +30,13 @@ const MotionContainer = dynamic(() => import("../../components/ui/motion-contain
   ssr: false,
   loading: () => <div />
 })
-const StackedBarChart = dynamic(() => import("../../components/dashboard/stacked-bar-chart").then(mod => ({ default: mod.StackedBarChart })), {
-  ssr: false,
-  loading: () => <div className="h-64 bg-cream/5 rounded-lg animate-pulse flex items-center justify-center"><div className="text-cream/60">Loading chart...</div></div>
-})
 
 // Import lightweight components normally
 import { RecentTransactions } from "@/components/dashboard/recent-transactions"
 import { MetricCard } from "@/components/dashboard/metric-card"
 import { SavingsGoals } from "@/components/dashboard/savings-goals"
 import { BillReminders } from "@/components/dashboard/bill-reminders"
+import { ResponsiveLayoutContainer } from "@/components/dashboard/responsive-layout-container"
 import { Input } from "@/components/ui/input"
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter } from "next/navigation"
@@ -570,87 +567,74 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Row 3: 2 Containers - Stock Market (Left), Savings & Analytics (Right) */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 mb-6 lg:mb-8">
-            {/* Stock Market - Left Half */}
-            <MotionContainer className="bg-cream/5 rounded-xl p-4 lg:p-6 min-h-[400px]" delay={0.8}>  
-              <div className="flex items-center justify-between mb-4 lg:mb-6">
-                <h2 className="text-lg lg:text-xl font-medium font-outfit">Stock Market</h2>
-                <button
-                  onClick={() => router.push("/dashboard/stocks")}
-                  className="text-cream/60 text-sm hover:text-cream transition-colors flex items-center group"
-                >
-                  View All Stocks
-                  <ChevronRight className="h-4 w-4 ml-1 transform group-hover:translate-x-1 transition-transform duration-300" />
-                </button>
-              </div>
-              <StockMarket />
-            </MotionContainer>
-
-            {/* Combined Savings Goals & Analytics - Right Half */}
-            <div className="space-y-4 lg:space-y-6">
-              {/* Savings Goals */}
-              <MotionContainer className="bg-cream/5 rounded-xl p-4 lg:p-6 min-h-[180px]" delay={0.9}>
+          {/* Responsive Layout Container - Adapts based on portfolio state */}
+          <ResponsiveLayoutContainer
+            stockMarketSection={
+              <MotionContainer className="bg-cream/5 rounded-xl p-4 lg:p-6 min-h-[400px]" delay={0.8}>
                 <div className="flex items-center justify-between mb-4 lg:mb-6">
-                  <h2 className="text-lg lg:text-xl font-medium font-outfit">Savings Goals</h2>
+                  <h2 className="text-lg lg:text-xl font-medium font-outfit">Stock Market</h2>
                   <button
-                    onClick={() => router.push("/dashboard/goals")}
+                    onClick={() => router.push("/dashboard/stocks")}
                     className="text-cream/60 text-sm hover:text-cream transition-colors flex items-center group"
                   >
-                    Manage
+                    View All Stocks
                     <ChevronRight className="h-4 w-4 ml-1 transform group-hover:translate-x-1 transition-transform duration-300" />
                   </button>
                 </div>
-                <SavingsGoals />
+                <StockMarket compact={true} />
               </MotionContainer>
+            }
+            savingsAnalyticsSection={
+              <div className="space-y-4 lg:space-y-6">
+                {/* Savings Goals */}
+                <MotionContainer className="bg-cream/5 rounded-xl p-4 lg:p-6 min-h-[180px]" delay={0.9}>
+                  <div className="flex items-center justify-between mb-4 lg:mb-6">
+                    <h2 className="text-lg lg:text-xl font-medium font-outfit">Savings Goals</h2>
+                    <button
+                      onClick={() => router.push("/dashboard/goals")}
+                      className="text-cream/60 text-sm hover:text-cream transition-colors flex items-center group"
+                    >
+                      Manage
+                      <ChevronRight className="h-4 w-4 ml-1 transform group-hover:translate-x-1 transition-transform duration-300" />
+                    </button>
+                  </div>
+                  <SavingsGoals />
+                </MotionContainer>
 
-              {/* Advanced Analytics */}
-              <MotionContainer className="bg-cream/5 rounded-xl p-4 lg:p-6 min-h-[180px]" delay={1.0}>
+                {/* Advanced Analytics with integrated Monthly Category Breakdown */}
+                <MotionContainer className="bg-cream/5 rounded-xl p-4 lg:p-6 min-h-[180px]" delay={1.0}>
+                  <div className="flex items-center justify-between mb-4 lg:mb-6">
+                    <h2 className="text-lg lg:text-xl font-medium font-outfit">Analytics Overview</h2>
+                    <button
+                      onClick={() => router.push("/dashboard/analytics")}
+                      className="text-cream/60 text-sm hover:text-cream transition-colors flex items-center group"
+                    >
+                      View Details
+                      <ChevronRight className="h-4 w-4 ml-1 transform group-hover:translate-x-1 transition-transform duration-300" />
+                    </button>
+                  </div>
+                  <AdvancedAnalytics budgets={budgets} timeframe={timeframe} />
+                </MotionContainer>
+              </div>
+            }
+            recentTransactionsSection={
+              <MotionContainer className="bg-cream/5 rounded-xl p-4 lg:p-6 min-h-[350px] flex flex-col" delay={1.1}>
                 <div className="flex items-center justify-between mb-4 lg:mb-6">
-                  <h2 className="text-lg lg:text-xl font-medium font-outfit">Analytics Overview</h2>
+                  <h2 className="text-lg lg:text-xl font-medium font-outfit">Recent Transactions</h2>
                   <button
-                    onClick={() => router.push("/dashboard/analytics")}
+                    onClick={() => router.push("/dashboard/expenses")}
                     className="text-cream/60 text-sm hover:text-cream transition-colors flex items-center group"
                   >
-                    View Details
+                    View All
                     <ChevronRight className="h-4 w-4 ml-1 transform group-hover:translate-x-1 transition-transform duration-300" />
                   </button>
                 </div>
-                <AdvancedAnalytics budgets={budgets} timeframe={timeframe} />
+                <div className="flex-1 min-h-0">
+                  <RecentTransactions />
+                </div>
               </MotionContainer>
-            </div>
-          </div>
-
-          {/* Bottom Row: Recent Transactions and Monthly Category Breakdown */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 mb-6 lg:mb-8">
-            {/* Recent Transactions - Left */}
-            <MotionContainer className="bg-cream/5 rounded-xl p-4 lg:p-6 min-h-[350px] flex flex-col" delay={1.1}>
-              <div className="flex items-center justify-between mb-4 lg:mb-6">
-                <h2 className="text-lg lg:text-xl font-medium font-outfit">Recent Transactions</h2>
-                <button
-                  onClick={() => router.push("/dashboard/expenses")}
-                  className="text-cream/60 text-sm hover:text-cream transition-colors flex items-center group"
-                >
-                  View All
-                  <ChevronRight className="h-4 w-4 ml-1 transform group-hover:translate-x-1 transition-transform duration-300" />
-                </button>
-              </div>
-              <div className="flex-1 min-h-0">
-                <RecentTransactions />
-              </div>
-            </MotionContainer>
-
-            {/* Monthly Category Breakdown - Right */}
-            <MotionContainer className="bg-cream/5 rounded-xl p-4 lg:p-6 min-h-[350px]" delay={1.2}>
-              <div className="flex items-center justify-between mb-4 lg:mb-6">
-                <h2 className="text-lg lg:text-xl font-medium font-outfit">Monthly Category Breakdown</h2>
-                <span className="text-xs bg-cream/10 text-cream/80 px-2 py-1 rounded-full">Last 6 Months</span>
-              </div>
-              <div className="flex-1 min-h-0">
-                <StackedBarChart timeframe={timeframe} />
-              </div>
-            </MotionContainer>
-          </div>
+            }
+          />
 
 
 
