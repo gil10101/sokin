@@ -450,52 +450,54 @@ export default function BudgetsPage() {
 
       <main className="flex-1 overflow-auto p-6 md:p-8 lg:p-10">
         <div className="max-w-7xl mx-auto">
-          <PageHeader
-            title="Budgets"
-            description="Manage your spending limits and financial goals"
-            action={
-              <Button
-                onClick={() => {
-                  resetForm()
-                  setOpenDialog(true)
-                }}
-                className="bg-cream text-dark hover:bg-cream/90 font-medium"
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Add Budget
-              </Button>
-            }
-          />
+          <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:items-center sm:justify-between mb-8">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold font-outfit">Budgets</h1>
+              <p className="text-cream/60 mt-1">Manage your spending limits and financial goals</p>
+            </div>
+            <Button
+              onClick={() => {
+                resetForm()
+                setOpenDialog(true)
+              }}
+              className="bg-cream text-dark hover:bg-cream/90 font-medium w-full sm:w-auto"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Add Budget
+            </Button>
+          </div>
 
-          <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-6 mb-8">
+          <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-4 sm:p-6 mb-8">
             <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="bg-cream/5 text-cream mb-6">
-                <TabsTrigger value="all" className="data-[state=active]:bg-cream/10">
-                  All Budgets
-                </TabsTrigger>
-                <TabsTrigger value="monthly" className="data-[state=active]:bg-cream/10">
-                  Monthly
-                </TabsTrigger>
-                <TabsTrigger value="yearly" className="data-[state=active]:bg-cream/10">
-                  Yearly
-                </TabsTrigger>
-                <TabsTrigger value="custom" className="data-[state=active]:bg-cream/10">
-                  Custom
-                </TabsTrigger>
+              <TabsList className="bg-cream/5 text-cream mb-6 h-auto p-1 w-full justify-stretch">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 w-full">
+                  <TabsTrigger value="all" className="data-[state=active]:bg-cream/10 text-xs sm:text-sm px-3 py-2 h-auto flex-1 justify-center">
+                    All Budgets
+                  </TabsTrigger>
+                  <TabsTrigger value="monthly" className="data-[state=active]:bg-cream/10 text-xs sm:text-sm px-3 py-2 h-auto flex-1 justify-center">
+                    Monthly
+                  </TabsTrigger>
+                  <TabsTrigger value="yearly" className="data-[state=active]:bg-cream/10 text-xs sm:text-sm px-3 py-2 h-auto flex-1 justify-center">
+                    Yearly
+                  </TabsTrigger>
+                  <TabsTrigger value="custom" className="data-[state=active]:bg-cream/10 text-xs sm:text-sm px-3 py-2 h-auto flex-1 justify-center">
+                    Custom
+                  </TabsTrigger>
+                </div>
               </TabsList>
 
               <TabsContent value={activeTab} className="mt-0">
                 {loading ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                     {[1, 2, 3].map((i) => (
-                      <div key={i} className="h-[200px] bg-cream/10 rounded-lg animate-pulse" />
+                      <div key={i} className="h-[180px] sm:h-[200px] bg-cream/10 rounded-lg animate-pulse" />
                     ))}
                   </div>
                 ) : filteredBudgets.length === 0 ? (
-                  <div className="text-center py-12">
-                    <AlertCircle className="mx-auto h-12 w-12 text-cream/40 mb-4" />
-                    <h3 className="text-lg font-medium mb-2">No budgets found</h3>
-                    <p className="text-cream/60 mb-6">
+                  <div className="text-center py-8 sm:py-12">
+                    <AlertCircle className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-cream/40 mb-4" />
+                    <h3 className="text-base sm:text-lg font-medium mb-2">No budgets found</h3>
+                    <p className="text-cream/60 mb-4 sm:mb-6 text-sm sm:text-base px-4">
                       {activeTab === "all"
                         ? "You haven't created any budgets yet."
                         : `You don't have any ${activeTab} budgets.`}
@@ -509,13 +511,14 @@ export default function BudgetsPage() {
                         setOpenDialog(true)
                       }}
                       variant="outline"
+                      className="w-full sm:w-auto"
                     >
                       <Plus className="mr-2 h-4 w-4" />
                       Create a Budget
                     </Button>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                     {filteredBudgets.map((budget) => (
                       <BudgetCard
                         key={budget.id}
@@ -531,8 +534,8 @@ export default function BudgetsPage() {
             </Tabs>
           </MotionContainer>
 
-          <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-6">
-            <h2 className="text-xl font-medium mb-6">Budget Progress</h2>
+          <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-4 sm:p-6">
+            <h2 className="text-lg sm:text-xl font-medium mb-4 sm:mb-6">Budget Progress</h2>
             <BudgetProgressCard refreshTrigger={budgetProgressRefresh} />
           </MotionContainer>
         </div>
@@ -540,17 +543,17 @@ export default function BudgetsPage() {
 
       {/* Add/Edit Budget Dialog */}
       <Dialog open={openDialog} onOpenChange={setOpenDialog}>
-        <DialogContent className="bg-dark border-cream/10 text-cream sm:max-w-[500px]">
+        <DialogContent className="bg-dark border-cream/10 text-cream w-[95vw] max-w-[500px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingBudget ? "Edit Budget" : "Add New Budget"}</DialogTitle>
-            <DialogDescription className="text-cream/60">
+            <DialogTitle className="text-lg sm:text-xl">{editingBudget ? "Edit Budget" : "Add New Budget"}</DialogTitle>
+            <DialogDescription className="text-cream/60 text-sm sm:text-base">
               {editingBudget
                 ? "Update your budget details below."
                 : "Create a new budget to help manage your spending."}
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleSubmit} className="space-y-6 mt-4">
+          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6 mt-4">
             <div className="space-y-2">
               <label htmlFor="amount" className="text-sm font-outfit block">
                 Budget Amount *
@@ -612,7 +615,7 @@ export default function BudgetsPage() {
               </Select>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-outfit block">Start Date *</label>
                 <Popover>
@@ -625,7 +628,7 @@ export default function BudgetsPage() {
                       {formData.startDate ? format(formData.startDate, "PPP") : <span>Pick a date</span>}
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0 bg-dark border-cream/10">
+                  <PopoverContent className="w-auto p-0 bg-dark border-cream/10" align="start">
                     <Calendar
                       mode="single"
                       selected={formData.startDate}
@@ -650,7 +653,7 @@ export default function BudgetsPage() {
                         {formData.endDate ? format(formData.endDate, "PPP") : <span>Pick a date</span>}
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 bg-dark border-cream/10">
+                    <PopoverContent className="w-auto p-0 bg-dark border-cream/10" align="start">
                       <Calendar
                         mode="single"
                         selected={formData.endDate || undefined}
@@ -683,7 +686,7 @@ export default function BudgetsPage() {
               />
             </div>
 
-            <DialogFooter>
+            <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-0">
               <Button
                 type="button"
                 variant="outline"
@@ -691,11 +694,11 @@ export default function BudgetsPage() {
                   resetForm()
                   setOpenDialog(false)
                 }}
-                className="bg-transparent border-cream/10 text-cream hover:bg-cream/10 hover:text-cream"
+                className="bg-transparent border-cream/10 text-cream hover:bg-cream/10 hover:text-cream w-full sm:w-auto"
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={loading} className="bg-cream text-dark hover:bg-cream/90 font-medium">
+              <Button type="submit" disabled={loading} className="bg-cream text-dark hover:bg-cream/90 font-medium w-full sm:w-auto">
                 {loading
                   ? editingBudget
                     ? "Updating..."
@@ -804,24 +807,24 @@ function BudgetCard({ budget, onEdit, onDelete, calculateProgress }: BudgetCardP
 
   return (
     <div
-      className="bg-cream/5 rounded-xl border border-cream/10 p-6 hover:border-cream/20 transition-all duration-300"
+      className="bg-cream/5 rounded-xl border border-cream/10 p-4 sm:p-6 hover:border-cream/20 transition-all duration-300"
     >
-      <div className="flex justify-between items-start mb-4">
-        <div>
-          <h3 className="text-lg font-medium font-outfit">{budget.category}</h3>
-          <p className="text-cream/60 text-sm">
+      <div className="flex flex-col space-y-3 sm:space-y-0 sm:flex-row sm:justify-between sm:items-start mb-4">
+        <div className="flex-1 min-w-0">
+          <h3 className="text-base sm:text-lg font-medium font-outfit truncate">{budget.category}</h3>
+          <p className="text-cream/60 text-xs sm:text-sm mt-1">
             {periodDisplay} • {formatDate(startDate)}
             {isValidEndDate ? ` - ${formatDate(endDate)}` : ""}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 self-start sm:self-auto">
           <Button
             variant="outline"
             size="icon"
             onClick={onEdit}
             className="h-8 w-8 bg-transparent border-cream/10 text-cream hover:bg-cream/10 hover:text-cream"
           >
-            <Pencil className="h-4 w-4" />
+            <Pencil className="h-3 w-3 sm:h-4 sm:w-4" />
           </Button>
           <Button
             variant="outline"
@@ -829,21 +832,21 @@ function BudgetCard({ budget, onEdit, onDelete, calculateProgress }: BudgetCardP
             onClick={onDelete}
             className="h-8 w-8 bg-transparent border-cream/10 text-cream hover:bg-cream/10 hover:text-cream"
           >
-            <Trash2 className="h-4 w-4" />
+            <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
           </Button>
         </div>
       </div>
 
-      <div className="space-y-4">
-        <div className="flex justify-between items-baseline">
-          <div className="text-2xl font-medium">${budget.amount.toFixed(2)}</div>
-          <div className={isOverBudget ? "text-red-400" : "text-cream/60"}>
+      <div className="space-y-3 sm:space-y-4">
+        <div className="flex flex-col space-y-2 sm:space-y-0 sm:flex-row sm:justify-between sm:items-baseline">
+          <div className="text-xl sm:text-2xl font-medium">${budget.amount.toFixed(2)}</div>
+          <div className={`text-sm sm:text-base ${isOverBudget ? "text-red-400" : "text-cream/60"}`}>
             ${spent.toFixed(2)} spent
           </div>
         </div>
 
-        <div className="space-y-1">
-          <div className="flex justify-between text-sm">
+        <div className="space-y-2">
+          <div className="flex justify-between text-xs sm:text-sm">
             <span className="text-cream/60">Progress</span>
             <span className={isOverBudget ? "text-red-400" : "text-cream/60"}>{progress}%</span>
           </div>
@@ -863,8 +866,8 @@ function BudgetCard({ budget, onEdit, onDelete, calculateProgress }: BudgetCardP
         </div>
 
         {budget.notes && (
-          <div className="text-sm text-cream/60 mt-4">
-            <p>{budget.notes}</p>
+          <div className="text-xs sm:text-sm text-cream/60 mt-3 sm:mt-4">
+            <p className="line-clamp-3">{budget.notes}</p>
           </div>
         )}
       </div>
