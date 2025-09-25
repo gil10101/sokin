@@ -681,39 +681,39 @@ export default function SubscriptionsPage() {
       <DashboardSidebar collapsed={collapsed} setCollapsed={setCollapsed} />
       <main className="flex-1 overflow-auto p-6 md:p-8 lg:p-10">
         <div className="max-w-7xl mx-auto">
-          <PageHeader
-            title="Subscriptions"
-            description="Manage your recurring subscriptions and services"
-            action={
-              <Button onClick={() => setOpenDialog(true)} className="bg-cream text-dark hover:bg-cream/90 font-medium">
-                <Plus className="mr-2 h-4 w-4" />
-                Add Subscription
-              </Button>
-            }
-          />
+          <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:items-center sm:justify-between mb-8">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold font-outfit">Subscriptions</h1>
+              <p className="text-cream/60 mt-1">Manage your recurring subscriptions and services</p>
+            </div>
+            <Button onClick={() => setOpenDialog(true)} className="bg-cream text-dark hover:bg-cream/90 font-medium w-full sm:w-auto">
+              <Plus className="mr-2 h-4 w-4" />
+              Add Subscription
+            </Button>
+          </div>
 
-          <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-6 mb-8">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-              <div className="flex flex-col gap-2">
+          <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-4 sm:p-6 mb-8">
+            <div className="flex flex-col gap-4 sm:gap-6 mb-6">
+              <div className="flex flex-col gap-3">
                 <h3 className="text-lg font-medium">Overview</h3>
-                <div className="flex">
-                  <div className="flex flex-col items-left text-left w-28 pr-6 border-r border-cream/10">
-                    <p className="text-sm text-cream/60">Monthly Cost</p>
-                    <p className="text-xl font-medium mt-1">${monthlyTotal.toFixed(2)}</p>
+                <div className="grid grid-cols-3 gap-4 sm:flex sm:gap-0">
+                  <div className="flex flex-col items-center sm:items-start text-center sm:text-left sm:w-32 sm:pr-6 sm:border-r sm:border-cream/10">
+                    <p className="text-xs sm:text-sm text-cream/60">Monthly Cost</p>
+                    <p className="text-lg sm:text-xl font-medium mt-1">${monthlyTotal.toFixed(2)}</p>
                   </div>
-                  <div className="flex flex-col items-center text-left w-28 border-r border-cream/10">
-                    <p className="text-sm text-cream/60">Annual Cost</p>
-                    <p className="text-xl font-medium mt-1">${annualTotal.toFixed(2)}</p>
+                  <div className="flex flex-col items-center sm:items-start text-center sm:text-left sm:w-32 sm:border-r sm:border-cream/10">
+                    <p className="text-xs sm:text-sm text-cream/60">Annual Cost</p>
+                    <p className="text-lg sm:text-xl font-medium mt-1">${annualTotal.toFixed(2)}</p>
                   </div>
-                  <div className="flex flex-col items-left text-left w-28 pl-6">
-                    <p className="text-sm text-cream/60">Subscriptions</p>
-                    <p className="text-xl font-medium mt-1">{filteredSubscriptions.length}</p>
+                  <div className="flex flex-col items-center sm:items-start text-center sm:text-left sm:w-32 sm:pl-6">
+                    <p className="text-xs sm:text-sm text-cream/60">Subscriptions</p>
+                    <p className="text-lg sm:text-xl font-medium mt-1">{filteredSubscriptions.length}</p>
                   </div>
                 </div>
               </div>
 
-              <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
-                <div className="relative flex-1 md:w-64">
+              <div className="flex flex-col gap-3 w-full">
+                <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-cream/40" />
                   <Input
                     placeholder="Search subscriptions..."
@@ -723,69 +723,71 @@ export default function SubscriptionsPage() {
                   />
                 </div>
 
-                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                  <SelectTrigger className="w-full md:w-[180px] bg-cream/5 border-cream/10 text-cream focus:ring-cream/20">
-                    <SelectValue placeholder="All Categories" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-dark border-cream/10">
-                    <SelectItem value="all" className="text-cream hover:bg-cream/10">
-                      All Categories
-                    </SelectItem>
-                    {uniqueCategories.map((category) => (
-                      <SelectItem key={category} value={category} className="text-cream hover:bg-cream/10">
-                        {category}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setSortDirection(sortDirection === "asc" ? "desc" : "asc")}
-                    className="h-10 w-10 bg-cream/5 border-cream/10 text-cream hover:bg-cream/10"
-                  >
-                    {sortDirection === "asc" ? <SortAsc className="h-4 w-4" /> : <SortDesc className="h-4 w-4" />}
-                  </Button>
-
-                  <Select value={sortBy} onValueChange={setSortBy}>
-                    <SelectTrigger className="w-full md:w-[180px] bg-cream/5 border-cream/10 text-cream focus:ring-cream/20">
-                      <SelectValue placeholder="Sort by" />
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-2">
+                  <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                    <SelectTrigger className="w-full sm:w-[140px] bg-cream/5 border-cream/10 text-cream focus:ring-cream/20">
+                      <SelectValue placeholder="All Categories" />
                     </SelectTrigger>
                     <SelectContent className="bg-dark border-cream/10">
-                      <SelectItem value="name" className="text-cream hover:bg-cream/10">
-                        Name
+                      <SelectItem value="all" className="text-cream hover:bg-cream/10">
+                        All Categories
                       </SelectItem>
-                      <SelectItem value="amount" className="text-cream hover:bg-cream/10">
-                        Amount
-                      </SelectItem>
-                      <SelectItem value="nextPaymentDate" className="text-cream hover:bg-cream/10">
-                        Next Payment
-                      </SelectItem>
-                      <SelectItem value="billingCycle" className="text-cream hover:bg-cream/10">
-                        Billing Cycle
-                      </SelectItem>
-                      <SelectItem value="category" className="text-cream hover:bg-cream/10">
-                        Category
-                      </SelectItem>
+                      {uniqueCategories.map((category) => (
+                        <SelectItem key={category} value={category} className="text-cream hover:bg-cream/10">
+                          {category}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
+
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setSortDirection(sortDirection === "asc" ? "desc" : "asc")}
+                      className="h-10 w-10 bg-cream/5 border-cream/10 text-cream hover:bg-cream/10"
+                    >
+                      {sortDirection === "asc" ? <SortAsc className="h-4 w-4" /> : <SortDesc className="h-4 w-4" />}
+                    </Button>
+
+                    <Select value={sortBy} onValueChange={setSortBy}>
+                      <SelectTrigger className="flex-1 sm:w-[140px] bg-cream/5 border-cream/10 text-cream focus:ring-cream/20">
+                        <SelectValue placeholder="Sort by" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-dark border-cream/10">
+                        <SelectItem value="name" className="text-cream hover:bg-cream/10">
+                          Name
+                        </SelectItem>
+                        <SelectItem value="amount" className="text-cream hover:bg-cream/10">
+                          Amount
+                        </SelectItem>
+                        <SelectItem value="nextPaymentDate" className="text-cream hover:bg-cream/10">
+                          Next Payment
+                        </SelectItem>
+                        <SelectItem value="billingCycle" className="text-cream hover:bg-cream/10">
+                          Billing Cycle
+                        </SelectItem>
+                        <SelectItem value="category" className="text-cream hover:bg-cream/10">
+                          Category
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
             </div>
 
             {loading ? (
-              <div className="flex items-center justify-center py-12">
+              <div className="flex items-center justify-center py-8 sm:py-12">
                 <LoadingSpinner size="lg" />
               </div>
             ) : filteredSubscriptions.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-cream/60 mb-4">No subscriptions found</p>
+              <div className="text-center py-8 sm:py-12">
+                <p className="text-cream/60 mb-4 text-sm sm:text-base">No subscriptions found</p>
                 <Button
                   onClick={() => setOpenDialog(true)}
                   variant="outline"
-                  className="bg-transparent border-cream/10 text-cream hover:bg-cream/10"
+                  className="bg-transparent border-cream/10 text-cream hover:bg-cream/10 w-full sm:w-auto"
                 >
                   <Plus className="mr-2 h-4 w-4" />
                   Add Your First Subscription
@@ -809,9 +811,10 @@ export default function SubscriptionsPage() {
                     className="border border-cream/10 rounded-lg overflow-hidden"
                   >
                     <div className="bg-cream/5 hover:bg-cream/10 transition-colors p-4">
-                      <div className="flex items-center justify-between md:grid md:grid-cols-12 md:gap-4">
-                        <div className="flex items-center gap-4 col-span-3">
-                          <div className="h-10 w-10 rounded-md bg-cream/10 flex items-center justify-center overflow-hidden">
+                      {/* Mobile and tablet layout */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-md bg-cream/10 flex items-center justify-center overflow-hidden flex-shrink-0">
                             {subscription.logo ? (
                               <img
                                 src={subscription.logo || "/placeholder.svg"}
@@ -819,95 +822,81 @@ export default function SubscriptionsPage() {
                                 className="h-full w-full object-cover"
                               />
                             ) : (
-                              <span className="text-lg font-medium">{subscription.name.charAt(0)}</span>
+                              <span className="text-sm sm:text-lg font-medium">{subscription.name.charAt(0)}</span>
                             )}
                           </div>
-                          <div>
-                            <h3 className="font-medium">{subscription.name}</h3>
-                            <p className="text-sm text-cream/60">{subscription.category}</p>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0 flex-1">
+                                <h3 className="font-medium text-sm sm:text-base truncate">{subscription.name}</h3>
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2 text-xs sm:text-sm text-cream/60">
+                                  <span>{subscription.category}</span>
+                                  <span className="hidden sm:inline">•</span>
+                                  <span className="sm:hidden">
+                                    {formatBillingCycle(
+                                      subscription.billingCycle,
+                                      subscription.customInterval,
+                                      subscription.customIntervalUnit,
+                                    )}
+                                  </span>
+                                  <span className="hidden sm:inline">
+                                    {formatBillingCycle(
+                                      subscription.billingCycle,
+                                      subscription.customInterval,
+                                      subscription.customIntervalUnit,
+                                    )}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-cream/60 sm:hidden mt-1">
+                                  Next: {format(safeParseDate(subscription.nextPaymentDate), "MMM d, yyyy")}
+                                </p>
+                              </div>
+                            </div>
                           </div>
-                        </div>
-
-                        <div className="hidden md:flex justify-center items-center col-span-2 border-l border-cream/10 h-full">
-                          <span>
-                            {formatBillingCycle(
-                              subscription.billingCycle,
-                              subscription.customInterval,
-                              subscription.customIntervalUnit,
-                            )}
-                          </span>
-                        </div>
-                        
-                        <div className="hidden md:flex justify-center items-center col-span-3 border-l border-cream/10 h-full">
-                          <span>{format(safeParseDate(subscription.nextPaymentDate), "MMM d, yyyy")}</span>
-                        </div>
-                        
-                        <div className="hidden md:flex justify-center items-center col-span-2 border-l border-cream/10 h-full">
-                          <span>{subscription.paymentMethod}</span>
-                        </div>
-                        
-                        <div className="hidden md:flex justify-center items-center col-span-2 border-l border-cream/10 h-full">
-                          <div className="flex items-center">
-                            <span className="font-medium">${subscription.amount.toFixed(2)}</span>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <div className="text-right">
+                              <p className="font-medium text-sm sm:text-base">${subscription.amount.toFixed(2)}</p>
+                              <p className="text-xs text-cream/60 hidden sm:block">
+                                Next: {format(safeParseDate(subscription.nextPaymentDate), "MMM d")}
+                              </p>
+                            </div>
                             <CollapsibleTrigger asChild>
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8 ml-2 text-cream/60 hover:text-cream hover:bg-cream/10 flex-shrink-0"
+                                className="h-8 w-8 text-cream/60 hover:text-cream hover:bg-cream/10 flex-shrink-0"
                               >
                                 {expandedSubscriptions[subscription.id] ? (
-                                  <ChevronUp className="h-4 w-4" />
+                                  <ChevronUp className="h-3 w-3 sm:h-4 sm:w-4" />
                                 ) : (
-                                  <ChevronDown className="h-4 w-4" />
+                                  <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4" />
                                 )}
                               </Button>
                             </CollapsibleTrigger>
                           </div>
-                        </div>
-
-                        <div className="flex md:hidden flex-col items-end">
-                          <div className="flex items-center">
-                            <p className="font-medium">${subscription.amount.toFixed(2)}</p>
-                            <CollapsibleTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 ml-2 text-cream/60 hover:text-cream hover:bg-cream/10 flex-shrink-0"
-                              >
-                                {expandedSubscriptions[subscription.id] ? (
-                                  <ChevronUp className="h-4 w-4" />
-                                ) : (
-                                  <ChevronDown className="h-4 w-4" />
-                                )}
-                              </Button>
-                            </CollapsibleTrigger>
-                          </div>
-                          <p className="text-xs text-cream/60">
-                            Next: {format(safeParseDate(subscription.nextPaymentDate), "MMM d")}
-                          </p>
                         </div>
                       </div>
                     </div>
 
                     <CollapsibleContent>
                       <div className="p-4 bg-cream/5 border-t border-cream/10">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                           <div>
-                            <h4 className="font-medium mb-4">Subscription Details</h4>
-                            <div className="space-y-3">
-                              <div className="flex justify-between">
-                                <p className="text-sm text-cream/60">Start Date</p>
-                                <p className="text-sm">{format(safeParseDate(subscription.startDate), "MMMM d, yyyy")}</p>
+                            <h4 className="font-medium mb-3 sm:mb-4 text-sm sm:text-base">Subscription Details</h4>
+                            <div className="space-y-2 sm:space-y-3">
+                              <div className="flex justify-between items-start gap-2">
+                                <p className="text-xs sm:text-sm text-cream/60">Start Date</p>
+                                <p className="text-xs sm:text-sm text-right">{format(safeParseDate(subscription.startDate), "MMM d, yyyy")}</p>
                               </div>
-                              <div className="flex justify-between">
-                                <p className="text-sm text-cream/60">Next Payment</p>
-                                <p className="text-sm">
-                                  {format(safeParseDate(subscription.nextPaymentDate), "MMMM d, yyyy")}
+                              <div className="flex justify-between items-start gap-2">
+                                <p className="text-xs sm:text-sm text-cream/60">Next Payment</p>
+                                <p className="text-xs sm:text-sm text-right">
+                                  {format(safeParseDate(subscription.nextPaymentDate), "MMM d, yyyy")}
                                 </p>
                               </div>
-                              <div className="flex justify-between">
-                                <p className="text-sm text-cream/60">Billing Cycle</p>
-                                <p className="text-sm">
+                              <div className="flex justify-between items-start gap-2">
+                                <p className="text-xs sm:text-sm text-cream/60">Billing Cycle</p>
+                                <p className="text-xs sm:text-sm text-right">
                                   {formatBillingCycle(
                                     subscription.billingCycle,
                                     subscription.customInterval,
@@ -915,21 +904,21 @@ export default function SubscriptionsPage() {
                                   )}
                                 </p>
                               </div>
-                              <div className="flex justify-between">
-                                <p className="text-sm text-cream/60">Payment Method</p>
-                                <p className="text-sm">{subscription.paymentMethod}</p>
+                              <div className="flex justify-between items-start gap-2">
+                                <p className="text-xs sm:text-sm text-cream/60">Payment Method</p>
+                                <p className="text-xs sm:text-sm text-right">{subscription.paymentMethod}</p>
                               </div>
-                              <div className="flex justify-between">
-                                <p className="text-sm text-cream/60">Auto-Renew</p>
-                                <p className="text-sm">{subscription.autoRenew ? "Yes" : "No"}</p>
+                              <div className="flex justify-between items-start gap-2">
+                                <p className="text-xs sm:text-sm text-cream/60">Auto-Renew</p>
+                                <p className="text-xs sm:text-sm text-right">{subscription.autoRenew ? "Yes" : "No"}</p>
                               </div>
-                              <div className="flex justify-between">
-                                <p className="text-sm text-cream/60">Amount per Billing Cycle</p>
-                                <p className="text-sm font-medium">${subscription.amount.toFixed(2)}</p>
+                              <div className="flex justify-between items-start gap-2">
+                                <p className="text-xs sm:text-sm text-cream/60">Amount per Cycle</p>
+                                <p className="text-xs sm:text-sm font-medium text-right">${subscription.amount.toFixed(2)}</p>
                               </div>
-                              <div className="flex justify-between">
-                                <p className="text-sm text-cream/60">Annual Cost</p>
-                                <p className="text-sm font-medium">
+                              <div className="flex justify-between items-start gap-2">
+                                <p className="text-xs sm:text-sm text-cream/60">Annual Cost</p>
+                                <p className="text-xs sm:text-sm font-medium text-right">
                                   $
                                   {calculateAnnualCost(
                                     subscription.amount,
@@ -940,13 +929,13 @@ export default function SubscriptionsPage() {
                                 </p>
                               </div>
                               {subscription.website && (
-                                <div className="flex justify-between">
-                                  <p className="text-sm text-cream/60">Website</p>
+                                <div className="flex justify-between items-start gap-2">
+                                  <p className="text-xs sm:text-sm text-cream/60">Website</p>
                                   <a
                                     href={subscription.website}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-sm text-cream flex items-center hover:underline"
+                                    className="text-xs sm:text-sm text-cream flex items-center hover:underline"
                                   >
                                     Visit Site
                                     <ExternalLink className="ml-1 h-3 w-3" />
@@ -954,64 +943,95 @@ export default function SubscriptionsPage() {
                                 </div>
                               )}
                               {subscription.notes && (
-                                <div>
-                                  <p className="text-sm text-cream/60 mb-1">Notes</p>
-                                  <p className="text-sm">{subscription.notes}</p>
+                                <div className="pt-2 border-t border-cream/10">
+                                  <p className="text-xs sm:text-sm text-cream/60 mb-1">Notes</p>
+                                  <p className="text-xs sm:text-sm">{subscription.notes}</p>
                                 </div>
                               )}
                             </div>
                           </div>
 
                           <div>
-                            <h4 className="font-medium mb-4">Payment History</h4>
+                            <h4 className="font-medium mb-3 sm:mb-4 text-sm sm:text-base">Payment History</h4>
                             {paymentHistories[subscription.id] && paymentHistories[subscription.id].length > 0 ? (
-                              <div className="overflow-x-auto">
-                                <Table>
-                                  <TableHeader>
-                                    <TableRow className="border-cream/10 hover:bg-transparent">
-                                      <TableHead className="text-cream/60">Date</TableHead>
-                                      <TableHead className="text-cream/60">Amount</TableHead>
-                                      <TableHead className="text-cream/60">Status</TableHead>
-                                      <TableHead className="text-cream/60">Method</TableHead>
-                                    </TableRow>
-                                  </TableHeader>
-                                  <TableBody>
-                                    {paymentHistories[subscription.id]
-                                      .sort((a, b) => safeParseDate(b.date).getTime() - safeParseDate(a.date).getTime())
-                                      .slice(0, 5)
-                                      .map((payment) => (
-                                        <TableRow key={payment.id} className="border-cream/10">
-                                          <TableCell>{format(safeParseDate(payment.date), "MMM d, yyyy")}</TableCell>
-                                          <TableCell>${payment.amount.toFixed(2)}</TableCell>
-                                          <TableCell>
-                                            <span
-                                              className={`px-2 py-1 rounded-full text-xs ${
-                                                payment.status === "paid"
-                                                  ? "bg-green-500/20 text-green-400"
-                                                  : payment.status === "pending"
-                                                    ? "bg-yellow-500/20 text-yellow-400"
-                                                    : "bg-red-500/20 text-red-400"
-                                              }`}
-                                            >
-                                              {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
-                                            </span>
-                                          </TableCell>
-                                          <TableCell>{payment.paymentMethod}</TableCell>
-                                        </TableRow>
-                                      ))}
-                                  </TableBody>
-                                </Table>
+                              <div className="space-y-2 sm:space-y-3">
+                                <div className="hidden sm:block overflow-x-auto">
+                                  <Table>
+                                    <TableHeader>
+                                      <TableRow className="border-cream/10 hover:bg-transparent">
+                                        <TableHead className="text-cream/60 text-xs">Date</TableHead>
+                                        <TableHead className="text-cream/60 text-xs">Amount</TableHead>
+                                        <TableHead className="text-cream/60 text-xs">Status</TableHead>
+                                        <TableHead className="text-cream/60 text-xs">Method</TableHead>
+                                      </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                      {paymentHistories[subscription.id]
+                                        .sort((a, b) => safeParseDate(b.date).getTime() - safeParseDate(a.date).getTime())
+                                        .slice(0, 5)
+                                        .map((payment) => (
+                                          <TableRow key={payment.id} className="border-cream/10">
+                                            <TableCell className="text-xs">{format(safeParseDate(payment.date), "MMM d, yyyy")}</TableCell>
+                                            <TableCell className="text-xs">${payment.amount.toFixed(2)}</TableCell>
+                                            <TableCell>
+                                              <span
+                                                className={`px-2 py-1 rounded-full text-xs ${
+                                                  payment.status === "paid"
+                                                    ? "bg-green-500/20 text-green-400"
+                                                    : payment.status === "pending"
+                                                      ? "bg-yellow-500/20 text-yellow-400"
+                                                      : "bg-red-500/20 text-red-400"
+                                                }`}
+                                              >
+                                                {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
+                                              </span>
+                                            </TableCell>
+                                            <TableCell className="text-xs">{payment.paymentMethod}</TableCell>
+                                          </TableRow>
+                                        ))}
+                                    </TableBody>
+                                  </Table>
+                                </div>
+                                
+                                {/* Mobile payment history layout */}
+                                <div className="block sm:hidden space-y-2">
+                                  {paymentHistories[subscription.id]
+                                    .sort((a, b) => safeParseDate(b.date).getTime() - safeParseDate(a.date).getTime())
+                                    .slice(0, 3)
+                                    .map((payment) => (
+                                      <div key={payment.id} className="bg-cream/10 rounded-lg p-3 space-y-1">
+                                        <div className="flex justify-between items-start">
+                                          <span className="text-xs text-cream/60">{format(safeParseDate(payment.date), "MMM d, yyyy")}</span>
+                                          <span className="text-xs font-medium">${payment.amount.toFixed(2)}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                          <span className="text-xs text-cream/60">{payment.paymentMethod}</span>
+                                          <span
+                                            className={`px-2 py-1 rounded-full text-xs ${
+                                              payment.status === "paid"
+                                                ? "bg-green-500/20 text-green-400"
+                                                : payment.status === "pending"
+                                                  ? "bg-yellow-500/20 text-yellow-400"
+                                                  : "bg-red-500/20 text-red-400"
+                                            }`}
+                                          >
+                                            {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    ))}
+                                </div>
                               </div>
                             ) : (
-                              <p className="text-sm text-cream/60">No payment history available</p>
+                              <p className="text-xs sm:text-sm text-cream/60">No payment history available</p>
                             )}
                           </div>
                         </div>
 
-                        <div className="flex justify-end mt-6 gap-2">
+                        <div className="flex flex-col sm:flex-row justify-end mt-4 sm:mt-6 gap-2">
                           <Button
                             variant="outline"
-                            className="bg-transparent border-cream/10 text-cream hover:bg-cream/10"
+                            className="bg-transparent border-cream/10 text-cream hover:bg-cream/10 w-full sm:w-auto"
                             onClick={() => {
                               // Edit functionality would go here
                               toast({
@@ -1020,34 +1040,34 @@ export default function SubscriptionsPage() {
                               })
                             }}
                           >
-                            <Edit className="mr-2 h-4 w-4" />
+                            <Edit className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                             Edit
                           </Button>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button
                                 variant="outline"
-                                className="bg-transparent border-red-500/20 text-red-400 hover:bg-red-500/10"
+                                className="bg-transparent border-red-500/20 text-red-400 hover:bg-red-500/10 w-full sm:w-auto"
                               >
-                                <Trash2 className="mr-2 h-4 w-4" />
+                                <Trash2 className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                                 Delete
                               </Button>
                             </AlertDialogTrigger>
-                            <AlertDialogContent className="bg-dark border-cream/10 text-cream">
+                            <AlertDialogContent className="bg-dark border-cream/10 text-cream w-[95vw] max-w-[400px]">
                               <AlertDialogHeader>
-                                <AlertDialogTitle>Delete Subscription</AlertDialogTitle>
-                                <AlertDialogDescription className="text-cream/60">
+                                <AlertDialogTitle className="text-base sm:text-lg">Delete Subscription</AlertDialogTitle>
+                                <AlertDialogDescription className="text-cream/60 text-sm">
                                   Are you sure you want to delete the &quot;{subscription.name}&quot; subscription? This action
                                   cannot be undone.
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel className="bg-transparent border-cream/10 text-cream hover:bg-cream/10">
+                              <AlertDialogFooter className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-0">
+                                <AlertDialogCancel className="bg-transparent border-cream/10 text-cream hover:bg-cream/10 w-full sm:w-auto">
                                   Cancel
                                 </AlertDialogCancel>
                                 <AlertDialogAction
                                   onClick={() => setSubscriptionToDelete(subscription.id)}
-                                  className="bg-red-500 text-white hover:bg-red-600"
+                                  className="bg-red-500 text-white hover:bg-red-600 w-full sm:w-auto"
                                 >
                                   Delete
                                 </AlertDialogAction>
@@ -1064,18 +1084,18 @@ export default function SubscriptionsPage() {
           </MotionContainer>
         </div>
       </main>
-      ;
+
       <Dialog open={openDialog} onOpenChange={setOpenDialog}>
-        <DialogContent className="bg-dark border-cream/10 text-cream sm:max-w-[550px]">
+        <DialogContent className="bg-dark border-cream/10 text-cream w-[95vw] max-w-[550px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Add New Subscription</DialogTitle>
-            <DialogDescription className="text-cream/60">
+            <DialogTitle className="text-lg sm:text-xl">Add New Subscription</DialogTitle>
+            <DialogDescription className="text-cream/60 text-sm sm:text-base">
               Add details about your subscription to track payments and renewals.
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleSubmit} className="space-y-6 mt-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6 mt-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label htmlFor="name" className="text-sm font-outfit block">
                   Subscription Name *
@@ -1113,7 +1133,7 @@ export default function SubscriptionsPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-outfit block">Billing Cycle *</label>
                 <Select
@@ -1145,48 +1165,48 @@ export default function SubscriptionsPage() {
               </div>
 
               {formData.billingCycle === "custom" && (
-                <div className="space-y-2 flex gap-2 items-end">
-                  <div className="flex-1">
-                    <label htmlFor="customInterval" className="text-sm font-outfit block">
-                      Interval *
-                    </label>
-                    <Input
-                      id="customInterval"
-                      name="customInterval"
-                      type="number"
-                      value={formData.customInterval}
-                      onChange={handleInputChange}
-                      placeholder="1, 2, 3, etc."
-                      min="1"
-                      required
-                      className="bg-cream/5 border-cream/10 text-cream placeholder:text-cream/40 focus-visible:ring-cream/20"
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-outfit block">Custom Interval *</label>
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <Input
+                        id="customInterval"
+                        name="customInterval"
+                        type="number"
+                        value={formData.customInterval}
+                        onChange={handleInputChange}
+                        placeholder="1, 2, 3, etc."
+                        min="1"
+                        required
+                        className="bg-cream/5 border-cream/10 text-cream placeholder:text-cream/40 focus-visible:ring-cream/20"
+                      />
+                    </div>
 
-                  <div className="flex-1">
-                    <Select
-                      value={formData.customIntervalUnit}
-                      onValueChange={(value) => handleSelectChange("customIntervalUnit", value)}
-                      required
-                    >
-                      <SelectTrigger className="bg-cream/5 border-cream/10 text-cream focus:ring-cream/20">
-                        <SelectValue placeholder="Unit" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-dark border-cream/10">
-                        <SelectItem value="days" className="text-cream hover:bg-cream/10">
-                          Days
-                        </SelectItem>
-                        <SelectItem value="weeks" className="text-cream hover:bg-cream/10">
-                          Weeks
-                        </SelectItem>
-                        <SelectItem value="months" className="text-cream hover:bg-cream/10">
-                          Months
-                        </SelectItem>
-                        <SelectItem value="years" className="text-cream hover:bg-cream/10">
-                          Years
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className="flex-1">
+                      <Select
+                        value={formData.customIntervalUnit}
+                        onValueChange={(value) => handleSelectChange("customIntervalUnit", value)}
+                        required
+                      >
+                        <SelectTrigger className="bg-cream/5 border-cream/10 text-cream focus:ring-cream/20">
+                          <SelectValue placeholder="Unit" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-dark border-cream/10">
+                          <SelectItem value="days" className="text-cream hover:bg-cream/10">
+                            Days
+                          </SelectItem>
+                          <SelectItem value="weeks" className="text-cream hover:bg-cream/10">
+                            Weeks
+                          </SelectItem>
+                          <SelectItem value="months" className="text-cream hover:bg-cream/10">
+                            Months
+                          </SelectItem>
+                          <SelectItem value="years" className="text-cream hover:bg-cream/10">
+                            Years
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </div>
               )}
@@ -1203,7 +1223,7 @@ export default function SubscriptionsPage() {
                       {formData.startDate ? format(formData.startDate, "PPP") : <span>Pick a date</span>}
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0 bg-dark border-cream/10">
+                  <PopoverContent className="w-auto p-0 bg-dark border-cream/10" align="start">
                     <Calendar
                       mode="single"
                       selected={formData.startDate}
@@ -1236,7 +1256,7 @@ export default function SubscriptionsPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label htmlFor="website" className="text-sm font-outfit block">
                   Website (Optional)
@@ -1299,7 +1319,7 @@ export default function SubscriptionsPage() {
               </label>
             </div>
 
-            <DialogFooter>
+            <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-0">
               <Button
                 type="button"
                 variant="outline"
@@ -1307,31 +1327,31 @@ export default function SubscriptionsPage() {
                   resetForm()
                   setOpenDialog(false)
                 }}
-                className="bg-transparent border-cream/10 text-cream hover:bg-cream/10 hover:text-cream"
+                className="bg-transparent border-cream/10 text-cream hover:bg-cream/10 hover:text-cream w-full sm:w-auto"
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={loading} className="bg-cream text-dark hover:bg-cream/90 font-medium">
+              <Button type="submit" disabled={loading} className="bg-cream text-dark hover:bg-cream/90 font-medium w-full sm:w-auto">
                 {loading ? "Adding..." : "Add Subscription"}
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
-      ;
+
       <AlertDialog open={!!subscriptionToDelete} onOpenChange={(open) => !open && setSubscriptionToDelete(null)}>
-        <AlertDialogContent className="bg-dark border-cream/10 text-cream">
+        <AlertDialogContent className="bg-dark border-cream/10 text-cream w-[95vw] max-w-[400px]">
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Subscription</AlertDialogTitle>
-            <AlertDialogDescription className="text-cream/60">
+            <AlertDialogTitle className="text-base sm:text-lg">Delete Subscription</AlertDialogTitle>
+            <AlertDialogDescription className="text-cream/60 text-sm">
               Are you sure you want to delete this subscription? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="bg-transparent border-cream/10 text-cream hover:bg-cream/10">
+          <AlertDialogFooter className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-0">
+            <AlertDialogCancel className="bg-transparent border-cream/10 text-cream hover:bg-cream/10 w-full sm:w-auto">
               Cancel
             </AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteSubscription} className="bg-red-500 text-white hover:bg-red-600">
+            <AlertDialogAction onClick={handleDeleteSubscription} className="bg-red-500 text-white hover:bg-red-600 w-full sm:w-auto">
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
