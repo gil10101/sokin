@@ -607,9 +607,9 @@ export default function LandingPage() {
                   </motion.div>
                 </div>
                 <div className={isMobile ? 'mt-8' : ''}>
-                  <p className={`${isMobile ? 'text-base mb-4' : 'text-lg mb-6'} text-cream/70 font-outfit`}>Have questions? We're here to help.</p>
-                  <p className={`${isMobile ? 'text-base mb-2' : 'text-lg mb-2'} text-cream font-outfit`}>hello@sokin.com</p>
-                  <p className={`${isMobile ? 'text-base' : 'text-lg'} text-cream font-outfit`}>+1 (555) 123-4567</p>
+                  <p className={`${isMobile ? 'text-base mb-4' : 'text-lg mb-6'} text-cream/70 font-outfit`}></p>
+                  <p className={`${isMobile ? 'text-base mb-2' : 'text-lg mb-2'} text-cream font-outfit`}></p>
+                  <p className={`${isMobile ? 'text-base' : 'text-lg'} text-cream font-outfit`}></p>
                 </div>
               </div>
             </motion.div>
