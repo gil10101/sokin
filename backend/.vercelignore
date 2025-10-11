@@ -1,27 +1,6 @@
-# Ignore source files - Vercel will compile TypeScript
-src/
-dist/
-node_modules/
+node_modules
+.git
 .env
 .env.local
-.env.production
-.env.development
-
-# Development files
-nodemon.json
-tsconfig.json
-
-# Logs
 *.log
-npm-debug.log*
-
-# Runtime data
-pids
-*.pid
-*.seed
-
-# Coverage
-coverage/
-
-# Build artifacts
-.nyc_output
+.DS_Store
