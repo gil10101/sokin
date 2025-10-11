@@ -3,7 +3,12 @@ import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import * as dotenv from 'dotenv';
-import logger from '../utils/logger';
+
+// Simple inline logger to avoid circular dependencies
+const log = {
+  info: (msg: string) => console.log(`[INFO] ${msg}`),
+  error: (msg: string, meta?: any) => console.error(`[ERROR] ${msg}`, meta || '')
+};
 
 // Load environment variables
 dotenv.config();
@@ -40,7 +45,7 @@ const initializeFirebaseAdmin = () => {
           storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || `${process.env.FIREBASE_PROJECT_ID}.firebasestorage.app`,
         });
         
-        logger.info('Firebase Admin initialized with service account from environment variables');
+        log.info('Firebase Admin initialized with service account from environment variables');
         return app;
       }
 
@@ -61,7 +66,7 @@ const initializeFirebaseAdmin = () => {
           throw new Error('NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET environment variable is not configured');
         }
         
-        logger.info('Firebase Admin initialized with service account JSON');
+        log.info('Firebase Admin initialized with service account JSON');
         return app;
       }
 
@@ -79,33 +84,44 @@ const initializeFirebaseAdmin = () => {
           storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
         });
 
-        logger.info('Firebase Admin initialized in development mode');
+        log.info('Firebase Admin initialized in development mode');
         return app;
       }
 
-      logger.error('No valid Firebase credentials found');
+      log.error('No valid Firebase credentials found');
       throw new Error('Firebase credentials not configured');
     } else {
-      logger.info('Firebase Admin already initialized');
+      log.info('Firebase Admin already initialized');
       return getApps()[0];
     }
   } catch (error) {
     if (error instanceof Error) {
-      logger.error(`Error initializing Firebase Admin: ${error.message}`, { stack: error.stack });
+      log.error(`Error initializing Firebase Admin: ${error.message}`, { stack: error.stack });
     } else {
-      logger.error('Unknown error initializing Firebase Admin');
+      log.error('Unknown error initializing Firebase Admin');
     }
     return null;
   }
 };
 
 // Initialize Firebase Admin
-const app = initializeFirebaseAdmin();
+let app: ReturnType<typeof initializeFirebaseAdmin> = null;
+let auth: ReturnType<typeof getAuth> | null = null;
+let db: ReturnType<typeof getFirestore> | null = null;
+let storage: ReturnType<typeof getStorage> | null = null;
 
-// Export Firebase Admin services
-export const auth = app ? getAuth(app) : null;
-export const db = app ? getFirestore(app) : null;
-export const storage = app ? getStorage(app) : null;
+try {
+  app = initializeFirebaseAdmin();
+  // Export Firebase Admin services
+  auth = app ? getAuth(app) : null;
+  db = app ? getFirestore(app) : null;
+  storage = app ? getStorage(app) : null;
+} catch (error) {
+  console.error('[FIREBASE] Critical initialization error:', error);
+  // Don't crash - allow the app to start without Firebase
+}
+
+export { auth, db, storage };
 
 // Configure Firestore settings for better performance
 if (db) {
@@ -115,12 +131,12 @@ if (db) {
       // Batch size for batch operations
       maximumBatchSize: 500,
     });
-    logger.info('Firestore settings configured successfully');
+    log.info('Firestore settings configured successfully');
   } catch (error) {
     if (error instanceof Error) {
-      logger.error(`Error configuring Firestore: ${error.message}`);
+      log.error(`Error configuring Firestore: ${error.message}`);
     }
   }
 } else {
-  logger.error('Failed to initialize Firestore - db is null');
+  log.error('Failed to initialize Firestore - db is null');
 } 

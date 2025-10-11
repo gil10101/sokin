@@ -45,45 +45,29 @@ const rateLimiterConfig = process.env.NODE_ENV === 'development'
 
 app.use(rateLimiterConfig);
 
-// Lazy load routes for better startup performance
-const lazyRoutes = {
-  expenseRoutes: () => import('./routes/expenses'),
-  userRoutes: () => import('./routes/users'),
-  budgetRoutes: () => import('./routes/budgets'),
-  receiptRoutes: () => import('./routes/receiptRoutes'),
-  notificationRoutes: () => import('./routes/notificationRoutes'),
-  goalsRoutes: () => import('./routes/goalsRoutes'),
-  billRemindersRoutes: () => import('./routes/billRemindersRoutes'),
-  stocksRoutes: () => import('./routes/stocksRoutes'),
-  netWorthRoutes: () => import('./routes/netWorthRoutes'),
-  dashboardRoutes: () => import('./routes/dashboard'),
-};
+// Import routes directly (serverless functions are stateless anyway)
+import expenseRoutes from './routes/expenses';
+import userRoutes from './routes/users';
+import budgetRoutes from './routes/budgets';
+import receiptRoutes from './routes/receiptRoutes';
+import notificationRoutes from './routes/notificationRoutes';
+import goalsRoutes from './routes/goalsRoutes';
+import billRemindersRoutes from './routes/billRemindersRoutes';
+import stocksRoutes from './routes/stocksRoutes';
+import netWorthRoutes from './routes/netWorthRoutes';
+import dashboardRoutes from './routes/dashboard';
 
-// Middleware to lazy load routes on first request
-const lazyRouteLoader = (routeName: keyof typeof lazyRoutes) => {
-  return async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const routeModule = await lazyRoutes[routeName]();
-      const routeHandler = routeModule.default;
-      return routeHandler(req, res, next);
-    } catch (error) {
-      logger.error(`Failed to load route ${routeName}:`, { error: String(error) });
-      return res.status(500).json({ error: 'Internal server error' });
-    }
-  };
-};
-
-// Use lazy-loaded routes
-app.use('/api/expenses', lazyRouteLoader('expenseRoutes'));
-app.use('/api/users', lazyRouteLoader('userRoutes'));
-app.use('/api/budgets', lazyRouteLoader('budgetRoutes'));
-app.use('/api/receipts', lazyRouteLoader('receiptRoutes'));
-app.use('/api/notifications', lazyRouteLoader('notificationRoutes'));
-app.use('/api/goals', lazyRouteLoader('goalsRoutes'));
-app.use('/api/bill-reminders', lazyRouteLoader('billRemindersRoutes'));
-app.use('/api/stocks', lazyRouteLoader('stocksRoutes'));
-app.use('/api/net-worth', lazyRouteLoader('netWorthRoutes'));
-app.use('/api/dashboard', lazyRouteLoader('dashboardRoutes'));
+// Mount routes
+app.use('/api/expenses', expenseRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/budgets', budgetRoutes);
+app.use('/api/receipts', receiptRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/goals', goalsRoutes);
+app.use('/api/bill-reminders', billRemindersRoutes);
+app.use('/api/stocks', stocksRoutes);
+app.use('/api/net-worth', netWorthRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // Health check route
 app.get('/health', (req: Request, res: Response) => {
@@ -111,33 +95,40 @@ app.use((req: Request, res: Response) => {
 // Global error handler
 app.use(errorHandler);
 
-// Validate configuration before starting server
-try {
-  validateAuthConfig();
-} catch (error) {
-  logger.error('Configuration validation failed:', { error: String(error) });
-  process.exit(1);
+// Validate configuration before starting server (only for local, not Vercel)
+if (process.env.VERCEL !== '1') {
+  try {
+    validateAuthConfig();
+  } catch (error) {
+    logger.error('Configuration validation failed:', { error: String(error) });
+    process.exit(1);
+  }
 }
 
-// Start server
-app.listen(Number(port), () => {
-  logger.info(`Server running on port ${port}`);
-  if (process.env.NODE_ENV === 'development') {
-    logger.info('Running in development mode with mock data');
-    logger.info(`CORS configured for: ${process.env.CORS_ORIGIN || 'configured origin'}`);
-  }
-});
+// Start server (only for local development, not in Vercel)
+if (process.env.VERCEL !== '1') {
+  app.listen(Number(port), () => {
+    logger.info(`Server running on port ${port}`);
+    if (process.env.NODE_ENV === 'development') {
+      logger.info('Running in development mode with mock data');
+      logger.info(`CORS configured for: ${process.env.CORS_ORIGIN || 'configured origin'}`);
+    }
+  });
 
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (err: Error) => {
-  logger.error('Unhandled Promise Rejection', { error: err });
-  // In production, consider graceful shutdown:
-  // process.exit(1);
-});
+  // Handle unhandled promise rejections
+  process.on('unhandledRejection', (err: Error) => {
+    logger.error('Unhandled Promise Rejection', { error: err });
+    // In production, consider graceful shutdown:
+    // process.exit(1);
+  });
 
-// Handle uncaught exceptions
-process.on('uncaughtException', (err: Error) => {
-  logger.error('Uncaught Exception', { error: err });
-  // In production, consider graceful shutdown:
-  // process.exit(1);
-}); 
+  // Handle uncaught exceptions
+  process.on('uncaughtException', (err: Error) => {
+    logger.error('Uncaught Exception', { error: err });
+    // In production, consider graceful shutdown:
+    // process.exit(1);
+  });
+}
+
+// Export for Vercel serverless
+export default app; 
