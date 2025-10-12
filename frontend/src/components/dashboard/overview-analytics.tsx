@@ -101,8 +101,11 @@ export function OverviewAnalytics({ expenses }: OverviewAnalyticsProps) {
           <p className="text-sm text-cream/60">Monthly spending over the last 12 months</p>
         </CardHeader>
         <CardContent className="pb-6">
-          <ResponsiveContainer width="100%" height={isMobile ? 300 : 400}>
-            <AreaChart data={trendData}>
+          <ResponsiveContainer width="100%" height={isMobile ? 320 : 400}>
+            <AreaChart 
+              data={trendData}
+              margin={isMobile ? { top: 10, right: 10, left: -20, bottom: 30 } : { top: 10, right: 30, left: 0, bottom: 10 }}
+            >
               <defs>
                 <linearGradient id="colorSpending" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="rgba(245, 245, 240, 0.3)" stopOpacity={0.8} />
@@ -112,18 +115,19 @@ export function OverviewAnalytics({ expenses }: OverviewAnalyticsProps) {
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(245, 245, 240, 0.1)" />
               <XAxis 
                 dataKey="month" 
-                tick={{ fill: "rgba(245, 245, 240, 0.6)", fontSize: isMobile ? 10 : 12 }}
+                tick={{ fill: "rgba(245, 245, 240, 0.6)", fontSize: isMobile ? 9 : 12 }}
                 axisLine={false}
                 tickLine={false}
-                interval={isMobile ? 1 : 0}
+                interval={isMobile ? 2 : 0}
                 angle={isMobile ? -45 : 0}
                 textAnchor={isMobile ? "end" : "middle"}
+                height={isMobile ? 60 : 30}
               />
               <YAxis 
-                tick={{ fill: "rgba(245, 245, 240, 0.6)", fontSize: isMobile ? 10 : 12 }}
+                tick={{ fill: "rgba(245, 245, 240, 0.6)", fontSize: isMobile ? 9 : 12 }}
                 axisLine={false}
                 tickLine={false}
-                width={isMobile ? 40 : 60}
+                width={isMobile ? 35 : 60}
               />
               <Tooltip
                 content={({ active, payload }) => {

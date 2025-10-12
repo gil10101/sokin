@@ -69,7 +69,11 @@ interface GoalContribution {
   source?: string
 }
 
-export function SavingsGoals() {
+interface SavingsGoalsProps {
+  hideHeader?: boolean
+}
+
+export function SavingsGoals({ hideHeader = false }: SavingsGoalsProps) {
   const { user } = useAuth()
   const [goals, setGoals] = useState<SavingsGoal[]>([])  
   const [loading, setLoading] = useState(true)
@@ -332,12 +336,14 @@ export function SavingsGoals() {
   if (error) {
     return (
       <div className="space-y-8 max-w-7xl mx-auto">
-        <div className="flex items-center justify-between">
-          <div className="space-y-1">
-            <h2 className="text-3xl font-semibold text-cream/90">Savings Goals</h2>
-            <p className="text-cream/60">Track your financial goals and celebrate milestones</p>
+        {!hideHeader && (
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <h2 className="text-3xl font-semibold text-cream/90">Savings Goals</h2>
+              <p className="text-cream/60">Track your financial goals and celebrate milestones</p>
+            </div>
           </div>
-        </div>
+        )}
         
         <div className="flex flex-col items-center justify-center py-12 px-4">
           <div className="bg-cream/5 border border-cream/20 rounded-lg p-8 text-center max-w-md mx-auto">
@@ -364,18 +370,19 @@ export function SavingsGoals() {
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="space-y-1">
-          <h2 className="text-3xl font-semibold text-cream/90">Savings Goals</h2>
-          <p className="text-cream/60">Track your financial goals and celebrate milestones</p>
-        </div>
-        <Dialog open={showCreateGoal} onOpenChange={setShowCreateGoal}>
-          <DialogTrigger asChild>
-            <Button className="bg-cream/10 hover:bg-cream/20 text-cream/80 border-cream/20 h-11 px-6">
-              <Plus className="mr-2 h-4 w-4" />
-              New Goal
-            </Button>
-          </DialogTrigger>
+      {!hideHeader && (
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <h2 className="text-3xl font-semibold text-cream/90">Savings Goals</h2>
+            <p className="text-cream/60">Track your financial goals and celebrate milestones</p>
+          </div>
+          <Dialog open={showCreateGoal} onOpenChange={setShowCreateGoal}>
+            <DialogTrigger asChild>
+              <Button className="bg-cream/10 hover:bg-cream/20 text-cream/80 border-cream/20 h-11 px-6">
+                <Plus className="mr-2 h-4 w-4" />
+                New Goal
+              </Button>
+            </DialogTrigger>
           <DialogContent className="sm:max-w-lg">
             <DialogHeader>
               <DialogTitle className="text-xl">Create Savings Goal</DialogTitle>
@@ -495,7 +502,8 @@ export function SavingsGoals() {
             </div>
           </DialogContent>
         </Dialog>
-      </div>
+        </div>
+      )}
 
       {/* Goals Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-7xl mx-auto">
