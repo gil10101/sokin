@@ -66,8 +66,8 @@ export function BudgetProgressChart({ selectedMonth }: BudgetProgressChartProps)
   const chartConfig = useMemo(() => {
     if (isMobile) {
       return {
-        height: 300,
-        margin: { top: 20, right: 10, left: -10, bottom: 60 },
+        height: 320,
+        margin: { top: 20, right: 10, left: 0, bottom: 70 },
         fontSize: 10,
         barSize: 20,
         angle: -45,
@@ -75,7 +75,7 @@ export function BudgetProgressChart({ selectedMonth }: BudgetProgressChartProps)
     } else if (isTablet) {
       return {
         height: 350,
-        margin: { top: 20, right: 15, left: 0, bottom: 60 },
+        margin: { top: 20, right: 15, left: 0, bottom: 65 },
         fontSize: 11,
         barSize: 25,
         angle: -30,
@@ -282,7 +282,7 @@ export function BudgetProgressChart({ selectedMonth }: BudgetProgressChartProps)
             }}
             angle={chartConfig.angle}
             textAnchor="end"
-            height={80}
+            height={isMobile ? 90 : isTablet ? 85 : 80}
             interval={0}
           />
           

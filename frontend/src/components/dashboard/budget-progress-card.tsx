@@ -1,12 +1,13 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { collection, query, where, getDocs } from "firebase/firestore"
 import { db } from "../../lib/firebase"
 import { useAuth } from "../../contexts/auth-context"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell, ResponsiveContainer, LabelList } from "recharts"
 import { LoadingSpinner } from "../../components/ui/loading-spinner"
 import { Expense, Budget } from "../../lib/types"
+import { useViewport } from "../../hooks/use-mobile"
 
 // Date calculation helpers to prevent overflow and use exclusive bounds
 const addMonthsClamp = (date: Date, months: number): Date => {
@@ -57,9 +58,33 @@ interface BudgetProgressCardProps {
 
 export function BudgetProgressCard({ refreshTrigger }: BudgetProgressCardProps) {
   const { user } = useAuth()
+  const { isMobile, isTablet } = useViewport()
   const [data, setData] = useState<BudgetProgress[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // Responsive chart configuration
+  const chartConfig = useMemo(() => {
+    if (isMobile) {
+      return {
+        margin: { top: 15, right: 30, left: 50, bottom: 5 },
+        fontSize: 10,
+        yAxisWidth: 60,
+      }
+    } else if (isTablet) {
+      return {
+        margin: { top: 20, right: 40, left: 65, bottom: 5 },
+        fontSize: 11,
+        yAxisWidth: 70,
+      }
+    } else {
+      return {
+        margin: { top: 20, right: 50, left: 80, bottom: 5 },
+        fontSize: 12,
+        yAxisWidth: 80,
+      }
+    }
+  }, [isMobile, isTablet])
 
   useEffect(() => {
     const fetchBudgetProgress = async () => {
@@ -257,13 +282,13 @@ export function BudgetProgressCard({ refreshTrigger }: BudgetProgressCardProps) 
   return (
     <div className="h-[300px]">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} layout="vertical" margin={{ top: 20, right: 50, left: 80, bottom: 5 }}>
+        <BarChart data={data} layout="vertical" margin={chartConfig.margin}>
           <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="rgba(245, 245, 240, 0.1)" />
           <XAxis
             type="number"
             axisLine={false}
             tickLine={false}
-            tick={{ fill: "rgba(245, 245, 240, 0.6)", fontSize: 12 }}
+            tick={{ fill: "rgba(245, 245, 240, 0.6)", fontSize: chartConfig.fontSize }}
             domain={[0, 100]}
             tickFormatter={(value) => `${value}%`}
           />
@@ -272,8 +297,8 @@ export function BudgetProgressCard({ refreshTrigger }: BudgetProgressCardProps) 
             dataKey="category"
             axisLine={false}
             tickLine={false}
-            tick={{ fill: "rgba(245, 245, 240, 0.6)", fontSize: 12 }}
-            width={80}
+            tick={{ fill: "rgba(245, 245, 240, 0.6)", fontSize: chartConfig.fontSize }}
+            width={chartConfig.yAxisWidth}
           />
           <Bar dataKey="percentage" radius={[0, 4, 4, 0]} background={{ fill: "rgba(245, 245, 240, 0.1)" }}>
             {data.map((entry, index) => (
@@ -283,7 +308,7 @@ export function BudgetProgressCard({ refreshTrigger }: BudgetProgressCardProps) 
               dataKey="percentage"
               position="right"
               formatter={(value: React.ReactNode) => `${value}%`}
-              style={{ fill: "rgba(245, 245, 240, 0.8)", fontSize: 12 }}
+              style={{ fill: "rgba(245, 245, 240, 0.8)", fontSize: chartConfig.fontSize }}
             />
           </Bar>
         </BarChart>
