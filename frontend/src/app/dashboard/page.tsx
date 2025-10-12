@@ -598,7 +598,7 @@ export default function DashboardPage() {
                       <ChevronRight className="h-4 w-4 ml-1 transform group-hover:translate-x-1 transition-transform duration-300" />
                     </button>
                   </div>
-                  <SavingsGoals />
+                  <SavingsGoals hideHeader />
                 </MotionContainer>
 
                 {/* Advanced Analytics with integrated Monthly Category Breakdown */}
