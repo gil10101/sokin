@@ -1,13 +1,14 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
-import { TrendingUp, TrendingDown, ChevronRight, Activity, RefreshCw, DollarSign, PieChart, BarChart3 } from "lucide-react"
+import { TrendingUp, TrendingDown, ChevronRight, ChevronLeft, Activity, RefreshCw, DollarSign, PieChart, BarChart3 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
 import { Badge } from "../ui/badge"
 import { LoadingSpinner } from "../ui/loading-spinner"
 import { Button } from "../ui/button"
 import { useAuth } from "../../contexts/auth-context"
 import { useStockPrices } from "../../hooks/use-stock-prices"
+import { useViewport } from "../../hooks/use-mobile"
 import { 
   StockAPI, 
   MarketIndex, 
@@ -131,6 +132,7 @@ interface StockMarketProps {
 
 export function StockMarket({ compact = false }: StockMarketProps) {
   const { user } = useAuth()
+  const { isMobile, isTablet } = useViewport()
   const [marketIndices, setMarketIndices] = useState<MarketIndex[]>([])
   const [userPortfolio, setUserPortfolio] = useState<UserPortfolioStock[]>([])
   const [portfolioHoldings, setPortfolioHoldings] = useState<PortfolioHolding[]>([])
@@ -138,6 +140,8 @@ export function StockMarket({ compact = false }: StockMarketProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isRetrying, setIsRetrying] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 3
 
   // Real-time price updates for portfolio symbols
   const portfolioSymbols = React.useMemo(() => {
@@ -246,6 +250,30 @@ export function StockMarket({ compact = false }: StockMarketProps) {
       }
       return stock
     })
+  }
+
+  // Pagination logic
+  const updatedPortfolio = updatePortfolioWithRealTimePrices(userPortfolio)
+  const totalPages = Math.ceil(updatedPortfolio.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const paginatedPortfolio = updatedPortfolio.slice(startIndex, endIndex)
+
+  // Reset to page 1 when portfolio changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [userPortfolio.length])
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1)
+    }
+  }
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1)
+    }
   }
 
   if (loading) {
@@ -467,7 +495,7 @@ export function StockMarket({ compact = false }: StockMarketProps) {
         <>
           {/* Portfolio Summary */}
           {userPortfolio.length > 0 && (
-            <PortfolioSummary portfolio={updatePortfolioWithRealTimePrices(userPortfolio)} connected={priceConnected} />
+            <PortfolioSummary portfolio={updatedPortfolio} connected={priceConnected} />
           )}
 
           {/* Portfolio Holdings */}
@@ -485,79 +513,188 @@ export function StockMarket({ compact = false }: StockMarketProps) {
             </CardHeader>
             <CardContent className="pt-0">
               {userPortfolio.length > 0 ? (
-                <div className="overflow-x-auto">
-                  {/* Table Headers */}
-                  <div className="grid grid-cols-6 gap-4 p-3 text-xs font-medium text-cream/60 border-b border-cream/10 mb-3">
-                    <div>Stock</div>
-                    <div className="text-center">Shares</div>
-                    <div className="text-right">Current Price</div>
-                    <div className="text-right">Total Value</div>
-                    <div className="text-right">Gain/Loss</div>
-                    <div className="text-center">Trend</div>
-                  </div>
-                  
-                  {/* Portfolio Rows */}
-                  <div className="space-y-2">
-                    {updatePortfolioWithRealTimePrices(userPortfolio).map((stock) => (
-                      <div key={stock.symbol} className="grid grid-cols-6 gap-4 items-center p-3 rounded-lg bg-cream/5 border border-cream/10 hover:bg-cream/10 transition-colors">
-                        {/* Stock Info */}
-                        <div>
-                          <p className="font-medium text-cream text-sm">{stock.symbol}</p>
-                          <p className="text-xs text-cream/60 truncate">{stock.name}</p>
-                        </div>
-                        
-                        {/* Shares */}
-                        <div className="text-center">
-                          <p className="text-sm font-medium text-cream">{stock.shares}</p>
-                        </div>
-                        
-                        {/* Current Price */}
-                        <div className="text-right">
-                          <p className="text-sm font-medium text-cream">{formatPrice(stock.price)}</p>
-                          <p className={`text-xs ${stock.changePercent >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                            {formatPercent(stock.changePercent)}
-                          </p>
-                        </div>
-                        
-                        {/* Total Value */}
-                        <div className="text-right">
-                          <p className="text-sm font-semibold text-cream">{formatPrice(stock.totalValue)}</p>
-                        </div>
-                        
-                        {/* Gain/Loss */}
-                        <div className="text-right">
-                          <p className={`text-sm font-medium ${
-                            stock.gainLoss > 0 ? 'text-green-500' : 
-                            stock.gainLoss < 0 ? 'text-red-500' : 
-                            'text-cream/60'
-                          }`}>
-                            {formatChange(stock.gainLoss)}
-                          </p>
-                          <p className={`text-xs ${
-                            stock.gainLoss > 0 ? 'text-green-500' : 
-                            stock.gainLoss < 0 ? 'text-red-500' : 
-                            'text-cream/60'
-                          }`}>
-                            {formatPercent(stock.gainLossPercent)}
-                          </p>
-                        </div>
-                        
-                        {/* Trend Icon */}
-                        <div className="text-center">
-                          {stock.gainLoss > 0 ? (
-                            <TrendingUp className="h-4 w-4 text-green-500 mx-auto" />
-                          ) : stock.gainLoss < 0 ? (
-                            <TrendingDown className="h-4 w-4 text-red-500 mx-auto" />
-                          ) : (
-                            <div className="h-4 w-4 mx-auto flex items-center justify-center">
-                              <div className="w-3 h-0.5 bg-cream/60 rounded"></div>
+                <>
+                  {/* Mobile Card Layout */}
+                  {isMobile ? (
+                    <div className="space-y-3">
+                      {paginatedPortfolio.map((stock) => (
+                        <div key={stock.symbol} className="p-4 rounded-lg bg-cream/5 border border-cream/10">
+                          {/* Header: Stock Info and Trend */}
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center space-x-2">
+                                <p className="font-semibold text-cream text-base">{stock.symbol}</p>
+                                {stock.gainLoss > 0 ? (
+                                  <TrendingUp className="h-4 w-4 text-green-500 flex-shrink-0" />
+                                ) : stock.gainLoss < 0 ? (
+                                  <TrendingDown className="h-4 w-4 text-red-500 flex-shrink-0" />
+                                ) : (
+                                  <div className="h-4 w-4 flex items-center justify-center flex-shrink-0">
+                                    <div className="w-3 h-0.5 bg-cream/60 rounded"></div>
+                                  </div>
+                                )}
+                              </div>
+                              <p className="text-xs text-cream/60 truncate mt-1">{stock.name}</p>
                             </div>
-                          )}
+                          </div>
+                          
+                          {/* Main Values: Total Value and Gain/Loss */}
+                          <div className="grid grid-cols-2 gap-3 mb-3 pb-3 border-b border-cream/10">
+                            <div>
+                              <p className="text-xs text-cream/60 mb-1">Total Value</p>
+                              <p className="text-lg font-semibold text-cream">{formatPrice(stock.totalValue)}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-cream/60 mb-1">Gain/Loss</p>
+                              <p className={`text-lg font-semibold ${
+                                stock.gainLoss > 0 ? 'text-green-500' : 
+                                stock.gainLoss < 0 ? 'text-red-500' : 
+                                'text-cream/60'
+                              }`}>
+                                {formatChange(stock.gainLoss)}
+                              </p>
+                              <p className={`text-xs ${
+                                stock.gainLoss > 0 ? 'text-green-500' : 
+                                stock.gainLoss < 0 ? 'text-red-500' : 
+                                'text-cream/60'
+                              }`}>
+                                {formatPercent(stock.gainLossPercent)}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          {/* Details: Shares, Price, Change */}
+                          <div className="grid grid-cols-3 gap-2 text-center">
+                            <div>
+                              <p className="text-xs text-cream/60 mb-1">Shares</p>
+                              <p className="text-sm font-medium text-cream">{stock.shares}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-cream/60 mb-1">Price</p>
+                              <p className="text-sm font-medium text-cream">{formatPrice(stock.price)}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-cream/60 mb-1">Change</p>
+                              <p className={`text-sm font-medium ${stock.changePercent >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                {formatPercent(stock.changePercent)}
+                              </p>
+                            </div>
+                          </div>
                         </div>
+                      ))}
+                    </div>
+                  ) : (
+                    /* Desktop/Tablet Table Layout */
+                    <div className="overflow-x-auto">
+                      {/* Table Headers */}
+                      <div className="grid grid-cols-6 gap-4 p-3 text-xs font-medium text-cream/60 border-b border-cream/10 mb-3">
+                        <div>Stock</div>
+                        <div className="text-center">Shares</div>
+                        <div className="text-right">Current Price</div>
+                        <div className="text-right">Total Value</div>
+                        <div className="text-right">Gain/Loss</div>
+                        <div className="text-center">Trend</div>
                       </div>
-                    ))}
-                  </div>
-                </div>
+                      
+                      {/* Portfolio Rows */}
+                      <div className="space-y-2">
+                        {paginatedPortfolio.map((stock) => (
+                          <div key={stock.symbol} className="grid grid-cols-6 gap-4 items-center p-3 rounded-lg bg-cream/5 border border-cream/10 hover:bg-cream/10 transition-colors">
+                            {/* Stock Info */}
+                            <div className="min-w-0">
+                              <p className="font-medium text-cream text-sm truncate">{stock.symbol}</p>
+                              <p className="text-xs text-cream/60 truncate">{stock.name}</p>
+                            </div>
+                            
+                            {/* Shares */}
+                            <div className="text-center">
+                              <p className="text-sm font-medium text-cream">{stock.shares}</p>
+                            </div>
+                            
+                            {/* Current Price */}
+                            <div className="text-right min-w-0">
+                              <p className="text-sm font-medium text-cream">{formatPrice(stock.price)}</p>
+                              <p className={`text-xs ${stock.changePercent >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                {formatPercent(stock.changePercent)}
+                              </p>
+                            </div>
+                            
+                            {/* Total Value */}
+                            <div className="text-right">
+                              <p className="text-sm font-semibold text-cream">{formatPrice(stock.totalValue)}</p>
+                            </div>
+                            
+                            {/* Gain/Loss */}
+                            <div className="text-right min-w-0">
+                              <p className={`text-sm font-medium ${
+                                stock.gainLoss > 0 ? 'text-green-500' : 
+                                stock.gainLoss < 0 ? 'text-red-500' : 
+                                'text-cream/60'
+                              }`}>
+                                {formatChange(stock.gainLoss)}
+                              </p>
+                              <p className={`text-xs ${
+                                stock.gainLoss > 0 ? 'text-green-500' : 
+                                stock.gainLoss < 0 ? 'text-red-500' : 
+                                'text-cream/60'
+                              }`}>
+                                {formatPercent(stock.gainLossPercent)}
+                              </p>
+                            </div>
+                            
+                            {/* Trend Icon */}
+                            <div className="text-center">
+                              {stock.gainLoss > 0 ? (
+                                <TrendingUp className="h-4 w-4 text-green-500 mx-auto" />
+                              ) : stock.gainLoss < 0 ? (
+                                <TrendingDown className="h-4 w-4 text-red-500 mx-auto" />
+                              ) : (
+                                <div className="h-4 w-4 mx-auto flex items-center justify-center">
+                                  <div className="w-3 h-0.5 bg-cream/60 rounded"></div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Pagination Controls */}
+                  {totalPages > 1 && (
+                    <div className="mt-6 pt-4 border-t border-cream/10">
+                      <div className="flex items-center justify-between gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handlePrevPage}
+                          disabled={currentPage === 1}
+                          className="text-cream/80 hover:text-cream disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          <ChevronLeft className="h-4 w-4 mr-0 sm:mr-1" />
+                          <span className="hidden sm:inline">Previous</span>
+                        </Button>
+                        
+                        <div className="flex items-center text-center">
+                          <span className="text-sm text-cream/60 whitespace-nowrap">
+                            {currentPage} of {totalPages}
+                          </span>
+                        </div>
+                        
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleNextPage}
+                          disabled={currentPage === totalPages}
+                          className="text-cream/80 hover:text-cream disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          <span className="hidden sm:inline">Next</span>
+                          <ChevronRight className="h-4 w-4 ml-0 sm:ml-1" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </>
               ) : (
                 <div className="text-center py-8 text-cream/60">
                   <PieChart className="h-12 w-12 mx-auto mb-4 opacity-50" />
