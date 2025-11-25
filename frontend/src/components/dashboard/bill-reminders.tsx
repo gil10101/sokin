@@ -69,7 +69,35 @@ interface ReminderNotification {
   priority: 'low' | 'medium' | 'high'
 }
 
-export function BillReminders() {
+interface BillRemindersProps {
+  externalAddTrigger?: boolean
+  onAddDialogChange?: (open: boolean) => void
+  hideInternalAddButton?: boolean
+}
+
+/**
+ * BillReminders Component
+ * 
+ * Displays and manages bill reminders with support for external dialog control.
+ * 
+ * @param externalAddTrigger - When true, opens the create bill dialog. The effect watches
+ *   for transitions from false to true and opens the dialog accordingly. The parent component
+ *   MUST reset this to false when it receives onAddDialogChange(false) to prevent infinite
+ *   reopen loops.
+ * 
+ * @param onAddDialogChange - Optional callback invoked when dialog state changes (open/close).
+ *   This is wired to the Dialog's onOpenChange handler, so the parent is notified when the
+ *   dialog actually opens or closes. When the parent receives onAddDialogChange(false), it
+ *   must reset externalAddTrigger to false to prevent the dialog from reopening.
+ * 
+ * @param hideInternalAddButton - When true, hides the internal "+" button for adding bills.
+ *   Useful when the parent component controls dialog opening exclusively via externalAddTrigger.
+ */
+export function BillReminders({ 
+  externalAddTrigger = false, 
+  onAddDialogChange,
+  hideInternalAddButton = false 
+}: BillRemindersProps = {}) {
   const [bills, setBills] = useState<BillReminder[]>([])
   const [upcomingReminders, setUpcomingReminders] = useState<ReminderNotification[]>([])
   const [loading, setLoading] = useState(true)
@@ -77,6 +105,13 @@ export function BillReminders() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
   const [filterStatus, setFilterStatus] = useState<'all' | 'upcoming' | 'overdue' | 'paid'>('all')
   const { toast } = useToast()
+  
+  // Sync with external trigger - only opens dialog when externalAddTrigger transitions to true
+  React.useEffect(() => {
+    if (externalAddTrigger && !showCreateBill) {
+      setShowCreateBill(true)
+    }
+  }, [externalAddTrigger, showCreateBill])
 
   // Form state for new bill
   const [newBill, setNewBill] = useState({
@@ -373,12 +408,17 @@ export function BillReminders() {
             </DropdownMenuContent>
           </DropdownMenu>
           
-          <Dialog open={showCreateBill} onOpenChange={setShowCreateBill}>
-            <DialogTrigger asChild>
-              <Button className="bg-cream/10 hover:bg-cream/20 text-cream/80 border-cream/20 px-2 py-1 text-xs h-auto">
-                <Plus className="h-3 w-3" />
-              </Button>
-            </DialogTrigger>
+          <Dialog open={showCreateBill} onOpenChange={(open) => {
+            setShowCreateBill(open)
+            onAddDialogChange?.(open)
+          }}>
+            {!hideInternalAddButton && (
+              <DialogTrigger asChild>
+                <Button className="bg-cream/10 hover:bg-cream/20 text-cream/80 border-cream/20 px-2 py-1 text-xs h-auto">
+                  <Plus className="h-3 w-3" />
+                </Button>
+              </DialogTrigger>
+            )}
             <DialogContent className="mx-4 sm:mx-0 md:mx-auto sm:max-w-md md:max-w-lg max-w-[95vw] max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className="text-lg md:text-xl">Add Bill Reminder</DialogTitle>

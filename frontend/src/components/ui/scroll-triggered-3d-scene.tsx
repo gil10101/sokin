@@ -10,11 +10,8 @@ if (typeof window !== "undefined") {
   gsap.registerPlugin(ScrollTrigger)
 }
 
-// Dynamically import Canvas to avoid SSR issues
-const Canvas = dynamic(() => import("@react-three/fiber").then(mod => ({ default: mod.Canvas })), {
-  ssr: false,
-  loading: () => null
-})
+// Import Canvas from @react-three/fiber
+import { Canvas } from "@react-three/fiber"
 
 // Dynamically import the TwistedTorus to avoid SSR issues
 const TwistedTorus = dynamic(() => import("./twisted-torus"), {
@@ -310,35 +307,35 @@ function ScrollTriggered3DScene() {
     >
       <Suspense fallback={null}>
         <Canvas
-            camera={{ 
-              position: cameraSettings.position, 
-              fov: cameraSettings.fov,
-              near: 0.1,
-              far: 1000
-            }}
-            style={{ 
-              background: 'transparent',
-              width: '100%',
-              height: '100%'
-            }}
-            gl={{ 
-              antialias: true, 
-              alpha: true,
-              preserveDrawingBuffer: true
-            }}
-            dpr={viewportSize.width < 1200 ? [1, 1.5] : [1, 2]}
-            resize={{ scroll: false, debounce: { scroll: 50, resize: 0 } }}
-            onCreated={() => {
-              // Mark as loaded when canvas is created
-              setTimeout(() => setIsLoaded(true), 100)
-            }}
-          >
-            <Lights />
-            <Suspense fallback={null}>
-              <TwistedTorus isMobile={false} />
-            </Suspense>
-          </Canvas>
-        </Suspense>
+          camera={{ 
+            position: cameraSettings.position, 
+            fov: cameraSettings.fov,
+            near: 0.1,
+            far: 1000
+          }}
+          style={{ 
+            background: 'transparent',
+            width: '100%',
+            height: '100%'
+          }}
+          gl={{ 
+            antialias: true, 
+            alpha: true,
+            preserveDrawingBuffer: true
+          }}
+          dpr={viewportSize.width < 1200 ? [1, 1.5] : [1, 2]}
+          resize={{ scroll: false, debounce: { scroll: 50, resize: 0 } }}
+          onCreated={() => {
+            // Mark as loaded when canvas is created
+            setTimeout(() => setIsLoaded(true), 100)
+          }}
+        >
+          <Lights />
+          <Suspense fallback={null}>
+            <TwistedTorus isMobile={false} />
+          </Suspense>
+        </Canvas>
+      </Suspense>
     </div>
   )
 }

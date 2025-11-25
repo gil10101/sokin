@@ -15,6 +15,8 @@ interface State {
 }
 
 export class ErrorBoundary extends React.Component<Props, State> {
+  static displayName = 'ErrorBoundaryHandler'
+  
   constructor(props: Props) {
     super(props)
     this.state = { hasError: false }
@@ -25,6 +27,10 @@ export class ErrorBoundary extends React.Component<Props, State> {
   }
 
   override componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('ErrorBoundary caught error:', error)
+      console.error('Component stack:', errorInfo.componentStack)
+    }
     captureError(error, { componentStack: errorInfo.componentStack })
   }
 

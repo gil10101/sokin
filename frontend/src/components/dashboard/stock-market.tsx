@@ -575,7 +575,11 @@ export function StockMarket({ compact = false }: StockMarketProps) {
                             </div>
                             <div>
                               <p className="text-xs text-cream/60 mb-1">Change</p>
-                              <p className={`text-sm font-medium ${stock.changePercent >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                              <p className={`text-sm font-medium ${
+                                stock.changePercent > 0 ? 'text-green-500' : 
+                                stock.changePercent < 0 ? 'text-red-500' : 
+                                'text-cream/60'
+                              }`}>
                                 {formatPercent(stock.changePercent)}
                               </p>
                             </div>
@@ -614,7 +618,11 @@ export function StockMarket({ compact = false }: StockMarketProps) {
                             {/* Current Price */}
                             <div className="text-right min-w-0">
                               <p className="text-sm font-medium text-cream">{formatPrice(stock.price)}</p>
-                              <p className={`text-xs ${stock.changePercent >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                              <p className={`text-xs ${
+                                stock.changePercent > 0 ? 'text-green-500' : 
+                                stock.changePercent < 0 ? 'text-red-500' : 
+                                'text-cream/60'
+                              }`}>
                                 {formatPercent(stock.changePercent)}
                               </p>
                             </div>

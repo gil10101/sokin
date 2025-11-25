@@ -376,134 +376,140 @@ export function SavingsGoals({ hideHeader = false }: SavingsGoalsProps) {
             <h2 className="text-3xl font-semibold text-cream/90">Savings Goals</h2>
             <p className="text-cream/60">Track your financial goals and celebrate milestones</p>
           </div>
-          <Dialog open={showCreateGoal} onOpenChange={setShowCreateGoal}>
-            <DialogTrigger asChild>
-              <Button className="bg-cream/10 hover:bg-cream/20 text-cream/80 border-cream/20 h-11 px-6">
-                <Plus className="mr-2 h-4 w-4" />
-                New Goal
-              </Button>
-            </DialogTrigger>
-          <DialogContent className="sm:max-w-lg">
-            <DialogHeader>
-              <DialogTitle className="text-xl">Create Savings Goal</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-6 py-4">
+          <Button 
+            onClick={() => setShowCreateGoal(true)}
+            className="bg-cream text-dark hover:bg-cream/90 font-medium rounded-md h-10 px-4"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Add Goal
+          </Button>
+        </div>
+      )}
+
+      {/* Create Goal Dialog - Always accessible */}
+      <Dialog open={showCreateGoal} onOpenChange={setShowCreateGoal}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-xl">Create Savings Goal</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="name" className="text-sm font-medium">Goal Name</Label>
+  
+              <Input
+                id="name"
+                value={newGoal.name}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewGoal({ ...newGoal, name: e.target.value })}
+                placeholder="Emergency fund, vacation, etc."
+                className="h-11"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="description" className="text-sm font-medium">Description (Optional)</Label>
+  
+              <Textarea
+                id="description"
+                value={newGoal.description}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNewGoal({ ...newGoal, description: e.target.value })}
+                placeholder="Details about your goal..."
+                className="min-h-[80px] resize-none"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="name" className="text-sm font-medium">Goal Name</Label>
+                <Label htmlFor="targetAmount" className="text-sm font-medium">Target Amount</Label>
     
                 <Input
-                  id="name"
-                  value={newGoal.name}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewGoal({ ...newGoal, name: e.target.value })}
-                  placeholder="Emergency fund, vacation, etc."
+                  id="targetAmount"
+                  type="number"
+                  value={newGoal.targetAmount}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewGoal({ ...newGoal, targetAmount: e.target.value })}
+                  placeholder="10000"
+                  min="0.01"
+                  step="0.01"
                   className="h-11"
                 />
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="description" className="text-sm font-medium">Description (Optional)</Label>
+                <Label className="text-sm font-medium">Target Date</Label>
     
-                <Textarea
-                  id="description"
-                  value={newGoal.description}
-                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNewGoal({ ...newGoal, description: e.target.value })}
-                  placeholder="Details about your goal..."
-                  className="min-h-[80px] resize-none"
-                />
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full justify-start text-left h-11">
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {format(newGoal.targetDate, "MMM dd, yyyy")}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={newGoal.targetDate}
+                      onSelect={(date) => date && setNewGoal({ ...newGoal, targetDate: date })}
+                      disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Category</Label>
+    
+                <Select
+                  value={newGoal.category}
+                  onValueChange={(value) => setNewGoal({ ...newGoal, category: value })}
+                >
+                  <SelectTrigger className="h-11">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat.value} value={cat.value}>
+                        <div className="flex items-center gap-2">
+                          <cat.icon className="h-4 w-4" />
+                          {cat.label}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="targetAmount" className="text-sm font-medium">Target Amount</Label>
-      
-                  <Input
-                    id="targetAmount"
-                    type="number"
-                    value={newGoal.targetAmount}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewGoal({ ...newGoal, targetAmount: e.target.value })}
-                    placeholder="10000"
-                    className="h-11"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Target Date</Label>
-      
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className="w-full justify-start text-left h-11">
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {format(newGoal.targetDate, "MMM dd, yyyy")}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={newGoal.targetDate}
-                        onSelect={(date) => date && setNewGoal({ ...newGoal, targetDate: date })}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Priority</Label>
+    
+                <Select
+                  value={newGoal.priority}
+                  onValueChange={(value: 'low' | 'medium' | 'high') => setNewGoal({ ...newGoal, priority: value })}
+                >
+                  <SelectTrigger className="h-11">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Category</Label>
-      
-                  <Select
-                    value={newGoal.category}
-                    onValueChange={(value) => setNewGoal({ ...newGoal, category: value })}
-                  >
-                    <SelectTrigger className="h-11">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((cat) => (
-                        <SelectItem key={cat.value} value={cat.value}>
-                          <div className="flex items-center gap-2">
-                            <cat.icon className="h-4 w-4" />
-                            {cat.label}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Priority</Label>
-      
-                  <Select
-                    value={newGoal.priority}
-                    onValueChange={(value: 'low' | 'medium' | 'high') => setNewGoal({ ...newGoal, priority: value })}
-                  >
-                    <SelectTrigger className="h-11">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="low">Low</SelectItem>
-                      <SelectItem value="medium">Medium</SelectItem>
-                      <SelectItem value="high">High</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+            </div>
 
   
-              <Button
-                onClick={createGoal}
-                className="w-full h-11 mt-6"
-                disabled={!newGoal.name || !newGoal.targetAmount}
-              >
-                Create Goal
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-        </div>
-      )}
+            <Button
+              onClick={createGoal}
+              className="w-full h-11 mt-6"
+              disabled={!newGoal.name || !newGoal.targetAmount}
+            >
+              Create Goal
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Goals Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-7xl mx-auto">
@@ -624,7 +630,7 @@ export function SavingsGoals({ hideHeader = false }: SavingsGoalsProps) {
       </div>
 
       {/* Empty State */}
-      {goals.length === 0 && !loading && (
+      {goals.length === 0 && !loading && !hideHeader && (
         <div className="text-center py-16">
           <div className="max-w-md mx-auto">
             <Target className="h-16 w-16 text-cream/40 mx-auto mb-6" />
@@ -635,10 +641,10 @@ export function SavingsGoals({ hideHeader = false }: SavingsGoalsProps) {
 
             <Button
               onClick={() => setShowCreateGoal(true)}
-              className="bg-cream/10 hover:bg-cream/20 text-cream/80 border-cream/20 h-11 px-6"
+              className="bg-cream text-dark hover:bg-cream/90 font-medium rounded-md h-10 px-4"
             >
               <Plus className="mr-2 h-4 w-4" />
-              Create Your First Goal
+              Add Your First Goal
             </Button>
           </div>
         </div>

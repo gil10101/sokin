@@ -471,10 +471,10 @@ export default function GoalsPage() {
                   resetForm()
                   setShowCreateDialog(true)
                 }}
-                className="bg-cream/10 hover:bg-cream/20 text-cream/80 border-cream/20 h-11 px-6"
+                className="bg-cream text-dark hover:bg-cream/90 font-medium rounded-md h-10 px-4"
               >
                 <Plus className="mr-2 h-4 w-4" />
-                New Goal
+                Add Goal
               </Button>
             }
           />
@@ -823,12 +823,12 @@ export default function GoalsPage() {
                       }
                       setShowCreateDialog(true)
                     }}
-                    className="bg-cream/10 hover:bg-cream/20 text-cream/80 border-cream/20 h-11 px-6"
+                    className="bg-cream text-dark hover:bg-cream/90 font-medium rounded-md h-10 px-4"
                   >
                     <Plus className="mr-2 h-4 w-4" />
                     {filterBy === 'all' 
-                      ? 'Create Your First Goal' 
-                      : `Create ${categories.find(c => c.value === filterBy)?.label} Goal`
+                      ? 'Add Your First Goal' 
+                      : `Add ${categories.find(c => c.value === filterBy)?.label} Goal`
                     }
                   </Button>
                 )}

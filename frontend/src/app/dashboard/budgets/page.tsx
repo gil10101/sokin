@@ -460,7 +460,7 @@ export default function BudgetsPage() {
                 resetForm()
                 setOpenDialog(true)
               }}
-              className="bg-cream text-dark hover:bg-cream/90 font-medium w-full sm:w-auto"
+              className="bg-cream text-dark hover:bg-cream/90 font-medium rounded-md h-10 px-4 w-full sm:w-auto"
             >
               <Plus className="mr-2 h-4 w-4" />
               Add Budget

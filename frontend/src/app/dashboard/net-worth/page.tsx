@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { MotionDiv, MotionHeader, fadeInUp, staggerContainer } from '../../../components/ui/dynamic-motion'
 import {
   DollarSign,
-  PlusCircle,
+  Plus,
   Building,
   CreditCard
 } from 'lucide-react'
@@ -169,8 +169,8 @@ export default function NetWorthPage() {
               </div>
               <div className="flex items-center gap-3">
                 <DropdownMenu>
-                  <DropdownMenuTrigger className="hidden md:flex items-center justify-center h-10 px-4 rounded-full bg-cream text-dark font-medium text-sm transition-all hover:bg-cream/90">
-                    <PlusCircle className="mr-2 h-4 w-4" />
+                  <DropdownMenuTrigger className="hidden md:flex items-center justify-center h-10 px-4 rounded-md bg-cream text-dark font-medium text-sm transition-all hover:bg-cream/90">
+                    <Plus className="mr-2 h-4 w-4" />
                     Add
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="bg-dark border-cream/10">
@@ -243,8 +243,8 @@ export default function NetWorthPage() {
             transition={{ duration: 0.5, delay: 0.4 }}
           >
             <DropdownMenu>
-              <DropdownMenuTrigger className="flex items-center justify-center h-10 px-4 rounded-full bg-cream text-dark font-medium text-sm transition-all hover:bg-cream/90">
-                <PlusCircle className="mr-2 h-4 w-4" />
+              <DropdownMenuTrigger className="flex items-center justify-center h-10 px-4 rounded-md bg-cream text-dark font-medium text-sm transition-all hover:bg-cream/90">
+                <Plus className="mr-2 h-4 w-4" />
                 Add
               </DropdownMenuTrigger>
               <DropdownMenuContent className="bg-dark border-cream/10">

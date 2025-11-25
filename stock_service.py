@@ -338,8 +338,8 @@ def handle_connect(auth_data=None):
             token = auth_data.get('token')
         
         if not token:
-                    # Try to get token from query parameters
-        token = request.args.get('token')  # type: ignore
+            # Try to get token from query parameters
+            token = request.args.get('token')  # type: ignore
         
         user_id = None
         if token:

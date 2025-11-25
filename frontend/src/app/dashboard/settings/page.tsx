@@ -2,17 +2,28 @@
 
 import React, { useState, useEffect } from "react"
 import { doc, getDoc, updateDoc } from "firebase/firestore"
-import { auth, db } from "@/lib/firebase"
-import { useAuthState } from "react-firebase-hooks/auth"
-import { MotionDiv, MotionMain } from "../../../components/ui/dynamic-motion"
+import { db } from "@/lib/firebase"
+import { MotionDiv } from "../../../components/ui/dynamic-motion"
 import { DashboardSidebar } from "@/components/dashboard/sidebar"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Save, Moon, Globe, CreditCard } from "lucide-react"
+import { Save, Moon, Globe, LogOut, User, Mail } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { useAuth } from "@/contexts/auth-context"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 // Properly typed UI components
 const TypedSelectTrigger = SelectTrigger
@@ -41,8 +52,9 @@ interface Settings {
 
 export default function SettingsPage() {
   const [collapsed, setCollapsed] = useState(false)
-  const [user] = useAuthState(auth)
+  const { user, signOut } = useAuth()
   const { toast } = useToast()
+  const [isSigningOut, setIsSigningOut] = useState(false)
 
   const [settings, setSettings] = useState<Settings>({
     theme: "dark",
@@ -139,6 +151,26 @@ export default function SettingsPage() {
     })
   }
 
+  const handleSignOut = async () => {
+    setIsSigningOut(true)
+    try {
+      await signOut()
+      toast({
+        title: "Signed out successfully",
+        description: "You have been signed out of your account",
+      })
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to sign out"
+      toast({
+        title: "Error signing out",
+        description: errorMessage,
+        variant: "destructive",
+      })
+    } finally {
+      setIsSigningOut(false)
+    }
+  }
+
   return (
     <div className="flex h-screen bg-dark text-cream overflow-hidden">
       <DashboardSidebar collapsed={collapsed} setCollapsed={setCollapsed} />
@@ -165,8 +197,8 @@ export default function SettingsPage() {
                 <TypedTabsTrigger value="notifications" className="data-[state=active]:bg-cream/10">
                   Notifications
                 </TypedTabsTrigger>
-                <TypedTabsTrigger value="budgets" className="data-[state=active]:bg-cream/10">
-                  Budgets
+                <TypedTabsTrigger value="account" className="data-[state=active]:bg-cream/10">
+                  Account
                 </TypedTabsTrigger>
               </TypedTabsList>
 
@@ -302,28 +334,75 @@ export default function SettingsPage() {
                 </MotionDiv>
               </TypedTabsContent>
 
-              <TypedTabsContent value="budgets">
+              <TypedTabsContent value="account">
                 <MotionDiv
                   className="bg-cream/5 rounded-xl border border-cream/10 p-6"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5 }}
                 >
-                  <h2 className="text-xl font-medium mb-6">Budget Settings</h2>
+                  <h2 className="text-xl font-medium mb-6">Account Information</h2>
 
                   <div className="space-y-6">
-                    <p className="text-cream/60">
-                      Set monthly budget limits for different categories to help manage your spending.
-                    </p>
+                    <div className="space-y-4 pb-6 border-b border-cream/10">
+                      <div className="flex items-center space-x-3">
+                        <div className="h-12 w-12 rounded-full bg-cream/10 flex items-center justify-center">
+                          <User className="h-6 w-6 text-cream/60" />
+                        </div>
+                        <div>
+                          <p className="text-sm text-cream/60">Display Name</p>
+                          <p className="font-medium">{user?.displayName || "Not set"}</p>
+                        </div>
+                      </div>
 
-                    {/* Budget settings would go here */}
-                    <div className="bg-cream/10 rounded-lg p-6 text-center">
-                      <CreditCard className="h-12 w-12 mx-auto mb-4 text-cream/40" />
-                      <h3 className="text-lg font-medium mb-2">Budget Management</h3>
-                      <p className="text-cream/60 mb-4">
-                        Set up and manage your category budgets to track your spending goals.
+                      <div className="flex items-center space-x-3">
+                        <div className="h-12 w-12 rounded-full bg-cream/10 flex items-center justify-center">
+                          <Mail className="h-6 w-6 text-cream/60" />
+                        </div>
+                        <div>
+                          <p className="text-sm text-cream/60">Email Address</p>
+                          <p className="font-medium">{user?.email || "Not available"}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <h3 className="text-lg font-medium">Sign Out</h3>
+                      <p className="text-cream/60 text-sm">
+                        Sign out of your account on this device. You can sign back in anytime.
                       </p>
-                      <TypedButton className="bg-cream text-dark hover:bg-cream/90">Set Up Budgets</TypedButton>
+                      
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <TypedButton
+                            variant="destructive"
+                            className="bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20"
+                            disabled={isSigningOut}
+                          >
+                            <LogOut className="mr-2 h-4 w-4" />
+                            {isSigningOut ? "Signing out..." : "Sign Out"}
+                          </TypedButton>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent className="bg-dark border-cream/10">
+                          <AlertDialogHeader>
+                            <AlertDialogTitle className="text-cream">Confirm Sign Out</AlertDialogTitle>
+                            <AlertDialogDescription className="text-cream/60">
+                              Are you sure you want to sign out? You will need to sign in again to access your account.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel className="bg-cream/5 border-cream/10 text-cream hover:bg-cream/10">
+                              Cancel
+                            </AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={handleSignOut}
+                              className="bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20"
+                            >
+                              Sign Out
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   </div>
                 </MotionDiv>

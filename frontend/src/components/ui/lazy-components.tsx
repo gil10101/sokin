@@ -15,9 +15,18 @@ const LoadingSpinner = () => (
   </div>
 )
 
+// Error fallback component
+const ErrorFallback = ({ componentName }: { componentName: string }) => (
+  <div className="flex items-center justify-center p-8 text-cream/60">
+    <div>Failed to load {componentName}</div>
+  </div>
+)
+
 // Lazy load Three.js components (718KB reduction when not needed)
 export const LazyMobileHero3DScene = dynamic(
-  () => import('./mobile-hero-3d-scene'),
+  () => import('./mobile-hero-3d-scene').catch(() => ({
+    default: () => <ErrorFallback componentName="MobileHero3DScene" />
+  })),
   {
     ssr: false,
     loading: () => <LoadingSpinner />
@@ -25,7 +34,9 @@ export const LazyMobileHero3DScene = dynamic(
 )
 
 export const LazyScrollTriggered3DScene = dynamic(
-  () => import('./scroll-triggered-3d-scene'),
+  () => import('./scroll-triggered-3d-scene').catch(() => ({
+    default: () => <ErrorFallback componentName="ScrollTriggered3DScene" />
+  })),
   {
     ssr: false,
     loading: () => <LoadingSpinner />
@@ -33,7 +44,9 @@ export const LazyScrollTriggered3DScene = dynamic(
 )
 
 export const LazyTwistedTorus = dynamic(
-  () => import('./twisted-torus'),
+  () => import('./twisted-torus').catch(() => ({
+    default: () => <ErrorFallback componentName="TwistedTorus" />
+  })),
   {
     ssr: false,
     loading: () => <LoadingSpinner />
@@ -42,7 +55,9 @@ export const LazyTwistedTorus = dynamic(
 
 // Lazy load chart components (Recharts optimization)
 export const LazyExpenseChart = dynamic(
-  () => import('../dashboard/expense-chart').then(mod => ({ default: mod.ExpenseChart })),
+  () => import('../dashboard/expense-chart').then(mod => ({ default: mod.ExpenseChart })).catch(() => ({
+    default: () => <ErrorFallback componentName="ExpenseChart" />
+  })),
   {
     ssr: false,
     loading: () => <LoadingSpinner />
@@ -50,7 +65,9 @@ export const LazyExpenseChart = dynamic(
 )
 
 export const LazyBudgetProgressChart = dynamic(
-  () => import('../dashboard/budget-progress-chart').then(mod => ({ default: mod.BudgetProgressChart })),
+  () => import('../dashboard/budget-progress-chart').then(mod => ({ default: mod.BudgetProgressChart })).catch(() => ({
+    default: () => <ErrorFallback componentName="BudgetProgressChart" />
+  })),
   {
     ssr: false, 
     loading: () => <LoadingSpinner />
@@ -58,7 +75,11 @@ export const LazyBudgetProgressChart = dynamic(
 )
 
 export const LazyMonthlyTrendsChart = dynamic(
-  () => import('../dashboard/monthly-trends-chart').then(mod => ({ default: mod.MonthlyTrendsChart })),
+  () => import('../dashboard/monthly-trends-chart').then(mod => ({ 
+    default: mod.MonthlyTrendsChart
+  })).catch(() => ({
+    default: () => <ErrorFallback componentName="MonthlyTrendsChart" />
+  })),
   {
     ssr: false,
     loading: () => <LoadingSpinner />
@@ -66,7 +87,11 @@ export const LazyMonthlyTrendsChart = dynamic(
 )
 
 export const LazySpendingHeatmap = dynamic(
-  () => import('../dashboard/spending-heatmap').then(mod => ({ default: mod.SpendingHeatmap })),
+  () => import('../dashboard/spending-heatmap').then(mod => ({ 
+    default: mod.SpendingHeatmap
+  })).catch(() => ({
+    default: () => <ErrorFallback componentName="SpendingHeatmap" />
+  })),
   {
     ssr: false,
     loading: () => <LoadingSpinner />
@@ -74,7 +99,11 @@ export const LazySpendingHeatmap = dynamic(
 )
 
 export const LazyCategoryComparisonChart = dynamic(
-  () => import('../dashboard/category-comparison-chart').then(mod => ({ default: mod.CategoryComparisonChart })),
+  () => import('../dashboard/category-comparison-chart').then(mod => ({ 
+    default: mod.CategoryComparisonChart
+  })).catch(() => ({
+    default: () => <ErrorFallback componentName="CategoryComparisonChart" />
+  })),
   {
     ssr: false,
     loading: () => <LoadingSpinner />
@@ -82,7 +111,9 @@ export const LazyCategoryComparisonChart = dynamic(
 )
 
 export const LazyStackedBarChart = dynamic(
-  () => import('../dashboard/stacked-bar-chart').then(mod => ({ default: mod.StackedBarChart })),
+  () => import('../dashboard/stacked-bar-chart').then(mod => ({ default: mod.StackedBarChart })).catch(() => ({
+    default: () => <ErrorFallback componentName="StackedBarChart" />
+  })),
   {
     ssr: false,
     loading: () => <LoadingSpinner />
@@ -90,7 +121,9 @@ export const LazyStackedBarChart = dynamic(
 )
 
 export const LazyNetWorthTrends = dynamic(
-  () => import('../dashboard/net-worth-trends').then(mod => ({ default: mod.NetWorthTrends })),
+  () => import('../dashboard/net-worth-trends').then(mod => ({ default: mod.NetWorthTrends })).catch(() => ({
+    default: () => <ErrorFallback componentName="NetWorthTrends" />
+  })),
   {
     ssr: false,
     loading: () => <LoadingSpinner />
@@ -99,7 +132,9 @@ export const LazyNetWorthTrends = dynamic(
 
 // Lazy load heavy dashboard components
 export const LazyAdvancedAnalytics = dynamic(
-  () => import('../dashboard/advanced-analytics').then(mod => ({ default: mod.AdvancedAnalytics })),
+  () => import('../dashboard/advanced-analytics').then(mod => ({ default: mod.AdvancedAnalytics })).catch(() => ({
+    default: () => <ErrorFallback componentName="AdvancedAnalytics" />
+  })),
   {
     ssr: false,
     loading: () => <LoadingSpinner />
@@ -107,7 +142,9 @@ export const LazyAdvancedAnalytics = dynamic(
 )
 
 export const LazyStockMarket = dynamic(
-  () => import('../dashboard/stock-market').then(mod => ({ default: mod.StockMarket })),
+  () => import('../dashboard/stock-market').then(mod => ({ default: mod.StockMarket })).catch(() => ({
+    default: () => <ErrorFallback componentName="StockMarket" />
+  })),
   {
     ssr: false,
     loading: () => <LoadingSpinner />
@@ -115,7 +152,9 @@ export const LazyStockMarket = dynamic(
 )
 
 export const LazyReceiptScanner = dynamic(
-  () => import('../dashboard/receipt-scanner').then(mod => ({ default: mod.ReceiptScanner })),
+  () => import('../dashboard/receipt-scanner').then(mod => ({ default: mod.ReceiptScanner })).catch(() => ({
+    default: () => <ErrorFallback componentName="ReceiptScanner" />
+  })),
   {
     ssr: false,
     loading: () => <LoadingSpinner />
@@ -124,7 +163,9 @@ export const LazyReceiptScanner = dynamic(
 
 // Lazy load animation components (Framer Motion optimization)
 export const LazyDynamicMotion = dynamic(
-  () => import('../ui/dynamic-motion').then(mod => ({ default: mod.MotionDiv })),
+  () => import('../ui/dynamic-motion').then(mod => ({ default: mod.MotionDiv })).catch(() => ({
+    default: () => <div>Failed to load motion component</div>
+  })),
   {
     ssr: false,
     loading: () => <div className="animate-pulse bg-muted h-20 w-full rounded" />

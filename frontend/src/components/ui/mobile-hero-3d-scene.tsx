@@ -3,11 +3,8 @@
 import dynamic from "next/dynamic"
 import React, { Suspense, useEffect, useState } from "react"
 
-// Dynamically import Canvas to avoid SSR issues
-const Canvas = dynamic(() => import("@react-three/fiber").then(mod => ({ default: mod.Canvas })), {
-  ssr: false,
-  loading: () => null
-})
+// Import Canvas directly - it handles SSR internally
+import { Canvas } from "@react-three/fiber"
 
 // Dynamically import the TwistedTorus to avoid SSR issues
 const TwistedTorus = dynamic(() => import("./twisted-torus"), {
@@ -87,7 +84,7 @@ function MobileHero3DScene() {
           }}
           dpr={viewportHeight < 600 ? [1, 1.2] : [1, 1.5]} // Responsive DPR based on viewport height
           resize={{ scroll: false, debounce: { scroll: 50, resize: 0 } }}
-                  >
+        >
           <Lights />
           <Suspense fallback={null}>
             <TwistedTorus isMobile={true} />

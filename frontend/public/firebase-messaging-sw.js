@@ -1,19 +1,25 @@
+// Firebase messaging service worker
+// This file needs proper configuration before it can be enabled
+
+/*
 // Import Firebase scripts for service worker
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js');
 
 // Initialize Firebase in service worker
 firebase.initializeApp({
-  apiKey: "your-api-key",
-  authDomain: "your-project.firebaseapp.com",
-  projectId: "your-project-id",
-  storageBucket: "your-project.appspot.com",
-  messagingSenderId: "your-sender-id",
-  appId: "your-app-id"
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
 });
 
 const messaging = firebase.messaging();
+*/
 
+/*
 // Handle background messages
 messaging.onBackgroundMessage((payload) => {
   // Background message received - processing notification
@@ -59,4 +65,14 @@ self.addEventListener('notificationclick', (event) => {
   }
   
   // Handle other actions as needed
+});
+*/
+
+// Placeholder service worker - does nothing until Firebase is configured
+self.addEventListener('install', () => {
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', () => {
+  self.clients.claim();
 }); 

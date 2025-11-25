@@ -686,7 +686,7 @@ export default function SubscriptionsPage() {
               <h1 className="text-2xl sm:text-3xl font-bold font-outfit">Subscriptions</h1>
               <p className="text-cream/60 mt-1">Manage your recurring subscriptions and services</p>
             </div>
-            <Button onClick={() => setOpenDialog(true)} className="bg-cream text-dark hover:bg-cream/90 font-medium w-full sm:w-auto">
+            <Button onClick={() => setOpenDialog(true)} className="bg-cream text-dark hover:bg-cream/90 font-medium rounded-md h-10 px-4 w-full sm:w-auto">
               <Plus className="mr-2 h-4 w-4" />
               Add Subscription
             </Button>

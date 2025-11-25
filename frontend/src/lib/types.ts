@@ -26,7 +26,7 @@ export interface UserProfile {
 export interface Expense {
   id: string;
   userId: string;
-  name?: string;
+  name: string;
   amount: number;
   date: string | number | Date | { toDate: () => Date };
   category: string;
@@ -40,6 +40,7 @@ export interface Expense {
 }
 
 export interface ExpenseFormData {
+  name: string;
   amount: number;
   date: string;
   category: string;

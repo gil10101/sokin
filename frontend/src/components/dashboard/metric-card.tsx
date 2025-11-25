@@ -1,3 +1,5 @@
+"use client"
+
 import { ArrowUpRight, ArrowDownRight } from "lucide-react"
 
 interface MetricCardProps {

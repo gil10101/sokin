@@ -19,7 +19,10 @@ const API_CACHE_ENDPOINTS = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(STATIC_CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS)
+      return cache.addAll(STATIC_ASSETS).catch((err) => {
+        // Silently fail if cache fails - don't block service worker installation
+        console.warn('Failed to cache static assets:', err)
+      })
     })
   )
   self.skipWaiting()
@@ -41,28 +44,48 @@ self.addEventListener('activate', (event) => {
 })
 
 self.addEventListener('fetch', (event) => {
+  // Only handle GET requests
+  if (event.request.method !== 'GET') {
+    return
+  }
+
+  // Skip cross-origin requests
+  const url = new URL(event.request.url)
+  if (url.origin !== location.origin) {
+    return
+  }
+
   const { request } = event
-  const url = new URL(request.url)
 
   // Cache API responses with stale-while-revalidate strategy
   if (API_CACHE_ENDPOINTS.some(endpoint => url.pathname.includes(endpoint))) {
     event.respondWith(
       caches.open(CACHE_NAME).then(async (cache) => {
-        const cachedResponse = await cache.match(request)
-        
-        // Return cached response immediately
-        const networkPromise = fetch(request).then((response) => {
-          // Update cache with fresh response
-          if (response.ok) {
-            cache.put(request, response.clone())
-          }
-          return response
-        }).catch(() => {
-          // Return cached response if network fails
-          return cachedResponse
-        })
+        try {
+          const cachedResponse = await cache.match(request)
+          
+          // Return cached response immediately
+          const networkPromise = fetch(request).then((response) => {
+            // Update cache with fresh response
+            if (response.ok) {
+              cache.put(request, response.clone()).catch(() => {
+                // Silently fail cache update
+              })
+            }
+            return response
+          }).catch(() => {
+            // Return cached response if network fails
+            return cachedResponse
+          })
 
-        return cachedResponse || networkPromise
+          return cachedResponse || networkPromise
+        } catch (err) {
+          // Fallback to network if cache fails
+          return fetch(request)
+        }
+      }).catch(() => {
+        // Fallback to network if cache open fails
+        return fetch(request)
       })
     )
     return
@@ -79,11 +102,18 @@ self.addEventListener('fetch', (event) => {
           if (response.ok) {
             const responseClone = response.clone()
             caches.open(STATIC_CACHE_NAME).then((cache) => {
-              cache.put(request, responseClone)
+              cache.put(request, responseClone).catch(() => {
+                // Silently fail cache update
+              })
+            }).catch(() => {
+              // Silently fail if cache open fails
             })
           }
           return response
         })
+      }).catch(() => {
+        // Fallback to network if cache fails
+        return fetch(request)
       })
     )
   }

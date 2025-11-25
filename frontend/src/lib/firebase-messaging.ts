@@ -2,6 +2,12 @@ import { getMessaging, getToken, onMessage, Messaging } from 'firebase/messaging
 import { auth } from './firebase';
 import { logger } from './logger';
 
+// Helper function to safely extract error message
+const getErrorMessage = (error: unknown): string => {
+  if (error instanceof Error) return error.message;
+  return String(error);
+};
+
 // Lazy import to avoid circular dependencies
 let notificationsAPI: {
   registerFCMToken: (token: string) => Promise<void>;
@@ -46,7 +52,7 @@ const initializeMessagingInstance = () => {
       messaging = getMessaging(auth.app);
     } catch (error: unknown) {
       // Failed to initialize Firebase messaging - push notifications unavailable
-      logger.error('Failed to initialize Firebase messaging', { error: error instanceof Error ? error.message : 'Unknown error' });
+      logger.error('Failed to initialize Firebase messaging', { error: getErrorMessage(error) });
       messaging = null;
     }
   }
@@ -94,7 +100,7 @@ export const requestNotificationPermission = async (): Promise<string | null> =>
     }
   } catch (error: unknown) {
     // Failed to request notification permission or get FCM token
-    logger.error('Failed to setup notifications', { error: error instanceof Error ? error.message : 'Unknown error' });
+    logger.error('Failed to setup notifications', { error: getErrorMessage(error) });
     return null;
   }
 };
@@ -109,7 +115,7 @@ const registerFCMToken = async (token: string) => {
     await api.registerFCMToken(token);
   } catch (error: unknown) {
     // Failed to register FCM token - push notifications may not work properly
-    logger.error('Failed to register FCM token', { error: error instanceof Error ? error.message : 'Unknown error' });
+    logger.error('Failed to register FCM token', { error: getErrorMessage(error) });
     // Retry mechanism is handled by the API service
   }
 };
@@ -142,6 +148,9 @@ export const showForegroundNotification = (payload: FirebaseMessagePayload) => {
 
 // Initialize messaging for the app
 export const initializeMessaging = async () => {
+  // Temporarily disable Firebase messaging until properly configured
+  return;
+  
   // Check if we're in a browser environment
   if (typeof window === 'undefined' || typeof navigator === 'undefined') {
     logger.info('Not in browser environment, skipping FCM initialization');
@@ -166,9 +175,11 @@ export const initializeMessaging = async () => {
       // Setup foreground message listener
       setupForegroundMessageListener(showForegroundNotification);
 
-    } catch (error: unknown) {
+    } catch (err) {
       // Failed to initialize Firebase messaging service - push notifications unavailable
-      logger.error('Failed to initialize messaging service', { error: error instanceof Error ? error.message : 'Unknown error' });
+      logger.error('Failed to initialize messaging service', { 
+        error: getErrorMessage(err)
+      });
     }
   } else {
     // Service Worker not supported in this browser

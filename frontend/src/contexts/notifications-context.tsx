@@ -3,7 +3,7 @@
 import type React from "react"
 import { createContext, useContext, useState, useEffect } from "react"
 import { collection, query, where, orderBy, doc, updateDoc, deleteDoc, addDoc, onSnapshot } from "firebase/firestore"
-import { db } from "../../../lib/firebase"
+import { db } from "../lib/firebase"
 import { useAuth } from "./auth-context"
 import { logger } from "../lib/logger"
 

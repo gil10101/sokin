@@ -41,16 +41,41 @@ export function AppInitializer() {
     return () => clearTimeout(timeoutId)
   }, [])
 
-  // Register service worker with lazy loading
+  // Unregister all service workers in development to prevent conflicts
   useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+        // Unregister all service workers immediately in development
+        navigator.serviceWorker.getRegistrations().then((registrations) => {
+          registrations.forEach((registration) => {
+            registration.unregister().catch(() => {
+              // Silently fail
+            })
+          })
+        }).catch(() => {
+          // Silently fail
+        })
+      }
+      return
+    }
+
+    // Register service worker in production only
     if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return
 
     // Delay service worker registration by 3 seconds
     const timeoutId = setTimeout(async () => {
       try {
-        await navigator.serviceWorker.register('/sw.js')
+        // Unregister all existing service workers first to avoid conflicts
+        const registrations = await navigator.serviceWorker.getRegistrations()
+        await Promise.all(registrations.map(reg => reg.unregister()))
+
+        // Register new service worker
+        await navigator.serviceWorker.register('/sw.js', {
+          scope: '/'
+        })
       } catch (e) {
-        // noop
+        // Silently fail - service workers are not critical for app functionality
+        console.warn('Service worker registration failed:', e)
       }
     }, 3000)
 

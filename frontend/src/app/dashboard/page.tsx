@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState, useEffect, useCallback, useMemo } from "react"
-import { PlusCircle, CreditCard, ChevronRight, Calendar, Search, TrendingUp } from "../../lib/icons"
+import { Plus, CreditCard, ChevronRight, Calendar, Search, TrendingUp } from "../../lib/icons"
 import { DashboardSidebar } from "@/components/dashboard/sidebar"
 import dynamic from "next/dynamic"
 import Image from "next/image"
@@ -385,7 +385,7 @@ export default function DashboardPage() {
                 onClick={() => router.push("/dashboard/add-expense")}
                 className="md:hidden flex items-center justify-center h-10 w-10 rounded-full bg-cream text-dark font-medium text-sm transition-all hover:bg-cream/90"
               >
-                <PlusCircle className="h-5 w-5" />
+                <Plus className="h-5 w-5" />
               </button>
             </div>
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
@@ -440,9 +440,9 @@ export default function DashboardPage() {
                 <NotificationsDropdown />
                 <button
                   onClick={() => router.push("/dashboard/add-expense")}
-                  className="hidden md:flex items-center justify-center h-10 px-4 rounded-full bg-cream text-dark font-medium text-sm transition-all hover:bg-cream/90 group"
+                  className="hidden md:flex items-center justify-center h-10 px-4 rounded-md bg-cream text-dark font-medium text-sm transition-all hover:bg-cream/90 group"
                 >
-                  <PlusCircle className="mr-2 h-4 w-4" />
+                  <Plus className="mr-2 h-4 w-4" />
                   Add Expense
                 </button>
               </div>

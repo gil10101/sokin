@@ -55,92 +55,81 @@ const nextConfig = {
     }
   },
   webpack: (config, { dev, isServer }) => {
-    // Optimize bundle splitting for better caching
-    config.optimization.splitChunks = {
-      chunks: 'all',
-      cacheGroups: {
-        framework: {
-          chunks: 'all',
-          name: 'framework',
-          test: /(?<!node_modules.*)[\\/]node_modules[\\/](react|react-dom|scheduler|prop-types|use-subscription)[\\/]/,
-          priority: 40,
-          enforce: true,
-        },
-        lib: {
-          test: /[\\/]node_modules[\\/](!next[\\/])[\\/]/,
-          name: 'lib',
-          priority: 30,
-          chunks: 'all',
-        },
-        radix: {
-          test: /[\\/]node_modules[\\/]@radix-ui[\\/]/,
-          name: 'radix',
-          chunks: 'all',
-          priority: 20,
-        },
-        recharts: {
-          test: /[\\/]node_modules[\\/]recharts[\\/]/,
-          name: 'recharts',
-          chunks: 'async', // Load on demand for better performance
-          priority: 15,
-        },
-        firebase: {
-          test: /[\\/]node_modules[\\/]firebase[\\/]/,
-          name: 'firebase',
-          chunks: 'all',
-          priority: 15,
-        },
-        three: {
-          test: /[\\/]node_modules[\\/](three|@react-three)[\\/]/,
-          name: 'three',
-          chunks: 'async', // Only load when needed
-          priority: 10,
-        },
-        framerMotion: {
-          test: /[\\/]node_modules[\\/]framer-motion[\\/]/,
-          name: 'framer-motion',
-          chunks: 'all',
-          priority: 10,
-        },
-        // Separate chunk for large utilities
-        utils: {
-          test: /[\\/]node_modules[\\/](clsx|tailwind-merge|date-fns|sonner)[\\/]/,
-          name: 'utils',
-          chunks: 'all',
-          priority: 5,
-        },
-      },
+    // Only apply critical optimizations that don't break module resolution
+    
+    // Ensure consistent module IDs for better caching
+    config.optimization.moduleIds = 'deterministic'
+    
+    // Add module resolution fallbacks to prevent Node.js module errors in browser
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      fs: false,
+      net: false,
+      tls: false,
     }
 
-    // Stricter performance hints for optimization tracking
+    // Improve error handling for dynamic imports
+    if (dev) {
+      config.optimization = {
+        ...config.optimization,
+        removeAvailableModules: false,
+        removeEmptyChunks: false,
+      }
+    }
+
+    // Stricter performance hints for production optimization tracking
     if (!dev && !isServer) {
       config.performance = {
         hints: 'warning',
-        maxAssetSize: 400000, // 400KB - stricter limit
-        maxEntrypointSize: 400000, // 400KB - stricter limit
+        maxAssetSize: 400000, // 400KB - strict limit for bundle size monitoring
+        maxEntrypointSize: 400000, // 400KB - strict limit for entry point size
         assetFilter: (assetFilename) => {
           // Ignore source maps and fonts in performance calculations
           return !assetFilename.endsWith('.map') && !assetFilename.match(/\.(woff|woff2|eot|ttf|otf)$/)
         }
       }
       
-      // Advanced tree shaking
-      config.optimization.usedExports = true
-      // Let package.json sideEffects field and webpack handle tree-shaking correctly
-      // Avoid forcing sideEffects = false as it can drop CSS and library initializers
-    }
-
-    // Optimize CSS extraction
-    if (!isServer) {
-      config.optimization = {
-        ...config.optimization,
-        runtimeChunk: 'single',
-        splitChunks: config.optimization.splitChunks,
+      // Configure code splitting to enforce bundle size limits
+      // Merge with Next.js defaults to preserve framework chunk and vendor splitting
+      config.optimization.splitChunks = {
+        ...config.optimization.splitChunks,
+        chunks: 'all',
+        cacheGroups: {
+          ...config.optimization.splitChunks?.cacheGroups,
+          // Separate large libraries into their own chunks with size limits
+          firebase: {
+            test: /[\\/]node_modules[\\/](firebase|@firebase)[\\/]/,
+            name: 'firebase',
+            priority: 10,
+            chunks: 'all',
+            maxSize: 200000,
+          },
+          recharts: {
+            test: /[\\/]node_modules[\\/]recharts[\\/]/,
+            name: 'recharts',
+            priority: 10,
+            chunks: 'all',
+            maxSize: 200000,
+          },
+          framerMotion: {
+            test: /[\\/]node_modules[\\/]framer-motion[\\/]/,
+            name: 'framer-motion',
+            priority: 10,
+            chunks: 'all',
+            maxSize: 200000,
+          },
+        },
       }
+      
+      // Enable tree shaking for production
+      config.optimization.usedExports = true
     }
 
     return config
   },
+  // Empty turbopack config to silence Next.js 16 warning
+  // We're explicitly using webpack via --webpack flag in dev script
+  turbopack: {},
   headers: async () => {
     return [
       {
