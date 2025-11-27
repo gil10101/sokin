@@ -42,5 +42,5 @@ TODO.MD
 **/service-account-key.json
 
 __pycache__
-./tests
-/coverage
+tests/
+backend/coverage/
