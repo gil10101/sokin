@@ -18,6 +18,7 @@ import {
 import { MotionDiv, MotionMain, MotionHeader } from "../../../components/ui/dynamic-motion"
 import { useToast } from "../../../hooks/use-toast"
 import { LoadingSpinner } from "../../../components/ui/loading-spinner"
+import { AddButton } from "../../../components/ui/add-button"
 
 interface BillReminder {
   id: string
@@ -57,12 +58,13 @@ export default function BillsPage() {
   const [filterStatus, setFilterStatus] = useState<'all' | 'upcoming' | 'overdue' | 'paid'>('all')
   const [sortBy, setSortBy] = useState<'dueDate' | 'amount' | 'name'>('dueDate')
   const [collapsed, setCollapsed] = useState(false)
+  const [showCreateBill, setShowCreateBill] = useState(false)
   const { toast } = useToast()
 
   const fetchBills = useCallback(async () => {
     setLoading(true)
     try {
-      const { API } = await import('../../../lib/api-services')
+      const { API } = await import('../../../lib/api')
       const billsData = await API.billReminders.getBillReminders()
       setBills(billsData)
     } catch (error) {
@@ -206,15 +208,19 @@ export default function BillsPage() {
       <main className="flex-1 overflow-auto p-6 md:p-8 lg:p-10">
         <div className="max-w-7xl mx-auto">
           <MotionHeader
-            className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8"
+            className="flex items-center justify-between mb-8"
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <div>
-              <h1 className="text-2xl md:text-3xl font-medium font-outfit">Bill Reminders</h1>
+            <div className="ml-12 md:ml-0">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-medium font-outfit">Bill Reminders</h1>
               <p className="text-cream/60 text-sm mt-1 font-outfit">Manage your bills and never miss a payment</p>
             </div>
+            <AddButton
+              label="Bill"
+              onClick={() => setShowCreateBill(true)}
+            />
           </MotionHeader>
 
           {/* Stats Cards */}
@@ -336,9 +342,13 @@ export default function BillsPage() {
           <MotionContainer delay={0.6}>
             <div className="bg-cream/5 rounded-xl border border-cream/10 p-6 hover:border-cream/20 transition-colors duration-300">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-medium font-outfit">Your Bills</h2>
+                <h2 className="text-lg font-medium font-outfit">Bills</h2>
               </div>
-              <BillReminders />
+              <BillReminders 
+                externalShowCreate={showCreateBill}
+                onExternalShowCreateChange={setShowCreateBill}
+                hideInternalAddButton={true}
+              />
             </div>
           </MotionContainer>
         </div>
