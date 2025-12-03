@@ -12,6 +12,7 @@ import { logger } from "../../../lib/logger"
 import { DashboardSidebar } from "../../../components/dashboard/sidebar"
 import { PageHeader } from "../../../components/dashboard/page-header"
 import { Button } from "../../../components/ui/button"
+import { AddButton } from "../../../components/ui/add-button"
 import { Input } from "../../../components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/select"
 import { Calendar } from "../../../components/ui/calendar"
@@ -450,21 +451,18 @@ export default function BudgetsPage() {
 
       <main className="flex-1 overflow-auto p-6 md:p-8 lg:p-10">
         <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:items-center sm:justify-between mb-8">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold font-outfit">Budgets</h1>
-              <p className="text-cream/60 mt-1">Manage your spending limits and financial goals</p>
+          <div className="flex items-center justify-between mb-8">
+            <div className="ml-12 md:ml-0">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-medium font-outfit">Budgets</h1>
+              <p className="text-cream/60 text-sm mt-1 font-outfit">Manage your spending limits and financial goals</p>
             </div>
-            <Button
+            <AddButton
+              label="Budget"
               onClick={() => {
                 resetForm()
                 setOpenDialog(true)
               }}
-              className="bg-cream text-dark hover:bg-cream/90 font-medium w-full sm:w-auto"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Add Budget
-            </Button>
+            />
           </div>
 
           <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-4 sm:p-6 mb-8">
