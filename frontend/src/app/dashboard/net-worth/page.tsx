@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { MotionDiv, MotionHeader, fadeInUp, staggerContainer } from '../../../components/ui/dynamic-motion'
 import {
   DollarSign,
-  PlusCircle,
+  Plus,
   Building,
   CreditCard
 } from 'lucide-react'
@@ -167,30 +167,56 @@ export default function NetWorthPage() {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <DropdownMenu>
-                  <DropdownMenuTrigger className="hidden md:flex items-center justify-center h-10 px-4 rounded-full bg-cream text-dark font-medium text-sm transition-all hover:bg-cream/90">
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Add
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="bg-dark border-cream/10">
-                    <DropdownMenuItem
-                      className="text-cream hover:bg-cream/10 cursor-pointer"
-                      onClick={() => handleAddNew('asset')}
-                    >
-                      <Building className="mr-2 h-4 w-4" />
-                      Add Asset
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      className="text-cream hover:bg-cream/10 cursor-pointer"
-                      onClick={() => handleAddNew('liability')}
-                    >
-                      <CreditCard className="mr-2 h-4 w-4" />
-                      Add Liability
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
+              
+              {/* Mobile: Icon-only dropdown trigger */}
+              <DropdownMenu>
+                <DropdownMenuTrigger 
+                  aria-label="Add asset or liability"
+                  className="md:hidden flex items-center justify-center h-10 w-10 p-0 rounded-lg bg-cream text-dark font-medium transition-all duration-200 shadow-sm hover:shadow-md hover:bg-cream/90"
+                >
+                  <Plus className="h-5 w-5" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="bg-dark border-cream/10">
+                  <DropdownMenuItem
+                    className="text-cream hover:bg-cream/10 cursor-pointer"
+                    onClick={() => handleAddNew('asset')}
+                  >
+                    <Building className="mr-2 h-4 w-4" />
+                    Add Asset
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="text-cream hover:bg-cream/10 cursor-pointer"
+                    onClick={() => handleAddNew('liability')}
+                  >
+                    <CreditCard className="mr-2 h-4 w-4" />
+                    Add Liability
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Desktop/Tablet: Full dropdown with text */}
+              <DropdownMenu>
+                <DropdownMenuTrigger className="hidden md:flex items-center justify-center h-11 px-5 rounded-lg bg-cream text-dark font-medium text-sm tracking-wide transition-all duration-200 shadow-sm hover:shadow-md hover:bg-cream/90 gap-2">
+                  <Plus className="h-4 w-4" />
+                  <span className="uppercase">Add Item</span>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="bg-dark border-cream/10">
+                  <DropdownMenuItem
+                    className="text-cream hover:bg-cream/10 cursor-pointer"
+                    onClick={() => handleAddNew('asset')}
+                  >
+                    <Building className="mr-2 h-4 w-4" />
+                    Add Asset
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="text-cream hover:bg-cream/10 cursor-pointer"
+                    onClick={() => handleAddNew('liability')}
+                  >
+                    <CreditCard className="mr-2 h-4 w-4" />
+                    Add Liability
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </MotionHeader>
 
@@ -235,36 +261,7 @@ export default function NetWorthPage() {
             </MotionDiv>
           </MotionDiv>
 
-          {/* Mobile Add Button */}
-          <MotionDiv 
-            className="mb-6 md:hidden"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.4 }}
-          >
-            <DropdownMenu>
-              <DropdownMenuTrigger className="flex items-center justify-center h-10 px-4 rounded-full bg-cream text-dark font-medium text-sm transition-all hover:bg-cream/90">
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Add
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-dark border-cream/10">
-                <DropdownMenuItem
-                  className="text-cream hover:bg-cream/10 cursor-pointer"
-                  onClick={() => handleAddNew('asset')}
-                >
-                  <Building className="mr-2 h-4 w-4" />
-                  Add Asset
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="text-cream hover:bg-cream/10 cursor-pointer"
-                  onClick={() => handleAddNew('liability')}
-                >
-                  <CreditCard className="mr-2 h-4 w-4" />
-                  Add Liability
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </MotionDiv>
+          {/* Mobile Add Button - shown in header instead */}
 
           {/* Main Content */}
           <MotionDiv 
