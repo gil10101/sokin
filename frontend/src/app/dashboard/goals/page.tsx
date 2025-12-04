@@ -8,7 +8,7 @@ import { db } from "../../../lib/firebase"
 import { useAuth } from "../../../contexts/auth-context"
 import { format, differenceInDays, isAfter, isBefore, addMonths, addYears } from "date-fns"
 import { DashboardSidebar } from "../../../components/dashboard/sidebar"
-import { PageHeader } from "../../../components/dashboard/page-header"
+import { AddButton } from "../../../components/ui/add-button"
 import { MetricCard } from "../../../components/dashboard/metric-card"
 import { Button } from "../../../components/ui/button"
 import { Input } from "../../../components/ui/input"
@@ -461,23 +461,20 @@ export default function GoalsPage() {
       
       <main className="flex-1 overflow-auto p-4 sm:p-6 md:p-8 lg:p-10">
         <div className="max-w-7xl mx-auto">
-          <PageHeader
-            title="Savings Goals"
-            description="Track your financial goals and build wealth systematically"
-            action={
-              <Button 
-                onClick={() => {
-                  setEditingGoal(null)
-                  resetForm()
-                  setShowCreateDialog(true)
-                }}
-                className="bg-cream/10 hover:bg-cream/20 text-cream/80 border-cream/20 h-11 px-6"
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                New Goal
-              </Button>
-            }
-          />
+          <div className="flex items-center justify-between mb-8">
+            <div className="ml-12 md:ml-0">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-medium font-outfit">Savings Goals</h1>
+              <p className="text-cream/60 text-sm mt-1 font-outfit">Track your financial goals and build wealth systematically</p>
+            </div>
+            <AddButton
+              label="Goal"
+              onClick={() => {
+                setEditingGoal(null)
+                resetForm()
+                setShowCreateDialog(true)
+              }}
+            />
+          </div>
 
           {/* Stats Overview */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 sm:mb-8">
