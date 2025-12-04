@@ -24,7 +24,8 @@ import {
   AlertDialogTrigger,
 } from "../../../components/ui/alert-dialog"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../../../components/ui/dialog"
-import { Search, Trash2, Edit, PlusCircle, ChevronDown, ChevronRight, Receipt } from "lucide-react"
+import { Search, Trash2, Edit, ChevronDown, ChevronRight, ChevronLeft, Receipt, ChevronsLeft, ChevronsRight } from "lucide-react"
+import { AddButton } from "../../../components/ui/add-button"
 import Image from "next/image"
 import { useToast } from "../../../hooks/use-toast"
 import { useRouter } from "next/navigation"
@@ -116,6 +117,10 @@ export default function ExpensesPage() {
   const [expandedExpenses, setExpandedExpenses] = useState<Record<string, boolean>>({})
   const [mounted, setMounted] = useState(false)
   const [receiptImageUrl, setReceiptImageUrl] = useState<string | null>(null)
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(20)
 
   useEffect(() => {
     setMounted(true)
@@ -253,7 +258,24 @@ export default function ExpensesPage() {
     }
 
     setFilteredExpenses(result)
+    // Reset to first page when filters change
+    setCurrentPage(1)
   }, [expenses, searchQuery, categoryFilter, sortBy])
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredExpenses.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const paginatedExpenses = filteredExpenses.slice(startIndex, endIndex)
+
+  const goToPage = (page: number) => {
+    setCurrentPage(Math.max(1, Math.min(page, totalPages)))
+  }
+
+  const handleItemsPerPageChange = (value: string) => {
+    setItemsPerPage(Number(value))
+    setCurrentPage(1)
+  }
 
   const handleDeleteExpense = async () => {
     if (!expenseToDelete) return
@@ -311,28 +333,15 @@ export default function ExpensesPage() {
 
       <main className="flex-1 overflow-auto p-4 sm:p-6 md:p-8 lg:p-10">
         <div className="max-w-7xl mx-auto">
-          <header className="flex flex-col gap-4 mb-6 sm:mb-8">
-            <div className="flex items-center justify-between">
-              <div className="ml-12 md:ml-0">
-                <h1 className="text-xl sm:text-2xl md:text-3xl font-medium font-outfit">Expenses</h1>
-                <p className="text-cream/60 text-sm mt-1 font-outfit">Manage and track all your expenses</p>
-              </div>
-              <Button
-                onClick={() => router.push("/dashboard/add-expense")}
-                className="md:hidden bg-cream text-dark hover:bg-cream/90 font-medium h-10 w-10 p-0"
-              >
-                <PlusCircle className="h-5 w-5" />
-              </Button>
+          <header className="flex items-center justify-between mb-6 sm:mb-8">
+            <div className="ml-12 md:ml-0">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-medium font-outfit">Expenses</h1>
+              <p className="text-cream/60 text-sm mt-1 font-outfit">Manage and track all your expenses</p>
             </div>
-            <div className="hidden md:flex justify-end">
-              <Button
-                onClick={() => router.push("/dashboard/add-expense")}
-                className="bg-cream text-dark hover:bg-cream/90 font-medium"
-              >
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Add Expense
-              </Button>
-            </div>
+            <AddButton
+              label="Expense"
+              onClick={() => router.push("/dashboard/add-expense")}
+            />
           </header>
 
           <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-4 sm:p-6 mb-6 sm:mb-8">
@@ -409,7 +418,7 @@ export default function ExpensesPage() {
               <>
                 {/* Mobile Card Layout */}
                 <div className="md:hidden space-y-3">
-                  {filteredExpenses.map((expense) => (
+                  {paginatedExpenses.map((expense) => (
                     <div key={expense.id} className="bg-cream/5 rounded-lg border border-cream/10 p-4">
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex-1">
@@ -492,7 +501,7 @@ export default function ExpensesPage() {
                       </TableRow>
                     </TableHeader>
                   <TableBody>
-                    {filteredExpenses.map((expense) => (
+                    {paginatedExpenses.map((expense) => (
                       <React.Fragment key={expense.id}>
                         <TableRow
                           className={`border-cream/10 hover:bg-cream/5 cursor-pointer ${expandedExpenses[expense.id] ? "bg-cream/5" : ""}`}
@@ -668,6 +677,104 @@ export default function ExpensesPage() {
                   </TableBody>
                   </Table>
                 </div>
+
+                {/* Pagination Controls - Always show when there are expenses */}
+                {filteredExpenses.length > 0 && (
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-6 border-t border-cream/10">
+                    <div className="flex items-center gap-2 text-sm text-cream/60">
+                      <span>Showing {startIndex + 1}-{Math.min(endIndex, filteredExpenses.length)} of {filteredExpenses.length}</span>
+                      <span className="hidden sm:inline">|</span>
+                      <div className="hidden sm:flex items-center gap-2">
+                        <span>Per page:</span>
+                        <Select value={itemsPerPage.toString()} onValueChange={handleItemsPerPageChange}>
+                          <SelectTrigger className="w-20 h-8 bg-cream/5 border-cream/10 text-cream text-sm">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-dark border-cream/10">
+                            <SelectItem value="10" className="text-cream hover:bg-cream/10">10</SelectItem>
+                            <SelectItem value="20" className="text-cream hover:bg-cream/10">20</SelectItem>
+                            <SelectItem value="50" className="text-cream hover:bg-cream/10">50</SelectItem>
+                            <SelectItem value="100" className="text-cream hover:bg-cream/10">100</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    {/* Only show page navigation when there's more than 1 page */}
+                    {totalPages > 1 && (
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => goToPage(1)}
+                          disabled={currentPage === 1}
+                          className="h-8 w-8 text-cream/60 hover:text-cream hover:bg-cream/10 disabled:opacity-30"
+                        >
+                          <ChevronsLeft className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => goToPage(currentPage - 1)}
+                          disabled={currentPage === 1}
+                          className="h-8 w-8 text-cream/60 hover:text-cream hover:bg-cream/10 disabled:opacity-30"
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+
+                        {/* Page numbers */}
+                        <div className="flex items-center gap-1 mx-2">
+                          {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                            let pageNum: number
+                            if (totalPages <= 5) {
+                              pageNum = i + 1
+                            } else if (currentPage <= 3) {
+                              pageNum = i + 1
+                            } else if (currentPage >= totalPages - 2) {
+                              pageNum = totalPages - 4 + i
+                            } else {
+                              pageNum = currentPage - 2 + i
+                            }
+                            return (
+                              <Button
+                                key={pageNum}
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => goToPage(pageNum)}
+                                className={`h-8 w-8 text-sm ${
+                                  currentPage === pageNum
+                                    ? "bg-cream/20 text-cream"
+                                    : "text-cream/60 hover:text-cream hover:bg-cream/10"
+                                }`}
+                              >
+                                {pageNum}
+                              </Button>
+                            )
+                          })}
+                        </div>
+
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => goToPage(currentPage + 1)}
+                          disabled={currentPage === totalPages}
+                          className="h-8 w-8 text-cream/60 hover:text-cream hover:bg-cream/10 disabled:opacity-30"
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => goToPage(totalPages)}
+                          disabled={currentPage === totalPages}
+                          className="h-8 w-8 text-cream/60 hover:text-cream hover:bg-cream/10 disabled:opacity-30"
+                        >
+                          <ChevronsRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </>
             )}
           </MotionContainer>
