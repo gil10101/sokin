@@ -38,7 +38,6 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../../../components/ui/collapsible"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../components/ui/table"
 import {
-  Plus,
   CalendarIcon,
   ChevronDown,
   ChevronUp,
@@ -48,7 +47,9 @@ import {
   Search,
   SortAsc,
   SortDesc,
+  Plus,
 } from "lucide-react"
+import { AddButton } from "../../../components/ui/add-button"
 import { useToast } from "../../../hooks/use-toast"
 import { LoadingSpinner } from "../../../components/ui/loading-spinner"
 import { MotionContainer } from "../../../components/ui/motion-container"
@@ -681,15 +682,15 @@ export default function SubscriptionsPage() {
       <DashboardSidebar collapsed={collapsed} setCollapsed={setCollapsed} />
       <main className="flex-1 overflow-auto p-6 md:p-8 lg:p-10">
         <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:items-center sm:justify-between mb-8">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold font-outfit">Subscriptions</h1>
-              <p className="text-cream/60 mt-1">Manage your recurring subscriptions and services</p>
+          <div className="flex items-center justify-between mb-8">
+            <div className="ml-12 md:ml-0">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-medium font-outfit">Subscriptions</h1>
+              <p className="text-cream/60 text-sm mt-1 font-outfit">Manage your recurring subscriptions and services</p>
             </div>
-            <Button onClick={() => setOpenDialog(true)} className="bg-cream text-dark hover:bg-cream/90 font-medium w-full sm:w-auto">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Subscription
-            </Button>
+            <AddButton
+              label="Subscription"
+              onClick={() => setOpenDialog(true)}
+            />
           </div>
 
           <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-4 sm:p-6 mb-8">
