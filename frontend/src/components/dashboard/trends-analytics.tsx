@@ -102,7 +102,7 @@ export function TrendsAnalytics({ expenses }: TrendsAnalyticsProps) {
       </CardHeader>
       <CardContent className="pb-6">
         <ResponsiveContainer width="100%" height={isMobile ? 350 : 500}>
-          <BarChart data={trendData} margin={{ top: 20, right: 30, left: 20, bottom: isMobile ? 40 : 20 }}>
+          <BarChart data={trendData} margin={{ top: 20, right: 30, left: 20, bottom: isMobile ? 50 : 85 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(245, 245, 240, 0.1)" />
             <XAxis 
               dataKey="month" 
@@ -110,9 +110,9 @@ export function TrendsAnalytics({ expenses }: TrendsAnalyticsProps) {
               axisLine={false}
               tickLine={false}
               interval={isMobile ? 1 : 0}
-              angle={isMobile ? -45 : 0}
-              textAnchor={isMobile ? "end" : "middle"}
-              height={isMobile ? 60 : 30}
+              angle={isMobile ? -45 : -35}
+              textAnchor="end"
+              height={isMobile ? 60 : 80}
             />
             <YAxis 
               tick={{ fill: "rgba(245, 245, 240, 0.6)", fontSize: isMobile ? 10 : 12 }}

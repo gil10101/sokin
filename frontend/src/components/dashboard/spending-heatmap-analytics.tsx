@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo } from 'react'
-import { useIsMobile } from '../../hooks/use-mobile'
+import { useViewport } from '../../hooks/use-mobile'
 import { format, subMonths, eachDayOfInterval } from 'date-fns'
 
 // Simple card components to avoid React 19 type conflicts
@@ -79,7 +79,7 @@ const safeParseDate = (dateValue: string | number | Date | { toDate(): Date } | 
 }
 
 export function SpendingHeatmapAnalytics({ expenses }: SpendingHeatmapAnalyticsProps) {
-  const isMobile = useIsMobile()
+  const { isMobile, isTablet } = useViewport()
 
   // Process spending data for heatmap
   const spendingHeatmapData = useMemo(() => {
@@ -126,25 +126,30 @@ export function SpendingHeatmapAnalytics({ expenses }: SpendingHeatmapAnalyticsP
     <SimpleCard className="bg-cream/5 border-cream/20">
       <SimpleCardHeader className="pb-6">
         <SimpleCardTitle className="text-xl text-cream/90">Spending Heatmap</SimpleCardTitle>
-        <p className="text-sm text-cream/60">Daily spending patterns over the last {isMobile ? '5 weeks' : '7 weeks'}</p>
+        <p className="text-sm text-cream/60">Daily spending patterns over the last {isMobile ? '5 weeks' : isTablet ? '6 weeks' : '7 weeks'}</p>
       </SimpleCardHeader>
       <SimpleCardContent className="pb-6">
         <div className="space-y-4">
-          <div className={`grid grid-cols-7 gap-3 ${isMobile ? 'text-xs' : 'text-sm'} max-w-4xl mx-auto`}>
-            {(isMobile ? ['S', 'M', 'T', 'W', 'T', 'F', 'S'] : ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']).map((day, index) => (
-              <div key={index} className={`text-center font-medium text-cream/60 ${isMobile ? 'p-2' : 'p-3'}`}>{day}</div>
-            ))}
-            {spendingHeatmapData.slice(isMobile ? -35 : -49).map((day, index) => {
+          <div className={`grid grid-cols-7 gap-3 ${isMobile ? 'text-xs' : isTablet ? 'text-xs' : 'text-sm'} max-w-4xl mx-auto`}>
+            {(() => {
+              const dayLabels = isMobile 
+                ? ['S', 'M', 'T', 'W', 'T', 'F', 'S'] 
+                : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+              return dayLabels.map((day, index) => (
+                <div key={index} className={`flex items-center justify-center font-medium text-cream/60 ${isMobile ? 'p-2' : isTablet ? 'p-2.5' : 'p-3'}`}>{day}</div>
+              ))
+            })()}
+            {spendingHeatmapData.slice(isMobile ? -35 : isTablet ? -42 : -49).map((day, index) => {
               const intensity = Math.min(day.amount / 100, 1) // Normalize intensity
               return (
                 <div
                   key={index}
-                  className={`aspect-square rounded-lg flex items-center justify-center ${isMobile ? 'text-xs' : 'text-sm'} cursor-pointer hover:scale-105 transition-all duration-200 font-medium`}
+                  className={`aspect-square rounded-lg flex items-center justify-center ${isMobile ? 'text-xs' : isTablet ? 'text-xs' : 'text-sm'} cursor-pointer hover:scale-105 transition-all duration-200 font-medium`}
                   style={{
                     backgroundColor: `rgba(245, 245, 240, ${intensity * 0.6 + 0.1})`,
                     color: intensity > 0.3 ? 'rgba(0, 0, 0, 0.8)' : 'rgba(245, 245, 240, 0.7)',
                     border: '1px solid rgba(245, 245, 240, 0.2)',
-                    minHeight: isMobile ? '32px' : '48px'
+                    minHeight: isMobile ? '32px' : isTablet ? '40px' : '48px'
                   }}
                   title={`${day.date}: $${day.amount.toFixed(2)} (${day.count} transactions)`}
                 >

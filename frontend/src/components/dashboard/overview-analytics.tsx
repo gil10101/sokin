@@ -104,7 +104,7 @@ export function OverviewAnalytics({ expenses }: OverviewAnalyticsProps) {
           <ResponsiveContainer width="100%" height={isMobile ? 320 : 400}>
             <AreaChart 
               data={trendData}
-              margin={isMobile ? { top: 10, right: 10, left: -20, bottom: 30 } : { top: 10, right: 30, left: 0, bottom: 10 }}
+              margin={isMobile ? { top: 10, right: 10, left: -20, bottom: 50 } : { top: 10, right: 30, left: 0, bottom: 85 }}
             >
               <defs>
                 <linearGradient id="colorSpending" x1="0" y1="0" x2="0" y2="1">
@@ -119,9 +119,9 @@ export function OverviewAnalytics({ expenses }: OverviewAnalyticsProps) {
                 axisLine={false}
                 tickLine={false}
                 interval={isMobile ? 2 : 0}
-                angle={isMobile ? -45 : 0}
-                textAnchor={isMobile ? "end" : "middle"}
-                height={isMobile ? 60 : 30}
+                angle={isMobile ? -45 : -35}
+                textAnchor="end"
+                height={isMobile ? 60 : 80}
               />
               <YAxis 
                 tick={{ fill: "rgba(245, 245, 240, 0.6)", fontSize: isMobile ? 9 : 12 }}

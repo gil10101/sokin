@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState, useRef, useCallback } from "react"
+import React, { useEffect, useState, useRef, useCallback, useMemo } from "react"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell, Tooltip } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "../../components/ui/chart"
 import { LoadingSpinner } from "../../components/ui/loading-spinner"
@@ -87,15 +87,41 @@ export function StackedBarChart({ timeframe = "year" }: StackedBarChartProps) {
   const chartRef = useRef<HTMLDivElement>(null)
 
   const { data: allExpenses = [], isLoading: expensesLoading } = useExpensesData()
+  const prevProcessedKeyRef = useRef<string>('')
 
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  const processExpenseData = useCallback(() => {
-    if (!user) return
+  // Create a stable key based on expense data to prevent unnecessary reprocessing
+  const expensesKey = useMemo(() => {
+    if (!allExpenses || allExpenses.length === 0) return 'empty'
+    return allExpenses.map(e => `${e.id}-${e.date}-${e.amount}-${e.category}`).sort().join('|')
+  }, [allExpenses])
 
+  // Process expense data when dependencies actually change
+  useEffect(() => {
+    if (!user || !mounted) {
+      return
+    }
+
+    // Show loading while expenses are loading
+    if (expensesLoading) {
+      setLoading(true)
+      return
+    }
+
+    // Create a composite key to track if we need to reprocess
+    const processKey = `${user.uid}-${timeframe}-${expensesKey}`
+    
+    // Skip if we've already processed this exact combination
+    if (prevProcessedKeyRef.current === processKey) {
+      return
+    }
+
+    prevProcessedKeyRef.current = processKey
     setLoading(true)
+
     try {
       const endDate = new Date()
       const startDate = subMonths(endDate, 6)
@@ -138,19 +164,13 @@ export function StackedBarChart({ timeframe = "year" }: StackedBarChartProps) {
       )
       const reversedData = dataWithValues.reverse()
       setChartData(reversedData)
+      setLoading(false)
     } catch (error) {
       setChartData([])
       setCategories([])
-    } finally {
       setLoading(false)
     }
-  }, [user, timeframe, allExpenses])
-
-  useEffect(() => {
-    if (user && mounted && !expensesLoading) {
-      processExpenseData()
-    }
-  }, [user, mounted, timeframe, expensesLoading, allExpenses, processExpenseData])
+  }, [user, mounted, timeframe, expensesLoading, expensesKey, allExpenses])
 
   // Only handle resize without setting state
   useEffect(() => {
