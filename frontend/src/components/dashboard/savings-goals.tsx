@@ -1,11 +1,8 @@
 "use client"
 
-
-
 import { useState, useEffect } from 'react'
-import { collection, query, where, orderBy, getDocs, addDoc, doc, updateDoc } from "firebase/firestore"
-import { db } from '../../lib/firebase'
 import { useAuth } from '../../contexts/auth-context'
+import { goalsAPI } from '../../lib/api'
 import { Button } from '../ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog'
@@ -123,23 +120,10 @@ export function SavingsGoals({ hideHeader = false }: SavingsGoalsProps) {
     setLoading(true)
     setError(null)
     try {
-      const goalsRef = collection(db, "goals")
-      const q = query(
-        goalsRef, 
-        where("userId", "==", user.uid), 
-        orderBy("createdAt", "desc")
-      )
-
-      const querySnapshot = await getDocs(q)
-      const goalsData = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as SavingsGoal[]
-
-      setGoals(goalsData)
+      const goalsData = await goalsAPI.getGoals()
+      setGoals(goalsData as SavingsGoal[])
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "There was an error loading your savings goals";
-
+      const errorMessage = error instanceof Error ? error.message : "There was an error loading your savings goals"
       setError('Failed to load savings goals. Please try again.')
       toast({
         title: "Error loading goals",
@@ -162,21 +146,16 @@ export function SavingsGoals({ hideHeader = false }: SavingsGoalsProps) {
     }
 
     try {
-      const goalData = {
-        userId: user.uid,
+      await goalsAPI.createGoal({
         name: newGoal.name,
-        description: newGoal.description,
         targetAmount: parseFloat(newGoal.targetAmount),
         currentAmount: 0,
-        targetDate: newGoal.targetDate.toISOString(),
+        deadline: newGoal.targetDate.toISOString(),
         category: newGoal.category,
-        priority: newGoal.priority,
-        isCompleted: false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      }
-
-      await addDoc(collection(db, "goals"), goalData)
+        description: newGoal.description,
+        priority: newGoal.priority
+      })
+      
       await fetchSavingsGoals()
       setShowCreateGoal(false)
       setNewGoal({
@@ -189,11 +168,10 @@ export function SavingsGoals({ hideHeader = false }: SavingsGoalsProps) {
       })
       toast({
         title: "Goal Created",
-        description: `Your goal "${goalData.name}" has been created successfully.`
+        description: `Your goal "${newGoal.name}" has been created successfully.`
       })
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to create savings goal";
-
+      const errorMessage = error instanceof Error ? error.message : "Failed to create savings goal"
       toast({
         title: "Error",
         description: errorMessage,
@@ -217,11 +195,13 @@ export function SavingsGoals({ hideHeader = false }: SavingsGoalsProps) {
 
     try {
       const newCurrentAmount = selectedGoal.currentAmount + amount
-      const goalRef = doc(db, "goals", selectedGoal.id!)
       
-      await updateDoc(goalRef, {
+      if (!selectedGoal.id) {
+        throw new Error("Goal ID is missing")
+      }
+      
+      await goalsAPI.updateGoal(selectedGoal.id, {
         currentAmount: newCurrentAmount,
-        updatedAt: new Date().toISOString(),
         isCompleted: newCurrentAmount >= selectedGoal.targetAmount
       })
 
@@ -257,8 +237,7 @@ export function SavingsGoals({ hideHeader = false }: SavingsGoalsProps) {
         description: `$${amount.toLocaleString()} has been added to your goal.`
       })
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to add contribution";
-
+      const errorMessage = error instanceof Error ? error.message : "Failed to add contribution"
       toast({
         title: "Error",
         description: errorMessage,

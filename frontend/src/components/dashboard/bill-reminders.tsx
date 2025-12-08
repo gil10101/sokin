@@ -69,11 +69,30 @@ interface ReminderNotification {
   priority: 'low' | 'medium' | 'high'
 }
 
-export function BillReminders() {
+interface BillRemindersProps {
+  /** External control for showing the create dialog */
+  externalShowCreate?: boolean
+  /** Callback when external create dialog state changes */
+  onExternalShowCreateChange?: (show: boolean) => void
+  /** Hide the internal add button when using external control */
+  hideInternalAddButton?: boolean
+}
+
+export function BillReminders({ 
+  externalShowCreate, 
+  onExternalShowCreateChange,
+  hideInternalAddButton = false 
+}: BillRemindersProps = {}) {
   const [bills, setBills] = useState<BillReminder[]>([])
   const [upcomingReminders, setUpcomingReminders] = useState<ReminderNotification[]>([])
   const [loading, setLoading] = useState(true)
-  const [showCreateBill, setShowCreateBill] = useState(false)
+  const [internalShowCreate, setInternalShowCreate] = useState(false)
+  
+  // Use external control if both props provided, otherwise use internal state
+  // This prevents state mismatch when read prop is provided without write handler
+  const isExternallyControlled = externalShowCreate !== undefined && onExternalShowCreateChange !== undefined
+  const showCreateBill = isExternallyControlled ? externalShowCreate : internalShowCreate
+  const setShowCreateBill = isExternallyControlled ? onExternalShowCreateChange : setInternalShowCreate
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
   const [filterStatus, setFilterStatus] = useState<'all' | 'upcoming' | 'overdue' | 'paid'>('all')
   const { toast } = useToast()
@@ -104,7 +123,7 @@ export function BillReminders() {
     setLoading(true)
     try {
       // Import the API service
-      const { API } = await import('../../lib/api-services')
+      const { API } = await import('../../lib/api')
       const apiBills = await API.billReminders.getBillReminders() as ApiBillReminder[]
       // Transform API bills to extended BillReminder format
       const transformedBills: BillReminder[] = apiBills.map(bill => ({
@@ -174,7 +193,7 @@ export function BillReminders() {
 
   const createBillReminder = async () => {
     try {
-      const { API } = await import('../../lib/api-services')
+      const { API } = await import('../../lib/api')
       // Map UI frequency values to API values
       const mapFrequencyToApi = (freq: BillReminder['frequency']): ApiBillReminder['frequency'] => {
         switch (freq) {
@@ -222,7 +241,7 @@ export function BillReminders() {
 
   const markBillAsPaid = async (billId: string) => {
     try {
-      const { API } = await import('../../lib/api-services')
+      const { API } = await import('../../lib/api')
       await API.billReminders.markBillPaid(billId, new Date().toISOString())
       await fetchBillReminders()
       toast({
@@ -374,11 +393,13 @@ export function BillReminders() {
           </DropdownMenu>
           
           <Dialog open={showCreateBill} onOpenChange={setShowCreateBill}>
-            <DialogTrigger asChild>
-              <Button className="bg-cream/10 hover:bg-cream/20 text-cream/80 border-cream/20 px-2 py-1 text-xs h-auto">
-                <Plus className="h-3 w-3" />
-              </Button>
-            </DialogTrigger>
+            {!hideInternalAddButton && (
+              <DialogTrigger asChild>
+                <Button className="bg-cream/10 hover:bg-cream/20 text-cream/80 border-cream/20 px-2 py-1 text-xs h-auto">
+                  <Plus className="h-3 w-3" />
+                </Button>
+              </DialogTrigger>
+            )}
             <DialogContent className="mx-4 sm:mx-0 md:mx-auto sm:max-w-md md:max-w-lg max-w-[95vw] max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className="text-lg md:text-xl">Add Bill Reminder</DialogTitle>
@@ -543,7 +564,7 @@ export function BillReminders() {
               <p className="text-xs text-cream/60 mb-2">
                 {filterStatus === 'all' ? "No bills yet" : `No ${filterStatus} bills`}
               </p>
-              {filterStatus === 'all' && (
+              {filterStatus === 'all' && !hideInternalAddButton && (
                 <Button 
                   onClick={() => setShowCreateBill(true)}
                   className="bg-cream/10 hover:bg-cream/20 text-cream/80 border-cream/20 px-3 py-1 text-xs h-auto"
