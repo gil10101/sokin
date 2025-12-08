@@ -17,8 +17,8 @@ import {
   Building,
 } from "lucide-react"
 import { useState, useEffect } from "react"
-import * as AvatarPrimitive from "@radix-ui/react-avatar"
-import * as TooltipPrimitive from "@radix-ui/react-tooltip"
+import { Avatar, AvatarImage, AvatarFallback } from "../../components/ui/avatar"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../../components/ui/tooltip"
 import { useAuth } from "../../contexts/auth-context"
 import { usePathname } from "next/navigation"
 
@@ -51,34 +51,34 @@ export function DashboardSidebar({ collapsed, setCollapsed }: DashboardSidebarPr
   }
 
   return (
-    <aside
-      className="hidden md:flex h-screen bg-dark border-r border-cream/10 flex-col transition-all duration-300 ease-in-out"
-      style={{ width: collapsed ? "100px" : "200px" }}
-    >
-      <div className="p-4 flex items-center justify-between border-b border-cream/10 h-[73px]">
-        <Link href="/" className={`flex items-center font-outfit font-medium text-xl transition-opacity duration-200 ${collapsed ? "opacity-0 hidden" : "opacity-100 block"} hover:opacity-80 transition-opacity`}>
-          <img src="/sokin-icon.png" alt="Sokin" className="h-8 w-8 mr-2" />
-          Sokin<span className="text-xs align-super">™</span>
-        </Link>
-        <Link href="/" className={`transition-opacity duration-200 ${collapsed ? "opacity-100 block" : "opacity-0 hidden"} hover:opacity-80 transition-opacity`}>
-          <img src="/sokin-icon.png" alt="Sokin" className="h-8 w-8" />
-        </Link>
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="h-8 w-8 rounded-full flex items-center justify-center text-cream/60 hover:text-cream hover:bg-cream/5 transition-colors"
-        >
-          <ChevronLeft className={`h-4 w-4 transition-transform ${collapsed ? "rotate-180" : ""}`} />
-        </button>
-      </div>
+    <TooltipProvider delayDuration={0}>
+      <aside
+        className="hidden md:flex h-screen bg-dark border-r border-cream/10 flex-col transition-all duration-300 ease-in-out"
+        style={{ width: collapsed ? "100px" : "200px" }}
+      >
+        <div className="p-4 flex items-center justify-between border-b border-cream/10 h-[73px]">
+          <Link href="/" className={`flex items-center font-outfit font-medium text-xl transition-opacity duration-200 ${collapsed ? "opacity-0 hidden" : "opacity-100 block"} hover:opacity-80 transition-opacity`}>
+            <img src="/sokin-icon.png" alt="Sokin" className="h-8 w-8 mr-2" />
+            Sokin<span className="text-xs align-super">™</span>
+          </Link>
+          <Link href="/" className={`transition-opacity duration-200 ${collapsed ? "opacity-100 block" : "opacity-0 hidden"} hover:opacity-80 transition-opacity`}>
+            <img src="/sokin-icon.png" alt="Sokin" className="h-8 w-8" />
+          </Link>
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            className="h-8 w-8 rounded-full flex items-center justify-center text-cream/60 hover:text-cream hover:bg-cream/5 transition-colors"
+          >
+            <ChevronLeft className={`h-4 w-4 transition-transform ${collapsed ? "rotate-180" : ""}`} />
+          </button>
+        </div>
 
-      <nav className="flex-1 py-6 px-3">
-        <TooltipPrimitive.Provider delayDuration={0}>
+        <nav className="flex-1 py-6 px-3">
           <ul className="space-y-2">
             {navItems.map((item) => (
               <li key={item.href}>
                 {collapsed ? (
-                  <TooltipPrimitive.Root>
-                    <TooltipPrimitive.Trigger asChild>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
                       <div>
                         <Link
                           href={item.href}
@@ -89,11 +89,11 @@ export function DashboardSidebar({ collapsed, setCollapsed }: DashboardSidebarPr
                           <item.icon className="h-5 w-5" />
                         </Link>
                       </div>
-                    </TooltipPrimitive.Trigger>
-                    <TooltipPrimitive.Content side="right" className="z-50 overflow-hidden rounded-md border bg-dark border-cream/10 px-3 py-1.5 text-sm text-cream shadow-md">
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="z-50 overflow-hidden rounded-md border bg-dark border-cream/10 px-3 py-1.5 text-sm text-cream shadow-md">
                       {item.label}
-                    </TooltipPrimitive.Content>
-                  </TooltipPrimitive.Root>
+                    </TooltipContent>
+                  </Tooltip>
                 ) : (
                   <div>
                     <Link
@@ -110,59 +110,59 @@ export function DashboardSidebar({ collapsed, setCollapsed }: DashboardSidebarPr
               </li>
             ))}
           </ul>
-        </TooltipPrimitive.Provider>
-      </nav>
+        </nav>
 
-      <div className="mt-auto border-t border-cream/10 p-4">
-        {collapsed ? (
-          <TooltipPrimitive.Root>
-            <TooltipPrimitive.Trigger asChild>
-              <button
-                className="flex items-center justify-center h-10 w-10 rounded-lg text-cream/60 hover:text-cream hover:bg-cream/5 transition-colors"
-                onClick={handleSignOut}
-              >
-                <AvatarPrimitive.Root className="h-8 w-8 rounded-full flex items-center justify-center">
+        <div className="mt-auto border-t border-cream/10 p-4">
+          {collapsed ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  className="flex items-center justify-center h-10 w-10 rounded-lg text-cream/60 hover:text-cream hover:bg-cream/5 transition-colors"
+                  onClick={handleSignOut}
+                >
+                  <Avatar className="h-8 w-8">
+                    {user?.photoURL ? (
+                      <AvatarImage src={user.photoURL} alt={user?.displayName || "User"} />
+                    ) : null}
+                    <AvatarFallback className="bg-cream/10 text-cream text-sm">
+                      {user?.displayName?.charAt(0) || "U"}
+                    </AvatarFallback>
+                  </Avatar>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="z-50 overflow-hidden rounded-md border bg-dark border-cream/10 px-3 py-1.5 text-sm text-cream shadow-md">
+                {user?.displayName || "User"}
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <Avatar className="h-8 w-8 mr-3">
                   {user?.photoURL ? (
-                    <AvatarPrimitive.Image src={user.photoURL} alt={user?.displayName || "User"} className="h-8 w-8 rounded-full" />
+                    <AvatarImage src={user.photoURL} alt={user?.displayName || "User"} />
                   ) : null}
-                  <AvatarPrimitive.Fallback className="h-8 w-8 rounded-full flex items-center justify-center bg-cream/10 text-cream text-sm">
+                  <AvatarFallback className="bg-cream/10 text-cream text-sm">
                     {user?.displayName?.charAt(0) || "U"}
-                  </AvatarPrimitive.Fallback>
-                </AvatarPrimitive.Root>
-              </button>
-            </TooltipPrimitive.Trigger>
-            <TooltipPrimitive.Content side="right" className="z-50 overflow-hidden rounded-md border bg-dark border-cream/10 px-3 py-1.5 text-sm text-cream shadow-md">
-              {user?.displayName || "User"}
-            </TooltipPrimitive.Content>
-          </TooltipPrimitive.Root>
-        ) : (
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <AvatarPrimitive.Root className="h-8 w-8 mr-3 rounded-full flex items-center justify-center">
-                {user?.photoURL ? (
-                  <AvatarPrimitive.Image src={user.photoURL} alt={user?.displayName || "User"} className="h-8 w-8 rounded-full" />
-                ) : null}
-                <AvatarPrimitive.Fallback className="h-8 w-8 rounded-full flex items-center justify-center bg-cream/10 text-cream text-sm">
-                  {user?.displayName?.charAt(0) || "U"}
-                </AvatarPrimitive.Fallback>
-              </AvatarPrimitive.Root>
-              <div>
-                <p className="text-sm font-medium font-outfit">{user?.displayName || "User"}</p>
-                <p className="text-xs text-cream/60">{user?.email || "user@example.com"}</p>
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="text-sm font-medium font-outfit">{user?.displayName || "User"}</p>
+                  <p className="text-xs text-cream/60">{user?.email || "user@example.com"}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  className="h-8 w-8 rounded-full flex items-center justify-center text-cream/60 hover:text-cream hover:bg-cream/5 transition-colors"
+                  onClick={handleSignOut}
+                >
+                  <LogOut className="h-4 w-4" />
+                </button>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                className="h-8 w-8 rounded-full flex items-center justify-center text-cream/60 hover:text-cream hover:bg-cream/5 transition-colors"
-                onClick={handleSignOut}
-              >
-                <LogOut className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    </aside>
+          )}
+        </div>
+      </aside>
+    </TooltipProvider>
   )
 }
 
