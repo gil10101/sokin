@@ -348,27 +348,27 @@ export function StockMarket({ compact = false }: StockMarketProps) {
             {marketIndices.length > 0 ? (
               <div className="space-y-3">
                 {marketIndices.slice(0, 3).map((index) => (
-                  <div key={index.symbol} className="flex items-center justify-between p-3 rounded-lg bg-cream/5 border border-cream/10">
-                    <div className="flex items-center space-x-3">
+                  <div key={index.symbol} className="flex items-start justify-between gap-3 p-3 rounded-lg bg-cream/5 border border-cream/10 min-h-[80px]">
+                    <div className="flex items-start space-x-3 min-w-0 flex-1">
                       {index.changePercent > 0 ? (
-                        <TrendingUp className="h-4 w-4 text-green-500 flex-shrink-0" />
+                        <TrendingUp className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
                       ) : index.changePercent < 0 ? (
-                        <TrendingDown className="h-4 w-4 text-red-500 flex-shrink-0" />
+                        <TrendingDown className="h-4 w-4 text-red-500 flex-shrink-0 mt-0.5" />
                       ) : (
-                        <div className="h-4 w-4 flex items-center justify-center flex-shrink-0">
+                        <div className="h-4 w-4 flex items-center justify-center flex-shrink-0 mt-0.5">
                           <div className="w-3 h-0.5 bg-cream/60 rounded"></div>
                         </div>
                       )}
-                      <div>
-                        <p className="text-sm font-medium text-cream">{index.symbol}</p>
-                        <p className="text-xs text-cream/60 truncate max-w-[120px]">{index.name}</p>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-cream break-words">{index.symbol}</p>
+                        <p className="text-xs text-cream/60 break-words leading-relaxed">{index.name}</p>
                       </div>
                     </div>
                     
-                    <div className="text-right">
-                      <p className="text-sm font-semibold text-cream">{formatPrice(index.price)}</p>
-                      <div className="flex items-center justify-end space-x-1">
-                        <span className={`text-xs font-medium ${
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-sm font-semibold text-cream whitespace-nowrap">{formatPrice(index.price)}</p>
+                      <div className="flex items-center justify-end space-x-1 flex-wrap gap-1">
+                        <span className={`text-xs font-medium whitespace-nowrap ${
                           index.change > 0 ? 'text-green-500' : 
                           index.change < 0 ? 'text-red-500' : 
                           'text-cream/60'
@@ -381,7 +381,7 @@ export function StockMarket({ compact = false }: StockMarketProps) {
                             index.changePercent < 0 ? "destructive" : 
                             "secondary"
                           } 
-                          className="text-xs px-1 py-0 h-4"
+                          className="text-xs px-1 py-0 h-4 whitespace-nowrap"
                         >
                           {formatPercent(index.changePercent)}
                         </Badge>
@@ -443,26 +443,28 @@ export function StockMarket({ compact = false }: StockMarketProps) {
           {marketIndices.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {marketIndices.map((index) => (
-              <div key={index.symbol} className="p-4 rounded-lg bg-cream/5 border border-cream/10">
-                <div className="flex items-center justify-between mb-2">
-                  <div>
-                    <p className="text-sm font-medium text-cream/80">{index.symbol}</p>
-                    <p className="text-xs text-cream/60 truncate">{index.name}</p>
+              <div key={index.symbol} className="p-4 rounded-lg bg-cream/5 border border-cream/10 h-full flex flex-col">
+                <div className="flex items-start justify-between mb-2 gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-cream/80 break-words">{index.symbol}</p>
+                    <p className="text-xs text-cream/60 break-words leading-relaxed mt-1">{index.name}</p>
                   </div>
-                  {index.changePercent > 0 ? (
-                    <TrendingUp className="h-4 w-4 text-green-500" />
-                  ) : index.changePercent < 0 ? (
-                    <TrendingDown className="h-4 w-4 text-red-500" />
-                  ) : (
-                    <div className="h-4 w-4 flex items-center justify-center">
-                      <div className="w-3 h-0.5 bg-cream/60 rounded"></div>
-                    </div>
-                  )}
+                  <div className="flex-shrink-0">
+                    {index.changePercent > 0 ? (
+                      <TrendingUp className="h-4 w-4 text-green-500" />
+                    ) : index.changePercent < 0 ? (
+                      <TrendingDown className="h-4 w-4 text-red-500" />
+                    ) : (
+                      <div className="h-4 w-4 flex items-center justify-center">
+                        <div className="w-3 h-0.5 bg-cream/60 rounded"></div>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-lg font-semibold text-cream">{formatPrice(index.price)}</p>
-                  <div className="flex items-center space-x-2">
-                    <span className={`text-sm font-medium ${
+                <div className="space-y-1 mt-auto">
+                  <p className="text-lg font-semibold text-cream whitespace-nowrap">{formatPrice(index.price)}</p>
+                  <div className="flex items-center space-x-2 flex-wrap gap-1">
+                    <span className={`text-sm font-medium whitespace-nowrap ${
                       index.change > 0 ? 'text-green-500' : 
                       index.change < 0 ? 'text-red-500' : 
                       'text-cream/60'
@@ -473,7 +475,7 @@ export function StockMarket({ compact = false }: StockMarketProps) {
                       index.changePercent > 0 ? "default" : 
                       index.changePercent < 0 ? "destructive" : 
                       "secondary"
-                    } className="text-xs">
+                    } className="text-xs whitespace-nowrap">
                       {formatPercent(index.changePercent)}
                     </Badge>
                   </div>
