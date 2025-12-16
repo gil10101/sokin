@@ -1,56 +1,61 @@
 "use client"
 
 import { useInfiniteQuery } from '@tanstack/react-query'
-import { collection, query, where, orderBy, limit, startAfter, getDocs, QueryDocumentSnapshot, DocumentData, Timestamp } from 'firebase/firestore'
-import { db } from '../lib/firebase'
 import { useAuth } from '../contexts/auth-context'
+import { api } from '../lib/api'
 
 export interface ExpenseLite {
   id: string
   name?: string
   amount: number
-  date: string | Date | Timestamp
+  date: string | Date
   category: string
   userId: string
 }
 
-interface PageResult {
-  docs: ExpenseLite[]
-  nextCursor: QueryDocumentSnapshot<DocumentData> | null
+interface ExpensesResponse {
+  data: ExpenseLite[]
+  pagination: {
+    hasMore: boolean
+    nextCursor: string | null
+    count: number
+  }
 }
 
+interface PageResult {
+  docs: ExpenseLite[]
+  nextCursor: string | null
+}
+
+/**
+ * Hook for infinite scrolling expenses via the backend API
+ * Uses cursor-based pagination for efficient data loading
+ */
 export function useInfiniteExpenses(pageSize = 25) {
   const { user } = useAuth()
 
-  return useInfiniteQuery<PageResult>({
+  return useInfiniteQuery({
     queryKey: ['expenses-infinite', user?.uid, pageSize],
-    enabled: !!user && !!db,
-    initialPageParam: null as QueryDocumentSnapshot<DocumentData> | null,
-    queryFn: async ({ pageParam }) => {
-      if (!user || !db) return { docs: [], nextCursor: null }
+    enabled: !!user,
+    initialPageParam: null as string | null,
+    queryFn: async ({ pageParam }): Promise<PageResult> => {
+      if (!user) return { docs: [], nextCursor: null }
 
-      const base = [
-        where('userId', '==', user.uid),
-        orderBy('date', 'desc'),
-        limit(pageSize),
-      ] as const
+      const params = new URLSearchParams()
+      params.set('limit', pageSize.toString())
+      
+      if (pageParam) {
+        params.set('cursor', pageParam as string)
+      }
 
-      const q = query(
-        collection(db, 'expenses'),
-        ...(pageParam ? [...base, startAfter(pageParam)] : base)
-      )
-
-      const snapshot = await getDocs(q)
-      const docs = snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as ExpenseLite[]
-
+      const response = await api.get<ExpensesResponse>(`expenses?${params.toString()}`)
+      
       return {
-        docs,
-        nextCursor: snapshot.docs.length === pageSize ? snapshot.docs[snapshot.docs.length - 1] : null,
+        docs: response.data || [],
+        nextCursor: response.pagination?.nextCursor || null,
       }
     },
-    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    getNextPageParam: (lastPage: PageResult) => lastPage.nextCursor,
     staleTime: 60_000,
   })
 }
-
-

@@ -51,7 +51,7 @@ export function useUpcomingBills() {
 
       try {
         // Import the API service dynamically to avoid circular dependencies
-        const { API } = await import('../lib/api-services')
+        const { API } = await import('../lib/api')
         const bills = await API.billReminders.getBillReminders() as BillReminder[]
 
         const now = new Date()

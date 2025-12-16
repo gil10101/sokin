@@ -1,9 +1,8 @@
 "use client"
 
 import { useQuery } from '@tanstack/react-query'
-import { collection, query, where, orderBy, limit as fsLimit, getDocs } from 'firebase/firestore'
-import { db } from '../lib/firebase'
 import { useAuth } from '../contexts/auth-context'
+import { api } from '../lib/api'
 
 export interface Expense {
   id: string
@@ -15,33 +14,47 @@ export interface Expense {
   userId: string
 }
 
+interface ExpensesResponse {
+  expenses?: Expense[]
+  data?: Expense[]
+  pagination?: {
+    hasMore: boolean
+    nextCursor: string | null
+    count: number
+  }
+}
+
 interface UseExpensesOptions {
   limit?: number
 }
 
+/**
+ * Hook for fetching expenses via the backend API
+ * Replaces direct Firestore access for better architecture
+ */
 export function useExpensesData(options: UseExpensesOptions = {}) {
   const { user } = useAuth()
 
   return useQuery<Expense[]>({
     queryKey: ['expenses', user?.uid, options.limit ?? null],
-    enabled: !!user && !!db,
+    enabled: !!user,
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 30 * 60 * 1000, // 30 minutes
     queryFn: async () => {
-      if (!user || !db) return []
+      if (!user) return []
 
-      const expensesRef = collection(db, 'expenses')
-      const q = query(
-        expensesRef,
-        where('userId', '==', user.uid),
-        orderBy('date', 'desc'),
-        ...(options.limit ? [fsLimit(options.limit)] : [])
-      )
+      const params = new URLSearchParams()
+      if (options.limit) {
+        params.set('limit', options.limit.toString())
+      }
 
-      const snapshot = await getDocs(q)
-      return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as Expense[]
+      const endpoint = params.toString() 
+        ? `expenses?${params.toString()}` 
+        : 'expenses'
+
+      const response = await api.get<ExpensesResponse>(endpoint)
+      // Handle multiple possible response structures from the API
+      return response.expenses || response.data || []
     },
   })
 }
-
-
