@@ -2,37 +2,28 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { ShoppingBag, Coffee, Home, Car, Utensils, LucideIcon } from "lucide-react"
-import { collection, query, where, orderBy, limit, getDocs } from "firebase/firestore"
-import { db } from "../../lib/firebase"
 import { useAuth } from "../../contexts/auth-context"
 import { format } from "date-fns"
+import { expensesAPI } from "../../lib/api"
 
-// Helper function to safely parse dates including Firebase Timestamps
-const safeParseDate = (dateValue: string | number | Date | { toDate(): Date } | null | undefined): Date => {
+// Helper function to safely parse dates
+const safeParseDate = (dateValue: string | number | Date | null | undefined): Date => {
   if (!dateValue) return new Date()
   
   try {
-    // If it's already a Date object
     if (dateValue instanceof Date) {
       return dateValue
     }
-    // If it's a Firebase Timestamp object
-    else if (dateValue && typeof dateValue === 'object' && 'toDate' in dateValue) {
-      return dateValue.toDate()
-    }
-    // If it's a numeric timestamp (milliseconds)
-    else if (typeof dateValue === 'number') {
+    if (typeof dateValue === 'number') {
       return new Date(dateValue)
     }
-    // If it's a string
-    else if (typeof dateValue === 'string') {
+    if (typeof dateValue === 'string') {
       const parsedDate = new Date(dateValue)
       return isNaN(parsedDate.getTime()) ? new Date() : parsedDate
     }
     
     return new Date()
-  } catch (error) {
-
+  } catch {
     return new Date()
   }
 }
@@ -75,23 +66,25 @@ export function RecentTransactions() {
 
     setLoading(true)
     try {
-      const expensesRef = collection(db, "expenses")
-      const q = query(
-        expensesRef,
-        where("userId", "==", user.uid),
-        orderBy("date", "desc"),
-        limit(7)
-      )
+      const response = await expensesAPI.getExpenses({
+        limit: 7,
+        sortBy: 'date',
+        sortOrder: 'desc'
+      })
 
-      const querySnapshot = await getDocs(q)
-      const transactionsData = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
+      const transactionsData = response.items.map((expense) => ({
+        id: expense.id || '',
+        name: expense.name,
+        amount: expense.amount,
+        date: expense.date,
+        category: expense.category,
+        description: expense.notes,
+        userId: expense.userId
       })) as Transaction[]
 
       setTransactions(transactionsData)
     } catch (error) {
-
+      console.error('Failed to fetch recent transactions:', error)
       setTransactions([])
     } finally {
       setLoading(false)
@@ -107,7 +100,8 @@ export function RecentTransactions() {
   if (loading) {
     return (
       <div className="space-y-4">
-        {[1, 2, 3, 4, 5].map((i) => (
+        {/* Match skeleton count with fetch limit (7) */}
+        {[1, 2, 3, 4, 5, 6, 7].map((i) => (
           <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-cream/5 animate-pulse">
             <div className="flex items-center">
               <div className="h-10 w-10 rounded-full bg-cream/10 mr-4" />
