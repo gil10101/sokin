@@ -2,27 +2,14 @@
  * @fileoverview Stock API service for interfacing with the backend stock service
  * Provides real-time stock data, portfolio management, and WebSocket price updates
  * 
- * @version 1.0.0
+ * All data operations are now routed through the backend API for proper
+ * separation of concerns and centralized business logic.
+ * 
+ * @version 2.0.0
  * @author Sokin Team
  */
 
-// Stock API service
-import { auth, db } from './firebase'
-import { 
-  collection, 
-  doc, 
-  getDocs, 
-  getDoc, 
-  setDoc, 
-  updateDoc, 
-  deleteDoc, 
-  query, 
-  where, 
-  orderBy, 
-  addDoc,
-  serverTimestamp,
-  writeBatch
-} from 'firebase/firestore'
+import { auth } from './firebase'
 import { io, Socket } from 'socket.io-client'
 
 /**
@@ -72,7 +59,7 @@ export interface UserPortfolioStock {
 }
 
 /**
- * Portfolio holding stored in Firestore
+ * Portfolio holding stored in backend
  */
 export interface PortfolioHolding {
   id?: string
@@ -100,8 +87,6 @@ export interface StockTransaction {
   createdAt: string
   timestamp?: Date
 }
-
-
 
 /**
  * Currency-based transaction request (new interface for UI)
@@ -139,8 +124,8 @@ interface CacheEntry<T> {
  * Features:
  * - Real-time stock data via REST API
  * - WebSocket price updates
- * - Portfolio management
- * - Watchlist management
+ * - Portfolio management via backend API
+ * - Watchlist management via backend API
  * - Intelligent caching with TTL
  * - Authentication integration
  * - Error handling and retry logic
@@ -184,12 +169,6 @@ export class StockAPI {
    * 
    * @returns Promise resolving to headers object with authorization token
    * @throws {Error} When user is not authenticated
-   * 
-   * @example
-   * ```typescript
-   * const headers = await StockAPI.getAuthHeaders()
-   * // headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ...' }
-   * ```
    */
   private static async getAuthHeaders(): Promise<Record<string, string>> {
     const user = auth.currentUser
@@ -211,17 +190,6 @@ export class StockAPI {
    * @param options - Fetch options
    * @param maxRetries - Maximum number of retry attempts (default: 3)
    * @returns Promise resolving to Response object
-   * 
-   * @throws {Error} When max retries exceeded
-   * @throws {Error} When rate limited
-   * @throws {Error} When network error occurs
-   * 
-   * @example
-   * ```typescript
-   * const response = await StockAPI.fetchWithRetry('/api/stock/AAPL', {
-   *   headers: await StockAPI.getAuthHeaders()
-   * })
-   * ```
    */
   private static async fetchWithRetry(
     url: string, 
@@ -232,8 +200,6 @@ export class StockAPI {
     
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
-
-        
         // Add timeout to request
         const controller = new AbortController()
         const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
@@ -248,10 +214,9 @@ export class StockAPI {
         // If it's a rate limit error, handle it specially
         if (response.status === 429) {
           const errorData = await response.json().catch(() => ({}))
-          const retryAfter = errorData.retryAfter || Math.pow(2, attempt) // Use exponential backoff if no retryAfter
+          const retryAfter = errorData.retryAfter || Math.pow(2, attempt)
           
           if (attempt < maxRetries) {
-
             await new Promise(resolve => setTimeout(resolve, retryAfter * 1000))
             continue
           }
@@ -264,17 +229,14 @@ export class StockAPI {
           throw new Error(`HTTP ${response.status}: ${errorText}`)
         }
         
-
         return response
       } catch (error) {
         lastError = error as Error
-
         
         // Handle abort error (timeout)
         if (error instanceof Error && error.name === 'AbortError') {
           if (attempt < maxRetries) {
-            const delay = Math.pow(2, attempt) * 1000 // Exponential backoff
-
+            const delay = Math.pow(2, attempt) * 1000
             await new Promise(resolve => setTimeout(resolve, delay))
             continue
           }
@@ -288,8 +250,7 @@ export class StockAPI {
         
         // Network error - retry with exponential backoff
         if (attempt < maxRetries) {
-          const delay = Math.pow(2, attempt) * 1000 // Exponential backoff
-
+          const delay = Math.pow(2, attempt) * 1000
           await new Promise(resolve => setTimeout(resolve, delay))
           continue
         }
@@ -301,9 +262,6 @@ export class StockAPI {
 
   /**
    * Check cache for data and return if not expired
-   *
-   * @param key - Cache key
-   * @returns Cached data or null if expired/not found
    */
   private static getFromCache<T extends StockData | MarketIndex[] | UserPortfolioStock[] | StockData[]>(key: string): T | null {
     const entry = this.cache.get(key)
@@ -319,10 +277,6 @@ export class StockAPI {
 
   /**
    * Store data in cache with TTL
-   *
-   * @param key - Cache key
-   * @param data - Data to cache
-   * @param ttlMs - Time to live in milliseconds (default: 30 seconds)
    */
   private static setCache<T extends StockData | MarketIndex[] | UserPortfolioStock[] | StockData[]>(key: string, data: T, ttlMs: number = 30000): void {
     this.cache.set(key, {
@@ -334,12 +288,6 @@ export class StockAPI {
 
   /**
    * Handle API response and extract data
-   * 
-   * @template T - Expected response data type
-   * @param response - Fetch response object
-   * @returns Promise resolving to parsed response data
-   * 
-   * @throws {Error} When response parsing fails
    */
   private static async handleResponse<T>(response: Response): Promise<T> {
     const data = await response.json()
@@ -351,18 +299,8 @@ export class StockAPI {
 
   /**
    * Get trending stocks with optional limit
-   * 
-   * @param limit - Number of trending stocks to fetch (default: 10, max: 50)
-   * @returns Promise resolving to array of trending stock data
-   * 
-   * @example
-   * ```typescript
-   * const trending = await StockAPI.getTrendingStocks(5)
-   * (trending[0].symbol) // 'AAPL'
-   * ```
    */
   static async getTrendingStocks(limit: number = 10): Promise<StockData[]> {
-    // Input validation
     if (limit < 1 || limit > 50) {
       throw new Error('Limit must be between 1 and 50')
     }
@@ -380,14 +318,6 @@ export class StockAPI {
 
   /**
    * Get market indices data (S&P 500, NASDAQ, DOW, etc.)
-   * 
-   * @returns Promise resolving to array of market index data
-   * 
-   * @example
-   * ```typescript
-   * const indices = await StockAPI.getMarketIndices()
-   * const sp500 = indices.find(idx => idx.symbol === '^GSPC')
-   * ```
    */
   static async getMarketIndices(): Promise<MarketIndex[]> {
     const cacheKey = 'market-indices'
@@ -402,17 +332,8 @@ export class StockAPI {
   }
 
   /**
-   * Get detailed user portfolio including stock positions
-   * Requires authentication
-   * 
-   * @param userId - The user ID to fetch portfolio for
-   * @returns Promise resolving to array of portfolio holdings
-   * 
-   * @example
-   * ```typescript
-   * const portfolio = await StockAPI.getUserPortfolio('user123')
-   * const totalValue = portfolio.reduce((sum, stock) => sum + stock.totalValue, 0)
-   * ```
+   * Get detailed user portfolio including stock positions via backend API
+   * userId is derived from auth token on the backend - passed here for caching only
    */
   static async getUserPortfolio(userId: string): Promise<UserPortfolioStock[]> {
     if (!userId || typeof userId !== 'string') {
@@ -424,7 +345,8 @@ export class StockAPI {
     if (cached) return cached
 
     const headers = await this.getAuthHeaders()
-    const response = await this.fetchWithRetry(`${this.baseUrl}/stocks/portfolio/${userId}`, { headers })
+    // userId is derived from auth token on backend - no IDOR vulnerability
+    const response = await this.fetchWithRetry(`${this.baseUrl}/stocks/portfolio`, { headers })
     const result = await this.handleResponse<UserPortfolioStock[]>(response)
     
     this.setCache(cacheKey, result, 15000) // Cache for 15 seconds
@@ -433,18 +355,8 @@ export class StockAPI {
 
   /**
    * Get detailed stock data for a single symbol
-   * 
-   * @param symbol - Stock symbol to fetch data for
-   * @returns Promise resolving to detailed stock data
-   * 
-   * @example
-   * ```typescript
-   * const apple = await StockAPI.getStockData('AAPL')
-   * (`AAPL: $${apple.price} (${apple.changePercent}%)`)
-   * ```
    */
   static async getStockData(symbol: string): Promise<StockData> {
-    // Input validation and sanitization
     if (!symbol || typeof symbol !== 'string') {
       throw new Error('Stock symbol is required')
     }
@@ -468,19 +380,8 @@ export class StockAPI {
 
   /**
    * Search for stocks by company name or symbol
-   * 
-   * @param query - Search query (company name or symbol)
-   * @param limit - Maximum number of results (default: 10, max: 25)
-   * @returns Promise resolving to array of matching stocks
-   * 
-   * @example
-   * ```typescript
-   * const results = await StockAPI.searchStocks('apple', 5)
-   * const apple = results.find(stock => stock.symbol === 'AAPL')
-   * ```
    */
   static async searchStocks(query: string, limit: number = 10): Promise<StockData[]> {
-    // Input validation and sanitization
     if (!query || typeof query !== 'string') {
       throw new Error('Search query is required')
     }
@@ -489,7 +390,7 @@ export class StockAPI {
       throw new Error('Limit must be between 1 and 25')
     }
     
-    const cleanedQuery = query.trim().slice(0, 50) // Limit query length for security
+    const cleanedQuery = query.trim().slice(0, 50)
     
     if (cleanedQuery.length === 0) {
       throw new Error('Search query cannot be empty')
@@ -506,114 +407,60 @@ export class StockAPI {
     return data
   }
 
-  // Firestore-based portfolio management
+  /**
+   * Get portfolio holdings via backend API
+   * userId is derived from auth token on the backend - passed here for response mapping
+   */
   static async getPortfolioHoldings(userId: string): Promise<PortfolioHolding[]> {
     if (!auth.currentUser) throw new Error('User not authenticated')
     
-    const holdingsQuery = query(
-      collection(db, 'portfolios'),
-      where('userId', '==', userId),
-      orderBy('updatedAt', 'desc')
-    )
+    const headers = await this.getAuthHeaders()
+    // userId is derived from auth token on backend - no IDOR vulnerability
+    const response = await this.fetchWithRetry(`${this.baseUrl}/stocks/portfolio`, { headers })
     
-    const snapshot = await getDocs(holdingsQuery)
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt?.toDate() || new Date(),
-      updatedAt: doc.data().updatedAt?.toDate() || new Date(),
-    })) as PortfolioHolding[]
+    // Use handleResponse for consistent error handling
+    const portfolioData = await this.handleResponse<UserPortfolioStock[] | { holdings: UserPortfolioStock[] }>(response)
+    
+    // Handle both array and object response structures
+    const holdings = Array.isArray(portfolioData) ? portfolioData : (portfolioData.holdings || [])
+    
+    // Map the response to PortfolioHolding format
+    // Backend doesn't currently include timestamps, use current time as placeholder
+    const now = new Date()
+    return holdings.map((h: UserPortfolioStock) => ({
+      userId,
+      symbol: h.symbol,
+      shares: h.shares,
+      averagePrice: h.purchasePrice,
+      totalInvested: h.purchasePrice * h.shares,
+      createdAt: now,
+      updatedAt: now,
+    }))
   }
 
+  /**
+   * Execute a stock transaction via backend API
+   * @deprecated Use executeCurrencyTransaction for new implementations
+   */
   static async executeTransaction(transaction: Omit<StockTransaction, 'id'>): Promise<void> {
     if (!auth.currentUser) throw new Error('User not authenticated')
     
-    // Validation for sell transactions
-    if (transaction.transactionType === 'sell') {
-      const holdings = await this.getPortfolioHoldings(transaction.userId)
-      const currentHolding = holdings.find(h => h.symbol === transaction.symbol)
-      
-      if (!currentHolding) {
-        throw new Error(`Cannot sell ${transaction.symbol} - you don't own any shares of this stock`)
-      }
-      
-      if (currentHolding.shares < transaction.shares) {
-        throw new Error(`Cannot sell ${transaction.shares} shares of ${transaction.symbol} - you only own ${currentHolding.shares} shares`)
-      }
-    }
+    const headers = await this.getAuthHeaders()
     
-    const batch = writeBatch(db)
-    
-    // Add transaction record
-    const transactionRef = doc(collection(db, 'stockTransactions'))
-    batch.set(transactionRef, {
-      ...transaction,
-      timestamp: serverTimestamp(),
+    const response = await this.fetchWithRetry(`${this.baseUrl}/stocks/transaction`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        symbol: transaction.symbol,
+        type: transaction.transactionType,
+        amount: transaction.totalAmount,
+        price: transaction.pricePerShare
+      })
     })
     
-    // Update portfolio holding
-    const holdingsQuery = query(
-      collection(db, 'portfolios'),
-      where('userId', '==', transaction.userId),
-      where('symbol', '==', transaction.symbol)
-    )
+    await this.handleResponse(response)
     
-    const holdingsSnapshot = await getDocs(holdingsQuery)
-    
-    if (holdingsSnapshot.empty && transaction.transactionType === 'buy') {
-      // Create new holding
-      const newHoldingRef = doc(collection(db, 'portfolios'))
-      batch.set(newHoldingRef, {
-        userId: transaction.userId,
-        symbol: transaction.symbol,
-        shares: transaction.shares,
-        averagePrice: transaction.pricePerShare,
-        totalInvested: transaction.totalAmount,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      })
-    } else if (!holdingsSnapshot.empty) {
-      // Update existing holding
-      const holdingDoc = holdingsSnapshot.docs[0]
-      const currentHolding = holdingDoc.data() as PortfolioHolding
-      
-      if (transaction.transactionType === 'buy') {
-        const newShares = currentHolding.shares + transaction.shares
-        const newTotalInvested = currentHolding.totalInvested + transaction.totalAmount
-        const newAveragePrice = newTotalInvested / newShares
-        
-        batch.update(holdingDoc.ref, {
-          shares: newShares,
-          averagePrice: newAveragePrice,
-          totalInvested: newTotalInvested,
-          updatedAt: serverTimestamp(),
-        })
-      } else if (transaction.transactionType === 'sell') {
-        const newShares = Math.max(0, currentHolding.shares - transaction.shares)
-        
-        if (newShares === 0) {
-          // Remove holding if all shares sold
-          batch.delete(holdingDoc.ref)
-        } else {
-          // Update shares and total invested proportionally
-          const proportionSold = transaction.shares / currentHolding.shares
-          const newTotalInvested = currentHolding.totalInvested * (1 - proportionSold)
-          
-          batch.update(holdingDoc.ref, {
-            shares: newShares,
-            totalInvested: newTotalInvested,
-            updatedAt: serverTimestamp(),
-          })
-        }
-      }
-    } else if (transaction.transactionType === 'sell') {
-      // This should not happen due to validation above, but keeping as failsafe
-      throw new Error(`Cannot sell ${transaction.symbol} - you don't own any shares of this stock`)
-    }
-    
-    await batch.commit()
-    
-    // Clear cache
+    // Clear cache after successful transaction
     this.clearCache()
   }
 
@@ -651,53 +498,72 @@ export class StockAPI {
     return this.handleResponse<{ shares: number; value: number; price: number }>(response)
   }
 
-  // Firestore-based watchlist management
+  /**
+   * Get user watchlist via backend API
+   */
   static async getUserWatchlist(userId: string): Promise<string[]> {
     if (!auth.currentUser) throw new Error('User not authenticated')
     
-    const watchlistDoc = await getDoc(doc(db, 'watchlists', userId))
+    const headers = await this.getAuthHeaders()
+    const response = await this.fetchWithRetry(`${this.baseUrl}/stocks/watchlist`, { headers })
     
-    if (watchlistDoc.exists()) {
-      const data = watchlistDoc.data() as UserWatchlist
-      return data.symbols || []
-    }
+    // Use handleResponse for consistent error handling
+    const watchlistData = await this.handleResponse<string[] | { symbols: string[] }>(response)
     
-    return []
+    // Handle both array and object response structures
+    return Array.isArray(watchlistData) ? watchlistData : (watchlistData.symbols || [])
   }
 
+  /**
+   * Update entire watchlist via backend API
+   */
   static async updateWatchlist(userId: string, symbols: string[]): Promise<void> {
     if (!auth.currentUser) throw new Error('User not authenticated')
     
-    const watchlistRef = doc(db, 'watchlists', userId)
-    const docSnapshot = await getDoc(watchlistRef)
+    const headers = await this.getAuthHeaders()
+    const response = await this.fetchWithRetry(`${this.baseUrl}/stocks/watchlist`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify({ symbols })
+    })
     
-    if (docSnapshot.exists()) {
-      await updateDoc(watchlistRef, {
-        symbols,
-        updatedAt: serverTimestamp(),
-      })
-    } else {
-      await setDoc(watchlistRef, {
-        userId,
-        symbols,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      })
-    }
+    await this.handleResponse(response)
   }
 
+  /**
+   * Add symbol to watchlist via backend API
+   */
   static async addToWatchlist(userId: string, symbol: string): Promise<void> {
-    const currentWatchlist = await this.getUserWatchlist(userId)
-    if (!currentWatchlist.includes(symbol)) {
-      await this.updateWatchlist(userId, [...currentWatchlist, symbol])
-    }
+    if (!auth.currentUser) throw new Error('User not authenticated')
+    
+    const headers = await this.getAuthHeaders()
+    const response = await this.fetchWithRetry(`${this.baseUrl}/stocks/watchlist`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ symbol: symbol.toUpperCase() })
+    })
+    
+    await this.handleResponse(response)
   }
 
+  /**
+   * Remove symbol from watchlist via backend API
+   */
   static async removeFromWatchlist(userId: string, symbol: string): Promise<void> {
-    const currentWatchlist = await this.getUserWatchlist(userId)
-    await this.updateWatchlist(userId, currentWatchlist.filter(s => s !== symbol))
+    if (!auth.currentUser) throw new Error('User not authenticated')
+    
+    const headers = await this.getAuthHeaders()
+    const response = await this.fetchWithRetry(`${this.baseUrl}/stocks/watchlist/${symbol.toUpperCase()}`, {
+      method: 'DELETE',
+      headers
+    })
+    
+    await this.handleResponse(response)
   }
 
+  /**
+   * Get transaction history via backend API
+   */
   static async getTransactionHistory(userId: string): Promise<StockTransaction[]> {
     if (!auth.currentUser) throw new Error('User not authenticated')
     
@@ -706,13 +572,16 @@ export class StockAPI {
     return this.handleResponse<StockTransaction[]>(response)
   }
 
-  // Clear cache (useful for debugging or force refresh)
+  /**
+   * Clear cache (useful for debugging or force refresh)
+   */
   static clearCache(): void {
     this.cache.clear()
-
   }
 
-  // Reset connection state (useful for debugging or reconnection)
+  /**
+   * Reset connection state (useful for debugging or reconnection)
+   */
   static resetConnectionState(): void {
     this.connectionAttempted = false
     this.connectionFailed = false
@@ -721,10 +590,11 @@ export class StockAPI {
       this.socket = null
     }
     this.priceUpdateCallbacks.clear()
-
   }
 
-  // WebSocket connection management
+  /**
+   * Initialize WebSocket connection for real-time price updates
+   */
   private static async initializeSocket(): Promise<Socket | null> {
     // Don't attempt connection if already failed
     if (this.connectionFailed) {
@@ -742,7 +612,6 @@ export class StockAPI {
         })
         
         if (!healthResponse.ok) {
-
           this.connectionFailed = true
           return null
         }
@@ -751,7 +620,6 @@ export class StockAPI {
         
         // Check if the service indicates WebSocket support
         if (healthData.status !== 'healthy') {
-
           this.connectionFailed = true
           return null
         }
@@ -760,17 +628,16 @@ export class StockAPI {
         this.socket = io(socketUrl, {
           transports: ['websocket', 'polling'],
           autoConnect: true,
-          timeout: 5000, // 5 second timeout
+          timeout: 5000,
           forceNew: true,
         })
 
         this.socket.on('connect', () => {
-
           this.connectionFailed = false
         })
 
         this.socket.on('disconnect', () => {
-
+          // Connection closed
         })
 
         this.socket.on('price_updates', (data: Record<string, StockData>) => {
@@ -783,8 +650,7 @@ export class StockAPI {
           })
         })
 
-        this.socket.on('connect_error', (error) => {
-
+        this.socket.on('connect_error', () => {
           this.connectionFailed = true
           this.socket = null
         })
@@ -792,14 +658,16 @@ export class StockAPI {
         // Set a timeout to mark connection as failed if not connected within 5 seconds
         setTimeout(() => {
           if (this.socket && !this.socket.connected) {
-
             this.connectionFailed = true
             this.socket.disconnect()
             this.socket = null
           }
         }, 5000)
       } catch (error) {
-
+        // WebSocket initialization failed - log in development for debugging
+        if (process.env.NODE_ENV === 'development') {
+          console.debug('WebSocket initialization failed:', error)
+        }
         this.connectionFailed = true
         this.socket = null
       }
@@ -808,6 +676,9 @@ export class StockAPI {
     return this.socket
   }
 
+  /**
+   * Subscribe to real-time stock price updates
+   */
   static subscribeToStockPrices(symbols: string[], callback: (symbol: string, data: StockData) => void): () => void {
     // Register callback for each symbol
     symbols.forEach(symbol => {
@@ -821,12 +692,11 @@ export class StockAPI {
 
     // Initialize socket connection asynchronously
     this.initializeSocket().then(socket => {
-      // Subscribe to price updates for these symbols (only if socket is available)
       if (socket) {
         socket.emit('subscribe_prices', { symbols })
       }
-    }).catch(error => {
-
+    }).catch(() => {
+      // Connection failed silently
     })
 
     // Return unsubscribe function
@@ -834,7 +704,6 @@ export class StockAPI {
       symbols.forEach(symbol => {
         const callbacks = this.priceUpdateCallbacks.get(symbol)
         if (callbacks) {
-          // Remove specific callback (this is simplified - in practice you'd need to track the specific callback)
           callbacks.clear()
           if (callbacks.size === 0) {
             this.priceUpdateCallbacks.delete(symbol)
@@ -842,17 +711,19 @@ export class StockAPI {
         }
       })
 
-      // Unsubscribe from price updates (only if socket is available)
       this.initializeSocket().then(socket => {
         if (socket) {
           socket.emit('unsubscribe_prices', { symbols })
         }
-      }).catch(error => {
-
+      }).catch(() => {
+        // Unsubscribe failed silently
       })
     }
   }
 
+  /**
+   * Disconnect WebSocket connection
+   */
   static disconnectSocket(): void {
     if (this.socket) {
       this.socket.disconnect()
@@ -893,4 +764,4 @@ export const formatVolume = (volume: number): string => {
     return `${(volume / 1e3).toFixed(1)}K`
   }
   return volume.toString()
-} 
+}
