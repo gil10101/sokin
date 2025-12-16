@@ -32,9 +32,6 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.storage = exports.db = exports.auth = void 0;
 const app_1 = require("firebase-admin/app");
@@ -42,7 +39,11 @@ const auth_1 = require("firebase-admin/auth");
 const firestore_1 = require("firebase-admin/firestore");
 const storage_1 = require("firebase-admin/storage");
 const dotenv = __importStar(require("dotenv"));
-const logger_1 = __importDefault(require("../utils/logger"));
+// Simple inline logger to avoid circular dependencies
+const log = {
+    info: (msg) => console.log(`[INFO] ${msg}`),
+    error: (msg, meta) => console.error(`[ERROR] ${msg}`, meta || '')
+};
 // Load environment variables
 dotenv.config();
 // Initialize Firebase Admin with the service account
@@ -73,7 +74,7 @@ const initializeFirebaseAdmin = () => {
                     projectId: process.env.FIREBASE_PROJECT_ID,
                     storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || `${process.env.FIREBASE_PROJECT_ID}.firebasestorage.app`,
                 });
-                logger_1.default.info('Firebase Admin initialized with service account from environment variables');
+                log.info('Firebase Admin initialized with service account from environment variables');
                 return app;
             }
             // Fallback: Check for service account JSON string
@@ -91,7 +92,7 @@ const initializeFirebaseAdmin = () => {
                 if (!process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET) {
                     throw new Error('NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET environment variable is not configured');
                 }
-                logger_1.default.info('Firebase Admin initialized with service account JSON');
+                log.info('Firebase Admin initialized with service account JSON');
                 return app;
             }
             // Development mode fallback
@@ -106,49 +107,62 @@ const initializeFirebaseAdmin = () => {
                     projectId: process.env.FIREBASE_PROJECT_ID,
                     storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
                 });
-                logger_1.default.info('Firebase Admin initialized in development mode');
+                log.info('Firebase Admin initialized in development mode');
                 return app;
             }
-            logger_1.default.error('No valid Firebase credentials found');
+            log.error('No valid Firebase credentials found');
             throw new Error('Firebase credentials not configured');
         }
         else {
-            logger_1.default.info('Firebase Admin already initialized');
+            log.info('Firebase Admin already initialized');
             return (0, app_1.getApps)()[0];
         }
     }
     catch (error) {
         if (error instanceof Error) {
-            logger_1.default.error(`Error initializing Firebase Admin: ${error.message}`, { stack: error.stack });
+            log.error(`Error initializing Firebase Admin: ${error.message}`, { stack: error.stack });
         }
         else {
-            logger_1.default.error('Unknown error initializing Firebase Admin');
+            log.error('Unknown error initializing Firebase Admin');
         }
         return null;
     }
 };
 // Initialize Firebase Admin
-const app = initializeFirebaseAdmin();
-// Export Firebase Admin services
-exports.auth = app ? (0, auth_1.getAuth)(app) : null;
-exports.db = app ? (0, firestore_1.getFirestore)(app) : null;
-exports.storage = app ? (0, storage_1.getStorage)(app) : null;
+let app = null;
+let auth = null;
+exports.auth = auth;
+let db = null;
+exports.db = db;
+let storage = null;
+exports.storage = storage;
+try {
+    app = initializeFirebaseAdmin();
+    // Export Firebase Admin services
+    exports.auth = auth = app ? (0, auth_1.getAuth)(app) : null;
+    exports.db = db = app ? (0, firestore_1.getFirestore)(app) : null;
+    exports.storage = storage = app ? (0, storage_1.getStorage)(app) : null;
+}
+catch (error) {
+    console.error('[FIREBASE] Critical initialization error:', error);
+    // Don't crash - allow the app to start without Firebase
+}
 // Configure Firestore settings for better performance
-if (exports.db) {
+if (db) {
     try {
-        exports.db.settings({
+        db.settings({
             ignoreUndefinedProperties: true,
             // Batch size for batch operations
             maximumBatchSize: 500,
         });
-        logger_1.default.info('Firestore settings configured successfully');
+        log.info('Firestore settings configured successfully');
     }
     catch (error) {
         if (error instanceof Error) {
-            logger_1.default.error(`Error configuring Firestore: ${error.message}`);
+            log.error(`Error configuring Firestore: ${error.message}`);
         }
     }
 }
 else {
-    logger_1.default.error('Failed to initialize Firestore - db is null');
+    log.error('Failed to initialize Firestore - db is null');
 }
