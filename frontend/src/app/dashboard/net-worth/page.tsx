@@ -2,28 +2,28 @@
 
 import React, { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { MotionDiv, MotionHeader, fadeInUp, staggerContainer } from '../../../components/ui/dynamic-motion'
+import { MotionDiv, MotionHeader, fadeInUp, staggerContainer } from "@/components/ui/dynamic-motion"
 import {
   DollarSign,
   Plus,
   Building,
   CreditCard
 } from 'lucide-react'
-import { DashboardSidebar } from '../../../components/dashboard/sidebar'
-import { MetricCard } from '../../../components/dashboard/metric-card'
-import { useAuth } from '../../../contexts/auth-context'
-import { MotionContainer } from '../../../components/ui/motion-container'
-import { LoadingSpinner } from '../../../components/ui/loading-spinner'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../../../components/ui/dropdown-menu'
+import { DashboardSidebar } from "@/components/dashboard/sidebar"
+import { MetricCard } from "@/components/dashboard/metric-card"
+import { useAuth } from "@/contexts/auth-context"
+import { MotionContainer } from "@/components/ui/motion-container"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import {
   Asset,
   Liability,
   NetWorthCalculation
-} from '../../../lib/types'
-import { AssetLiabilityBreakdown } from "../../../components/dashboard/asset-liability-breakdown"
-import { NetWorthTrends } from "../../../components/dashboard/net-worth-trends"  
-import { AssetLiabilityForm } from "../../../components/dashboard/asset-liability-form"
-import { api } from "../../../lib/api"
+} from "@/lib/types"
+import { AssetLiabilityBreakdown } from "@/components/dashboard/asset-liability-breakdown"
+import { NetWorthTrends } from "@/components/dashboard/net-worth-trends"  
+import { AssetLiabilityForm } from "@/components/dashboard/asset-liability-form"
+import { api } from "@/lib/api"
 
 
 
@@ -59,7 +59,12 @@ const item = {
   show: { opacity: 1, y: 0, transition: { duration: 0.5 } },
 }
 
-export default function NetWorthPage() {
+interface NetWorthPageProps {
+  params?: Promise<Record<string, string>>;
+  searchParams?: Promise<Record<string, string>>;
+}
+
+export default function NetWorthPage(props: NetWorthPageProps) {
   const { user, loading: authLoading } = useAuth()
   const router = useRouter()
   const [collapsed, setCollapsed] = useState(false)

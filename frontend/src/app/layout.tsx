@@ -2,18 +2,19 @@ import type React from "react"
 import type { Metadata, Viewport } from "next"
 import "./globals.css"
 import { Suspense, lazy } from 'react'
-import { LoadingSpinner } from "../components/ui/loading-spinner"
-import { ErrorBoundary } from "../components/error-boundary"
-import FontLoader from "../components/font-loader"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { ErrorBoundary } from "@/components/error-boundary"
+import FontLoader from "@/components/font-loader"
 
 // Lazy load providers to reduce initial bundle size
-const ThemeProvider = lazy(() => import("../components/theme-provider").then(mod => ({ default: mod.ThemeProvider })))
-const AuthProvider = lazy(() => import("../contexts/auth-context").then(mod => ({ default: mod.AuthProvider })))
-const Toaster = lazy(() => import("../components/ui/toaster").then(mod => ({ default: mod.Toaster })))
-const TooltipProvider = lazy(() => import("../components/ui/tooltip").then(mod => ({ default: mod.TooltipProvider })))
-const ReactQueryClientProvider = lazy(() => import("../lib/react-query-provider").then(mod => ({ default: mod.ReactQueryClientProvider })))
-const AppInitializer = lazy(() => import("../components/app-initializer").then(mod => ({ default: mod.AppInitializer })))
-const PerformanceMonitor = lazy(() => import("../components/performance-monitor").then(mod => ({ default: mod.PerformanceMonitor })))
+const ThemeProvider = lazy(() => import("@/components/theme-provider").then(mod => ({ default: mod.ThemeProvider })))
+const AuthProvider = lazy(() => import("@/contexts/auth-context").then(mod => ({ default: mod.AuthProvider })))
+const NotificationsProvider = lazy(() => import("@/contexts/notifications-context").then(mod => ({ default: mod.NotificationsProvider })))
+const Toaster = lazy(() => import("@/components/ui/toaster").then(mod => ({ default: mod.Toaster })))
+const TooltipProvider = lazy(() => import("@/components/ui/tooltip").then(mod => ({ default: mod.TooltipProvider })))
+const ReactQueryClientProvider = lazy(() => import("@/lib/react-query-provider").then(mod => ({ default: mod.ReactQueryClientProvider })))
+const AppInitializer = lazy(() => import("@/components/app-initializer").then(mod => ({ default: mod.AppInitializer })))
+const PerformanceMonitor = lazy(() => import("@/components/performance-monitor").then(mod => ({ default: mod.PerformanceMonitor })))
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -64,20 +65,24 @@ export default function RootLayout({
                   <Suspense fallback={<LoadingSpinner size="lg" />}>
                     <AuthProvider>
                       <Suspense fallback={<LoadingSpinner size="lg" />}>
-                        <TooltipProvider>
+                        <NotificationsProvider>
                           <Suspense fallback={<LoadingSpinner size="lg" />}>
-                            <AppInitializer />
+                            <TooltipProvider>
+                              <Suspense fallback={<LoadingSpinner size="lg" />}>
+                                <AppInitializer />
+                              </Suspense>
+                              <Suspense fallback={<LoadingSpinner size="lg" />}>
+                                {children}
+                              </Suspense>
+                              <Suspense fallback={null}>
+                                <Toaster />
+                              </Suspense>
+                              <Suspense fallback={null}>
+                                <PerformanceMonitor />
+                              </Suspense>
+                            </TooltipProvider>
                           </Suspense>
-                          <Suspense fallback={<LoadingSpinner size="lg" />}>
-                            {children}
-                          </Suspense>
-                          <Suspense fallback={null}>
-                            <Toaster />
-                          </Suspense>
-                          <Suspense fallback={null}>
-                            <PerformanceMonitor />
-                          </Suspense>
-                        </TooltipProvider>
+                        </NotificationsProvider>
                       </Suspense>
                     </AuthProvider>
                   </Suspense>

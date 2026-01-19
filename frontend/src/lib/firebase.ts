@@ -17,35 +17,5 @@ const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0]
 const auth = getAuth(app)
 const db = getFirestore(app)
 
-// Set up Firestore rules for expenses collection
-// These rules should be deployed to Firebase
-/*
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    // Allow users to read and write their own data
-    match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-      
-      // Allow users to read and write their own categories
-      match /categories/{document=**} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
-    }
-    
-    // Allow users to read and write their own expenses
-    match /expenses/{expenseId} {
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
-    }
-    
-    // Allow read access to global categories
-    match /categories/{document=**} {
-      allow read: if request.auth != null;
-    }
-  }
-}
-*/
-
 export { auth, db }
 

@@ -1,28 +1,5 @@
 import Joi from 'joi';
 
-// Security-focused validation patterns
-const patterns = {
-  // Basic alphanumeric + limited safe symbols, no quotes/parentheses for XSS protection
-  safeText: /^[a-zA-Z0-9\s\-_.,!?]{1,200}$/,
-  // Currency amounts (positive numbers with up to 2 decimals)
-  currency: /^\d+(\.\d{1,2})?$/,
-  // Categories (alphanumeric with spaces, hyphens, underscores - strict length limit)
-  category: /^[a-zA-Z0-9\s\-_]{1,50}$/,
-  // Firebase document IDs (exactly 20 URL-safe base64-like characters)
-  firebaseId: /^[a-zA-Z0-9_-]{20}$/
-};
-
-// Common validation helpers
-const commonValidations = {
-  userId: Joi.string().pattern(patterns.firebaseId).required(),
-  amount: Joi.number().positive().max(999999.99).precision(2).required(),
-  category: Joi.string().pattern(patterns.category).min(1).max(50).required(),
-  name: Joi.string().pattern(patterns.safeText).min(1).max(100).required(),
-  description: Joi.string().pattern(patterns.safeText).allow('').max(500),
-  date: Joi.date().max('now').required(),
-  tags: Joi.array().items(Joi.string().pattern(patterns.category).max(30)).max(10)
-};
-
 // Expense schemas
 export const createExpenseSchema = Joi.object({
   name: Joi.string().required().trim(),
@@ -58,21 +35,25 @@ export const updateExpenseSchema = Joi.object({
 
 // Budget schemas
 export const createBudgetSchema = Joi.object({
-  name: Joi.string().required().trim(),
+  name: Joi.string().trim(),
+  category: Joi.string().required().trim(),
   amount: Joi.number().required().positive(),
   period: Joi.string().valid('daily', 'weekly', 'monthly', 'yearly').required(),
   categories: Joi.array().items(Joi.string()),
   startDate: Joi.string().isoDate().required(),
-  endDate: Joi.string().isoDate()
+  endDate: Joi.string().isoDate(),
+  notes: Joi.string().allow('').max(1000)
 });
 
 export const updateBudgetSchema = Joi.object({
   name: Joi.string().trim(),
+  category: Joi.string().trim(),
   amount: Joi.number().positive(),
   period: Joi.string().valid('daily', 'weekly', 'monthly', 'yearly'),
   categories: Joi.array().items(Joi.string()),
   startDate: Joi.string().isoDate(),
-  endDate: Joi.string().isoDate()
+  endDate: Joi.string().isoDate(),
+  notes: Joi.string().allow('').max(1000)
 }).min(1);
 
 // User schemas
@@ -93,16 +74,72 @@ export const markNotificationReadParamsSchema = Joi.object({
 });
 
 export const updateNotificationPreferencesSchema = Joi.object({
-  notificationsEnabled: Joi.boolean().required(),
-  push: Joi.boolean(),
-  email: Joi.boolean(),
-  sms: Joi.boolean()
+  budgetAlerts: Joi.boolean(),
+  billReminders: Joi.boolean(),
+  goalMilestones: Joi.boolean(),
+  spendingInsights: Joi.boolean(),
+  pushNotifications: Joi.boolean(),
+  emailNotifications: Joi.boolean(),
+  budgetWarningThreshold: Joi.number().min(0).max(100),
+  budgetExceededThreshold: Joi.number().min(0).max(100),
+  reminderDaysBefore: Joi.number().min(0).max(30)
 }).min(1);
 
 export const registerFcmTokenSchema = Joi.object({
   token: Joi.string().trim().min(20).max(4096).required(),
   platform: Joi.string().valid('web', 'ios', 'android').required()
 });
+
+export const createNotificationSchema = Joi.object({
+  title: Joi.string().trim().min(1).max(200).required(),
+  message: Joi.string().trim().min(1).max(2000).required(),
+  type: Joi.string().valid(
+    'info',
+    'success',
+    'warning',
+    'error',
+    'system',
+    'budget_warning',
+    'budget_exceeded',
+    'bill_reminder',
+    'goal_milestone',
+    'spending_insight'
+  ).required(),
+  data: Joi.object().optional(),
+  link: Joi.string().uri().optional()
+});
+
+export const createSubscriptionSchema = Joi.object({
+  name: Joi.string().trim().min(1).max(120).required(),
+  amount: Joi.number().positive().required(),
+  billingCycle: Joi.string().valid('monthly', 'quarterly', 'semi-annually', 'annually', 'custom').required(),
+  customInterval: Joi.number().integer().min(1).max(365).optional(),
+  customIntervalUnit: Joi.string().valid('days', 'weeks', 'months', 'years').optional(),
+  startDate: Joi.string().isoDate().required(),
+  nextPaymentDate: Joi.string().isoDate().required(),
+  paymentMethod: Joi.string().trim().min(1).max(100).required(),
+  category: Joi.string().trim().min(1).max(100).required(),
+  autoRenew: Joi.boolean().required(),
+  logo: Joi.string().uri().optional().allow(''),
+  website: Joi.string().uri().optional().allow(''),
+  notes: Joi.string().allow('').max(2000).optional()
+});
+
+export const updateSubscriptionSchema = Joi.object({
+  name: Joi.string().trim().min(1).max(120),
+  amount: Joi.number().positive(),
+  billingCycle: Joi.string().valid('monthly', 'quarterly', 'semi-annually', 'annually', 'custom'),
+  customInterval: Joi.number().integer().min(1).max(365),
+  customIntervalUnit: Joi.string().valid('days', 'weeks', 'months', 'years'),
+  startDate: Joi.string().isoDate(),
+  nextPaymentDate: Joi.string().isoDate(),
+  paymentMethod: Joi.string().trim().min(1).max(100),
+  category: Joi.string().trim().min(1).max(100),
+  autoRenew: Joi.boolean(),
+  logo: Joi.string().uri().optional().allow(''),
+  website: Joi.string().uri().optional().allow(''),
+  notes: Joi.string().allow('').max(2000).optional()
+}).min(1);
 
 // Asset schemas
 export const createAssetSchema = Joi.object({
@@ -272,4 +309,71 @@ export const updateLiabilitySchema = Joi.object({
 // ID validation schema for path parameters
 export const idParamsSchema = Joi.object({
   id: Joi.string().trim().min(8).max(128).required()
+});
+
+// User ID validation schema for path parameters (Firebase UID format)
+export const userIdParamsSchema = Joi.object({
+  userId: Joi.string()
+    .trim()
+    .pattern(/^[a-zA-Z0-9_-]{20,128}$/)
+    .required()
+    .messages({
+      'string.pattern.base': 'Invalid user ID format',
+      'any.required': 'User ID is required'
+    })
+});
+
+// Stock symbol validation schema for path parameters
+export const stockSymbolParamsSchema = Joi.object({
+  symbol: Joi.string()
+    .trim()
+    .uppercase()
+    .min(1)
+    .max(10)
+    .pattern(/^[A-Z^]+$/)
+    .required()
+    .messages({
+      'string.pattern.base': 'Invalid stock symbol format',
+      'any.required': 'Stock symbol is required'
+    })
+});
+
+// Pagination query parameters schema
+export const paginationQuerySchema = Joi.object({
+  /** Number of items to return (1-100, default: 50) */
+  limit: Joi.number().integer().min(1).max(100).default(50),
+  /** Cursor for pagination (document ID to start after) */
+  cursor: Joi.string().trim().min(8).max(128).optional(),
+  /** Sort order: 'asc' or 'desc' (default: 'desc') */
+  sortOrder: Joi.string().valid('asc', 'desc').default('desc'),
+  /** Field to sort by (default: 'date' for expenses, 'createdAt' for others) */
+  sortBy: Joi.string().valid('date', 'createdAt', 'amount', 'name').default('date')
+});
+
+// Expenses-specific pagination with date filtering
+export const expensesPaginationSchema = paginationQuerySchema.keys({
+  /** Filter by category */
+  category: Joi.string().trim().max(50).optional(),
+  /** Filter by start date (ISO format) */
+  startDate: Joi.string().isoDate().optional(),
+  /** Filter by end date (ISO format) */
+  endDate: Joi.string().isoDate().optional()
+}).custom((value, helpers) => {
+  // Validate that endDate is not before startDate
+  if (value.startDate && value.endDate && value.startDate > value.endDate) {
+    return helpers.error('any.invalid', { message: 'endDate must be after or equal to startDate' });
+  }
+  return value;
+}, 'date range validation').messages({
+  'any.invalid': 'endDate must be after or equal to startDate'
+});
+
+// Budgets-specific pagination
+export const budgetsPaginationSchema = paginationQuerySchema.keys({
+  /** Filter by period type */
+  period: Joi.string().valid('daily', 'weekly', 'monthly', 'yearly').optional(),
+  /** Filter active budgets only */
+  activeOnly: Joi.boolean().default(false)
+}).keys({
+  sortBy: Joi.string().valid('createdAt', 'amount', 'name', 'startDate').default('createdAt')
 });

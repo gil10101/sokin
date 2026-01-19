@@ -2,14 +2,12 @@
 
 import React, { useEffect, useState, useRef, useCallback, useMemo } from "react"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell, Tooltip } from "recharts"
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "../../components/ui/chart"
-import { LoadingSpinner } from "../../components/ui/loading-spinner"
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { MotionDiv } from "../ui/dynamic-motion"
-import { collection, query, where, getDocs } from "firebase/firestore"
-import { db } from "../../lib/firebase"
-import { useExpensesData } from "../../hooks/use-expenses-data"
-import { useAuth } from "../../contexts/auth-context"
-import { useViewport } from "../../hooks/use-mobile"
+import { useExpensesData } from "@/hooks/use-expenses-data"
+import { useAuth } from "@/contexts/auth-context"
+import { useViewport } from "@/hooks/use-mobile"
 import { format, subMonths, startOfMonth, endOfMonth, eachMonthOfInterval } from "date-fns"
 
 // Helper function to safely parse dates including Firebase Timestamps

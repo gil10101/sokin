@@ -1,37 +1,4 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -58,10 +25,22 @@ const auth_1 = require("./middleware/auth");
 // Create Express app
 const app = (0, express_1.default)();
 const port = process.env.PORT || '5001';
+// Parse and validate CORS origins
+const corsOrigins = (_a = process.env.CORS_ORIGIN) === null || _a === void 0 ? void 0 : _a.split(',').map(o => o.trim()).filter(Boolean);
+// Validate no wildcards when credentials are enabled (required by CORS spec)
+if (corsOrigins === null || corsOrigins === void 0 ? void 0 : corsOrigins.includes('*')) {
+    logger_1.default.error('CORS_ORIGIN cannot contain "*" when credentials are enabled - browsers will block all requests');
+    process.exit(1);
+}
+// In production, CORS must be explicitly configured
+if (process.env.NODE_ENV === 'production' && (!corsOrigins || corsOrigins.length === 0)) {
+    logger_1.default.error('CORS_ORIGIN environment variable must be configured in production');
+    process.exit(1);
+}
 // Basic middleware
 app.use((0, helmet_1.default)());
 app.use((0, cors_1.default)({
-    origin: ((_a = process.env.CORS_ORIGIN) === null || _a === void 0 ? void 0 : _a.split(',')) || [],
+    origin: corsOrigins && corsOrigins.length > 0 ? corsOrigins : false,
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Client-Version', 'X-Platform'],
     credentials: true
@@ -74,44 +53,29 @@ const rateLimiterConfig = process.env.NODE_ENV === 'development'
     ? (0, rateLimiter_1.rateLimiter)(1000, 60 * 1000) // 1000 requests per minute in dev
     : (0, rateLimiter_1.rateLimiter)(100, 15 * 60 * 1000); // 100 requests per 15 minutes in prod
 app.use(rateLimiterConfig);
-// Lazy load routes for better startup performance
-const lazyRoutes = {
-    expenseRoutes: () => Promise.resolve().then(() => __importStar(require('./routes/expenses'))),
-    userRoutes: () => Promise.resolve().then(() => __importStar(require('./routes/users'))),
-    budgetRoutes: () => Promise.resolve().then(() => __importStar(require('./routes/budgets'))),
-    receiptRoutes: () => Promise.resolve().then(() => __importStar(require('./routes/receiptRoutes'))),
-    notificationRoutes: () => Promise.resolve().then(() => __importStar(require('./routes/notificationRoutes'))),
-    goalsRoutes: () => Promise.resolve().then(() => __importStar(require('./routes/goalsRoutes'))),
-    billRemindersRoutes: () => Promise.resolve().then(() => __importStar(require('./routes/billRemindersRoutes'))),
-    stocksRoutes: () => Promise.resolve().then(() => __importStar(require('./routes/stocksRoutes'))),
-    netWorthRoutes: () => Promise.resolve().then(() => __importStar(require('./routes/netWorthRoutes'))),
-    dashboardRoutes: () => Promise.resolve().then(() => __importStar(require('./routes/dashboard'))),
-};
-// Middleware to lazy load routes on first request
-const lazyRouteLoader = (routeName) => {
-    return async (req, res, next) => {
-        try {
-            const routeModule = await lazyRoutes[routeName]();
-            const routeHandler = routeModule.default;
-            return routeHandler(req, res, next);
-        }
-        catch (error) {
-            logger_1.default.error(`Failed to load route ${routeName}:`, { error: String(error) });
-            return res.status(500).json({ error: 'Internal server error' });
-        }
-    };
-};
-// Use lazy-loaded routes
-app.use('/api/expenses', lazyRouteLoader('expenseRoutes'));
-app.use('/api/users', lazyRouteLoader('userRoutes'));
-app.use('/api/budgets', lazyRouteLoader('budgetRoutes'));
-app.use('/api/receipts', lazyRouteLoader('receiptRoutes'));
-app.use('/api/notifications', lazyRouteLoader('notificationRoutes'));
-app.use('/api/goals', lazyRouteLoader('goalsRoutes'));
-app.use('/api/bill-reminders', lazyRouteLoader('billRemindersRoutes'));
-app.use('/api/stocks', lazyRouteLoader('stocksRoutes'));
-app.use('/api/net-worth', lazyRouteLoader('netWorthRoutes'));
-app.use('/api/dashboard', lazyRouteLoader('dashboardRoutes'));
+// Import routes directly (serverless functions are stateless anyway)
+const expenses_1 = __importDefault(require("./routes/expenses"));
+const users_1 = __importDefault(require("./routes/users"));
+const budgets_1 = __importDefault(require("./routes/budgets"));
+const receiptRoutes_1 = __importDefault(require("./routes/receiptRoutes"));
+const notificationRoutes_1 = __importDefault(require("./routes/notificationRoutes"));
+const goalsRoutes_1 = __importDefault(require("./routes/goalsRoutes"));
+const billRemindersRoutes_1 = __importDefault(require("./routes/billRemindersRoutes"));
+const stocksRoutes_1 = __importDefault(require("./routes/stocksRoutes"));
+const netWorthRoutes_1 = __importDefault(require("./routes/netWorthRoutes"));
+const dashboard_1 = __importDefault(require("./routes/dashboard"));
+// Mount routes
+// Note: User routes consolidated - /api/users handles both profile and user management
+app.use('/api/expenses', expenses_1.default);
+app.use('/api/users', users_1.default);
+app.use('/api/budgets', budgets_1.default);
+app.use('/api/receipts', receiptRoutes_1.default);
+app.use('/api/notifications', notificationRoutes_1.default);
+app.use('/api/goals', goalsRoutes_1.default);
+app.use('/api/bill-reminders', billRemindersRoutes_1.default);
+app.use('/api/stocks', stocksRoutes_1.default);
+app.use('/api/net-worth', netWorthRoutes_1.default);
+app.use('/api/dashboard', dashboard_1.default);
 // Health check route
 app.get('/health', (req, res) => {
     res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -135,31 +99,37 @@ app.use((req, res) => {
 });
 // Global error handler
 app.use(errorHandler_1.errorHandler);
-// Validate configuration before starting server
-try {
-    (0, auth_1.validateAuthConfig)();
-}
-catch (error) {
-    logger_1.default.error('Configuration validation failed:', { error: String(error) });
-    process.exit(1);
-}
-// Start server
-app.listen(Number(port), () => {
-    logger_1.default.info(`Server running on port ${port}`);
-    if (process.env.NODE_ENV === 'development') {
-        logger_1.default.info('Running in development mode with mock data');
-        logger_1.default.info(`CORS configured for: ${process.env.CORS_ORIGIN || 'configured origin'}`);
+// Validate configuration before starting server (only for local, not Vercel)
+if (process.env.VERCEL !== '1') {
+    try {
+        (0, auth_1.validateAuthConfig)();
     }
-});
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (err) => {
-    logger_1.default.error('Unhandled Promise Rejection', { error: err });
-    // In production, consider graceful shutdown:
-    // process.exit(1);
-});
-// Handle uncaught exceptions
-process.on('uncaughtException', (err) => {
-    logger_1.default.error('Uncaught Exception', { error: err });
-    // In production, consider graceful shutdown:
-    // process.exit(1);
-});
+    catch (error) {
+        logger_1.default.error('Configuration validation failed:', { error: String(error) });
+        process.exit(1);
+    }
+}
+// Start server (only for local development, not in Vercel)
+if (process.env.VERCEL !== '1') {
+    app.listen(Number(port), () => {
+        logger_1.default.info(`Server running on port ${port}`);
+        if (process.env.NODE_ENV === 'development') {
+            logger_1.default.info('Running in development mode with mock data');
+            logger_1.default.info(`CORS configured for: ${process.env.CORS_ORIGIN || 'configured origin'}`);
+        }
+    });
+    // Handle unhandled promise rejections
+    process.on('unhandledRejection', (err) => {
+        logger_1.default.error('Unhandled Promise Rejection', { error: err });
+        // In production, consider graceful shutdown:
+        // process.exit(1);
+    });
+    // Handle uncaught exceptions
+    process.on('uncaughtException', (err) => {
+        logger_1.default.error('Uncaught Exception', { error: err });
+        // In production, consider graceful shutdown:
+        // process.exit(1);
+    });
+}
+// Export for Vercel serverless
+exports.default = app;

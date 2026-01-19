@@ -1,4 +1,15 @@
 "use strict";
+/**
+ * Authentication Middleware
+ *
+ * Provides Firebase-based authentication for API endpoints.
+ * Includes support for:
+ * - Bearer token verification via Firebase Admin SDK
+ * - Cron job authentication with timing-safe secret comparison
+ * - IP allowlist support for internal services
+ *
+ * @module middleware/auth
+ */
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -9,6 +20,15 @@ const errorHandler_1 = require("./errorHandler");
 const logger_1 = __importDefault(require("../utils/logger"));
 const crypto_1 = __importDefault(require("crypto"));
 const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
+/**
+ * Check if development mock authentication is explicitly enabled.
+ * Requires BOTH NODE_ENV=development AND ALLOW_MOCK_AUTH=true.
+ * This prevents accidental auth bypass in production.
+ */
+const isDevelopmentWithMockAuth = () => {
+    return (process.env.NODE_ENV === 'development' &&
+        process.env.ALLOW_MOCK_AUTH === 'true');
+};
 // Rate limiter for cron authentication endpoints
 exports.cronRateLimiter = (0, express_rate_limit_1.default)({
     windowMs: 15 * 60 * 1000, // 15 minutes
@@ -76,7 +96,25 @@ const validateAuthConfig = () => {
     });
 };
 exports.validateAuthConfig = validateAuthConfig;
-// Authentication middleware
+/**
+ * Firebase authentication middleware
+ *
+ * Verifies the Bearer token from the Authorization header using Firebase Admin SDK.
+ * In development mode with ALLOW_MOCK_AUTH=true, falls back to mock user for testing.
+ *
+ * @param req - Express request object
+ * @param res - Express response object
+ * @param next - Express next function
+ *
+ * @throws {AppError} 401 - When no token is provided or token is invalid
+ * @throws {AppError} 500 - When Firebase auth is not initialized (production only)
+ *
+ * @example
+ * // Use in routes
+ * router.get('/protected', auth, (req, res) => {
+ *   const userId = req.user?.uid;
+ * });
+ */
 const auth = async (req, res, next) => {
     try {
         const authHeader = req.headers.authorization;
@@ -84,33 +122,10 @@ const auth = async (req, res, next) => {
             throw new errorHandler_1.AppError('Unauthorized: No token provided', 401, true);
         }
         const token = authHeader.split(' ')[1];
-        try {
-            if (!firebase_1.auth) {
-                // For development without proper Firebase setup, create a mock user
-                if (process.env.NODE_ENV === 'development') {
-                    logger_1.default.warn('Firebase auth not initialized - using development mock user');
-                    req.user = {
-                        uid: 'dev-user-' + Date.now(),
-                        email: 'dev@example.com'
-                    };
-                    next();
-                    return;
-                }
-                throw new errorHandler_1.AppError('Firebase auth not initialized', 500, false);
-            }
-            const decodedToken = await firebase_1.auth.verifyIdToken(token);
-            req.user = {
-                uid: decodedToken.uid,
-                email: decodedToken.email
-            };
-            next();
-        }
-        catch (error) {
-            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            logger_1.default.error('Error verifying token:', { error: errorMessage });
-            // In development mode, if token verification fails, use mock user
-            if (process.env.NODE_ENV === 'development') {
-                logger_1.default.warn('Token verification failed in development - using mock user');
+        if (!firebase_1.auth) {
+            // Only allow mock auth if explicitly enabled in development
+            if (isDevelopmentWithMockAuth()) {
+                logger_1.default.warn('Firebase auth not initialized - using development mock user (ALLOW_MOCK_AUTH=true)');
                 req.user = {
                     uid: 'dev-user-' + Date.now(),
                     email: 'dev@example.com'
@@ -118,17 +133,38 @@ const auth = async (req, res, next) => {
                 next();
                 return;
             }
+            // Fail-closed: reject request if Firebase is not initialized
+            logger_1.default.error('Firebase auth not initialized and mock auth not enabled');
+            throw new errorHandler_1.AppError('Authentication service unavailable', 503, false);
+        }
+        try {
+            const decodedToken = await firebase_1.auth.verifyIdToken(token);
+            req.user = {
+                uid: decodedToken.uid,
+                email: decodedToken.email
+            };
+            next();
+        }
+        catch (tokenError) {
+            const errorMessage = tokenError instanceof Error ? tokenError.message : 'Unknown error';
+            logger_1.default.error('Error verifying token:', { error: errorMessage });
+            // Only allow mock auth fallback if explicitly enabled
+            if (isDevelopmentWithMockAuth()) {
+                logger_1.default.warn('Token verification failed - using mock user (ALLOW_MOCK_AUTH=true)');
+                req.user = {
+                    uid: 'dev-user-' + Date.now(),
+                    email: 'dev@example.com'
+                };
+                next();
+                return;
+            }
+            // Fail-closed: reject invalid tokens
             throw new errorHandler_1.AppError('Unauthorized: Invalid token', 401, true);
         }
     }
     catch (error) {
-        if (error instanceof errorHandler_1.AppError) {
-            res.status(error.statusCode).json({ error: error.message });
-        }
-        else {
-            logger_1.default.error('Authentication error:', { error });
-            res.status(500).json({ error: 'Internal server error' });
-        }
+        // Delegate to global error handler for consistent error responses
+        next(error instanceof errorHandler_1.AppError ? error : new errorHandler_1.AppError('Authentication failed', 500, false));
     }
 };
 exports.auth = auth;
@@ -214,13 +250,8 @@ const requireCronAuth = async (req, res, next) => {
         next();
     }
     catch (error) {
-        if (error instanceof errorHandler_1.AppError) {
-            res.status(error.statusCode).json({ error: error.message });
-        }
-        else {
-            logger_1.default.error('Cron authentication error:', { error });
-            res.status(500).json({ error: 'Internal server error' });
-        }
+        // Delegate to global error handler for consistent error responses
+        next(error instanceof errorHandler_1.AppError ? error : new errorHandler_1.AppError('Cron authentication failed', 500, false));
     }
 };
 exports.requireCronAuth = requireCronAuth;

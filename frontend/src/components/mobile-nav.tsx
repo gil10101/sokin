@@ -7,7 +7,7 @@ import { Home, CreditCard, Wallet, Repeat, BarChart3, PlusCircle, User, Settings
 import { Button } from "./ui/button"
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "./ui/sheet"
 import { ScrollArea } from "./ui/scroll-area"
-import { cn } from "../lib/utils"
+import { cn } from "@/lib/utils"
 
 const navigationItems = [
   {

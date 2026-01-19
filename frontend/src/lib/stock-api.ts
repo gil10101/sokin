@@ -1,20 +1,10 @@
 /**
- * @fileoverview Stock API service for interfacing with the backend stock service
- * Provides real-time stock data, portfolio management, and WebSocket price updates
- * 
- * All data operations are now routed through the backend API for proper
- * separation of concerns and centralized business logic.
- * 
- * @version 2.0.0
- * @author Sokin Team
+ * Stock API client: REST + WebSocket with auth, caching, retries.
  */
 
 import { auth } from './firebase'
 import { io, Socket } from 'socket.io-client'
 
-/**
- * Stock data interface representing real-time stock information
- */
 export interface StockData {
   symbol: string
   name: string
@@ -28,12 +18,9 @@ export interface StockData {
   weekHigh52: number
   weekLow52: number
   weekChange52: number
-  chart?: number[] // Simple array of price points for sparkline
+  chart?: number[] // sparkline points
 }
 
-/**
- * Market index data interface (S&P 500, NASDAQ, Dow Jones)
- */
 export interface MarketIndex {
   symbol: string
   name: string
@@ -42,9 +29,6 @@ export interface MarketIndex {
   changePercent: number
 }
 
-/**
- * User portfolio stock with calculated gains/losses
- */
 export interface UserPortfolioStock {
   symbol: string
   name: string
@@ -58,9 +42,6 @@ export interface UserPortfolioStock {
   gainLossPercent: number
 }
 
-/**
- * Portfolio holding stored in backend
- */
 export interface PortfolioHolding {
   id?: string
   userId: string
@@ -72,9 +53,6 @@ export interface PortfolioHolding {
   updatedAt: Date
 }
 
-/**
- * Stock transaction record (updated to support currency-based transactions)
- */
 export interface StockTransaction {
   id?: string
   userId: string
@@ -88,9 +66,6 @@ export interface StockTransaction {
   timestamp?: Date
 }
 
-/**
- * Currency-based transaction request (new interface for UI)
- */
 export interface CurrencyTransaction {
   userId: string
   symbol: string
@@ -99,9 +74,6 @@ export interface CurrencyTransaction {
   price: number
 }
 
-/**
- * User watchlist structure
- */
 export interface UserWatchlist {
   id?: string
   userId: string
@@ -110,42 +82,14 @@ export interface UserWatchlist {
   updatedAt: Date
 }
 
-/**
- * Cache entry interface for in-memory caching
- */
 interface CacheEntry<T> {
   data: T
   timestamp: number
   ttl: number
 }
 
-/**
- * StockAPI class provides comprehensive stock data management
- * Features:
- * - Real-time stock data via REST API
- * - WebSocket price updates
- * - Portfolio management via backend API
- * - Watchlist management via backend API
- * - Intelligent caching with TTL
- * - Authentication integration
- * - Error handling and retry logic
- * 
- * @example
- * ```typescript
- * // Get market indices
- * const indices = await StockAPI.getMarketIndices()
- * 
- * // Subscribe to real-time prices
- * const unsubscribe = StockAPI.subscribeToStockPrices(['AAPL', 'GOOGL'], (symbol, data) => {
- *   updatePriceDisplay(symbol, data.price)
- * })
- * ```
- */
 export class StockAPI {
-  /**
-   * Base URL for the stock API service
-   * Automatically determines URL based on environment
-   */
+  // Base API URL from env (ensure /api suffix).
   private static baseUrl = (() => {
     const envUrl = process.env.NEXT_PUBLIC_API_URL
     if (!envUrl) {
@@ -155,21 +99,13 @@ export class StockAPI {
     return envUrl.endsWith('/api') ? envUrl : `${envUrl}/api`
   })()
 
-  // WebSocket connection for real-time updates
   private static socket: Socket | null = null
   private static priceUpdateCallbacks = new Map<string, Set<(data: StockData) => void>>()
   private static connectionAttempted = false
   private static connectionFailed = false
 
-  // Simple in-memory cache
   private static cache = new Map<string, CacheEntry<StockData | MarketIndex[] | UserPortfolioStock[] | StockData[]>>()
 
-  /**
-   * Get authentication headers for API requests
-   * 
-   * @returns Promise resolving to headers object with authorization token
-   * @throws {Error} When user is not authenticated
-   */
   private static async getAuthHeaders(): Promise<Record<string, string>> {
     const user = auth.currentUser
     if (!user) {
@@ -183,14 +119,6 @@ export class StockAPI {
     }
   }
 
-  /**
-   * Enhanced fetch with retry logic, rate limit handling, and timeout
-   * 
-   * @param url - The URL to fetch
-   * @param options - Fetch options
-   * @param maxRetries - Maximum number of retry attempts (default: 3)
-   * @returns Promise resolving to Response object
-   */
   private static async fetchWithRetry(
     url: string, 
     options: RequestInit = {}, 
@@ -200,9 +128,9 @@ export class StockAPI {
     
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
-        // Add timeout to request
+        // Timeout
         const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
+        const timeoutId = setTimeout(() => controller.abort(), 30000)
         
         const response = await fetch(url, {
           ...options,
@@ -211,7 +139,7 @@ export class StockAPI {
         
         clearTimeout(timeoutId)
         
-        // If it's a rate limit error, handle it specially
+        // 429: backoff
         if (response.status === 429) {
           const errorData = await response.json().catch(() => ({}))
           const retryAfter = errorData.retryAfter || Math.pow(2, attempt)
@@ -233,7 +161,7 @@ export class StockAPI {
       } catch (error) {
         lastError = error as Error
         
-        // Handle abort error (timeout)
+        // Timeout
         if (error instanceof Error && error.name === 'AbortError') {
           if (attempt < maxRetries) {
             const delay = Math.pow(2, attempt) * 1000
@@ -243,12 +171,12 @@ export class StockAPI {
           throw new Error('Request timeout')
         }
         
-        // Don't retry on non-network errors
+        // No retry for non-network errors
         if (!(error instanceof TypeError && error.message.includes('fetch'))) {
           throw error
         }
         
-        // Network error - retry with exponential backoff
+        // Retry with backoff
         if (attempt < maxRetries) {
           const delay = Math.pow(2, attempt) * 1000
           await new Promise(resolve => setTimeout(resolve, delay))
@@ -260,9 +188,6 @@ export class StockAPI {
     throw lastError || new Error('Max retries exceeded')
   }
 
-  /**
-   * Check cache for data and return if not expired
-   */
   private static getFromCache<T extends StockData | MarketIndex[] | UserPortfolioStock[] | StockData[]>(key: string): T | null {
     const entry = this.cache.get(key)
     if (!entry) return null
@@ -275,9 +200,6 @@ export class StockAPI {
     return entry.data as T
   }
 
-  /**
-   * Store data in cache with TTL
-   */
   private static setCache<T extends StockData | MarketIndex[] | UserPortfolioStock[] | StockData[]>(key: string, data: T, ttlMs: number = 30000): void {
     this.cache.set(key, {
       data,
@@ -286,9 +208,6 @@ export class StockAPI {
     })
   }
 
-  /**
-   * Handle API response and extract data
-   */
   private static async handleResponse<T>(response: Response): Promise<T> {
     const data = await response.json()
     if (!data.success) {
@@ -297,9 +216,6 @@ export class StockAPI {
     return data.data
   }
 
-  /**
-   * Get trending stocks with optional limit
-   */
   static async getTrendingStocks(limit: number = 10): Promise<StockData[]> {
     if (limit < 1 || limit > 50) {
       throw new Error('Limit must be between 1 and 50')
@@ -312,13 +228,10 @@ export class StockAPI {
     const response = await this.fetchWithRetry(`${this.baseUrl}/stocks/trending?limit=${limit}`)
     const data = await this.handleResponse<StockData[]>(response)
     
-    this.setCache(cacheKey, data, 60000) // Cache for 1 minute
+    this.setCache(cacheKey, data, 60000) // 1m
     return data
   }
 
-  /**
-   * Get market indices data (S&P 500, NASDAQ, DOW, etc.)
-   */
   static async getMarketIndices(): Promise<MarketIndex[]> {
     const cacheKey = 'market-indices'
     const cached = this.getFromCache<MarketIndex[]>(cacheKey)
@@ -327,14 +240,10 @@ export class StockAPI {
     const response = await this.fetchWithRetry(`${this.baseUrl}/stocks/market-indices`)
     const data = await this.handleResponse<MarketIndex[]>(response)
     
-    this.setCache(cacheKey, data, 30000) // Cache for 30 seconds
+    this.setCache(cacheKey, data, 30000) // 30s
     return data
   }
 
-  /**
-   * Get detailed user portfolio including stock positions via backend API
-   * userId is derived from auth token on the backend - passed here for caching only
-   */
   static async getUserPortfolio(userId: string): Promise<UserPortfolioStock[]> {
     if (!userId || typeof userId !== 'string') {
       throw new Error('Valid user ID is required')
@@ -345,17 +254,14 @@ export class StockAPI {
     if (cached) return cached
 
     const headers = await this.getAuthHeaders()
-    // userId is derived from auth token on backend - no IDOR vulnerability
+    // userId from auth token on backend
     const response = await this.fetchWithRetry(`${this.baseUrl}/stocks/portfolio`, { headers })
     const result = await this.handleResponse<UserPortfolioStock[]>(response)
     
-    this.setCache(cacheKey, result, 15000) // Cache for 15 seconds
+    this.setCache(cacheKey, result, 15000) // 15s
     return result
   }
 
-  /**
-   * Get detailed stock data for a single symbol
-   */
   static async getStockData(symbol: string): Promise<StockData> {
     if (!symbol || typeof symbol !== 'string') {
       throw new Error('Stock symbol is required')
@@ -374,13 +280,10 @@ export class StockAPI {
     const response = await this.fetchWithRetry(`${this.baseUrl}/stocks/stock/${cleanedSymbol}`)
     const data = await this.handleResponse<StockData>(response)
     
-    this.setCache(cacheKey, data, 15000) // Cache for 15 seconds
+    this.setCache(cacheKey, data, 15000)
     return data
   }
 
-  /**
-   * Search for stocks by company name or symbol
-   */
   static async searchStocks(query: string, limit: number = 10): Promise<StockData[]> {
     if (!query || typeof query !== 'string') {
       throw new Error('Search query is required')
@@ -403,29 +306,19 @@ export class StockAPI {
     const response = await this.fetchWithRetry(`${this.baseUrl}/stocks/search?q=${encodeURIComponent(cleanedQuery)}&limit=${limit}`)
     const data = await this.handleResponse<StockData[]>(response)
     
-    this.setCache(cacheKey, data, 60000) // Cache for 1 minute
+    this.setCache(cacheKey, data, 60000) // 1m
     return data
   }
 
-  /**
-   * Get portfolio holdings via backend API
-   * userId is derived from auth token on the backend - passed here for response mapping
-   */
   static async getPortfolioHoldings(userId: string): Promise<PortfolioHolding[]> {
     if (!auth.currentUser) throw new Error('User not authenticated')
     
     const headers = await this.getAuthHeaders()
-    // userId is derived from auth token on backend - no IDOR vulnerability
+    // userId from auth token on backend
     const response = await this.fetchWithRetry(`${this.baseUrl}/stocks/portfolio`, { headers })
-    
-    // Use handleResponse for consistent error handling
     const portfolioData = await this.handleResponse<UserPortfolioStock[] | { holdings: UserPortfolioStock[] }>(response)
-    
-    // Handle both array and object response structures
     const holdings = Array.isArray(portfolioData) ? portfolioData : (portfolioData.holdings || [])
-    
-    // Map the response to PortfolioHolding format
-    // Backend doesn't currently include timestamps, use current time as placeholder
+    // Backend has no timestamps; use now.
     const now = new Date()
     return holdings.map((h: UserPortfolioStock) => ({
       userId,
@@ -438,10 +331,7 @@ export class StockAPI {
     }))
   }
 
-  /**
-   * Execute a stock transaction via backend API
-   * @deprecated Use executeCurrencyTransaction for new implementations
-   */
+  /** @deprecated Use executeCurrencyTransaction. */
   static async executeTransaction(transaction: Omit<StockTransaction, 'id'>): Promise<void> {
     if (!auth.currentUser) throw new Error('User not authenticated')
     
@@ -460,13 +350,9 @@ export class StockAPI {
     
     await this.handleResponse(response)
     
-    // Clear cache after successful transaction
     this.clearCache()
   }
 
-  /**
-   * Execute a currency-based transaction via backend API
-   */
   static async executeCurrencyTransaction(currencyTransaction: CurrencyTransaction): Promise<void> {
     const headers = await this.getAuthHeaders()
     
@@ -483,13 +369,9 @@ export class StockAPI {
     
     await this.handleResponse(response)
     
-    // Clear cache after successful transaction
     this.clearCache()
   }
 
-  /**
-   * Get the maximum amount a user can sell for a given stock via backend API
-   */
   static async getMaxSellAmount(userId: string, symbol: string): Promise<{ shares: number; value: number; price: number }> {
     if (!auth.currentUser) throw new Error('User not authenticated')
     
@@ -498,25 +380,16 @@ export class StockAPI {
     return this.handleResponse<{ shares: number; value: number; price: number }>(response)
   }
 
-  /**
-   * Get user watchlist via backend API
-   */
   static async getUserWatchlist(userId: string): Promise<string[]> {
     if (!auth.currentUser) throw new Error('User not authenticated')
     
     const headers = await this.getAuthHeaders()
     const response = await this.fetchWithRetry(`${this.baseUrl}/stocks/watchlist`, { headers })
     
-    // Use handleResponse for consistent error handling
     const watchlistData = await this.handleResponse<string[] | { symbols: string[] }>(response)
-    
-    // Handle both array and object response structures
     return Array.isArray(watchlistData) ? watchlistData : (watchlistData.symbols || [])
   }
 
-  /**
-   * Update entire watchlist via backend API
-   */
   static async updateWatchlist(userId: string, symbols: string[]): Promise<void> {
     if (!auth.currentUser) throw new Error('User not authenticated')
     
@@ -530,9 +403,6 @@ export class StockAPI {
     await this.handleResponse(response)
   }
 
-  /**
-   * Add symbol to watchlist via backend API
-   */
   static async addToWatchlist(userId: string, symbol: string): Promise<void> {
     if (!auth.currentUser) throw new Error('User not authenticated')
     
@@ -546,9 +416,6 @@ export class StockAPI {
     await this.handleResponse(response)
   }
 
-  /**
-   * Remove symbol from watchlist via backend API
-   */
   static async removeFromWatchlist(userId: string, symbol: string): Promise<void> {
     if (!auth.currentUser) throw new Error('User not authenticated')
     
@@ -561,9 +428,6 @@ export class StockAPI {
     await this.handleResponse(response)
   }
 
-  /**
-   * Get transaction history via backend API
-   */
   static async getTransactionHistory(userId: string): Promise<StockTransaction[]> {
     if (!auth.currentUser) throw new Error('User not authenticated')
     
@@ -572,16 +436,10 @@ export class StockAPI {
     return this.handleResponse<StockTransaction[]>(response)
   }
 
-  /**
-   * Clear cache (useful for debugging or force refresh)
-   */
   static clearCache(): void {
     this.cache.clear()
   }
 
-  /**
-   * Reset connection state (useful for debugging or reconnection)
-   */
   static resetConnectionState(): void {
     this.connectionAttempted = false
     this.connectionFailed = false
@@ -592,11 +450,7 @@ export class StockAPI {
     this.priceUpdateCallbacks.clear()
   }
 
-  /**
-   * Initialize WebSocket connection for real-time price updates
-   */
   private static async initializeSocket(): Promise<Socket | null> {
-    // Don't attempt connection if already failed
     if (this.connectionFailed) {
       return null
     }
@@ -605,7 +459,7 @@ export class StockAPI {
       this.connectionAttempted = true
       
       try {
-        // First check if the service supports WebSockets by testing the health endpoint
+        // Check health before websocket.
         const healthUrl = this.baseUrl.replace('/api', '/health')
         const healthResponse = await fetch(healthUrl, { 
           method: 'GET'
@@ -618,7 +472,6 @@ export class StockAPI {
         
         const healthData = await healthResponse.json()
         
-        // Check if the service indicates WebSocket support
         if (healthData.status !== 'healthy') {
           this.connectionFailed = true
           return null
@@ -636,12 +489,9 @@ export class StockAPI {
           this.connectionFailed = false
         })
 
-        this.socket.on('disconnect', () => {
-          // Connection closed
-        })
+        this.socket.on('disconnect', () => {})
 
         this.socket.on('price_updates', (data: Record<string, StockData>) => {
-          // Broadcast price updates to all registered callbacks
           Object.entries(data).forEach(([symbol, priceData]) => {
             const callbacks = this.priceUpdateCallbacks.get(symbol)
             if (callbacks) {
@@ -655,7 +505,7 @@ export class StockAPI {
           this.socket = null
         })
 
-        // Set a timeout to mark connection as failed if not connected within 5 seconds
+        // Fail if not connected in 5s.
         setTimeout(() => {
           if (this.socket && !this.socket.connected) {
             this.connectionFailed = true
@@ -664,9 +514,9 @@ export class StockAPI {
           }
         }, 5000)
       } catch (error) {
-        // WebSocket initialization failed - log in development for debugging
+        // Log only in dev.
         if (process.env.NODE_ENV === 'development') {
-          console.debug('WebSocket initialization failed:', error)
+          console.debug('WebSocket init failed:', error)
         }
         this.connectionFailed = true
         this.socket = null
@@ -676,11 +526,7 @@ export class StockAPI {
     return this.socket
   }
 
-  /**
-   * Subscribe to real-time stock price updates
-   */
   static subscribeToStockPrices(symbols: string[], callback: (symbol: string, data: StockData) => void): () => void {
-    // Register callback for each symbol
     symbols.forEach(symbol => {
       if (!this.priceUpdateCallbacks.has(symbol)) {
         this.priceUpdateCallbacks.set(symbol, new Set())
@@ -690,16 +536,13 @@ export class StockAPI {
       this.priceUpdateCallbacks.get(symbol)!.add(symbolCallback)
     })
 
-    // Initialize socket connection asynchronously
     this.initializeSocket().then(socket => {
       if (socket) {
         socket.emit('subscribe_prices', { symbols })
       }
     }).catch(() => {
-      // Connection failed silently
     })
 
-    // Return unsubscribe function
     return () => {
       symbols.forEach(symbol => {
         const callbacks = this.priceUpdateCallbacks.get(symbol)
@@ -716,14 +559,10 @@ export class StockAPI {
           socket.emit('unsubscribe_prices', { symbols })
         }
       }).catch(() => {
-        // Unsubscribe failed silently
       })
     }
   }
 
-  /**
-   * Disconnect WebSocket connection
-   */
   static disconnectSocket(): void {
     if (this.socket) {
       this.socket.disconnect()
@@ -733,7 +572,6 @@ export class StockAPI {
   }
 }
 
-// Utility functions
 export const formatPrice = (price: number): string => {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',

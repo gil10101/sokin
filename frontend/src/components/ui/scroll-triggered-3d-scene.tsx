@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic"
 import React, { Suspense, useEffect, useRef, useState } from "react"
+import { Canvas } from "@react-three/fiber"
 import { gsap } from "gsap"
 import { ScrollTrigger } from "gsap/ScrollTrigger"
 
@@ -9,12 +10,6 @@ import { ScrollTrigger } from "gsap/ScrollTrigger"
 if (typeof window !== "undefined") {
   gsap.registerPlugin(ScrollTrigger)
 }
-
-// Dynamically import Canvas to avoid SSR issues
-const Canvas = dynamic(() => import("@react-three/fiber").then(mod => ({ default: mod.Canvas })), {
-  ssr: false,
-  loading: () => null
-})
 
 // Dynamically import the TwistedTorus to avoid SSR issues
 const TwistedTorus = dynamic(() => import("./twisted-torus"), {

@@ -1,11 +1,8 @@
 import { useState, useCallback } from 'react';
-import { api } from '../lib/api';
-import { ApiError } from '../lib/types';
-import { useAuth } from '../contexts/auth-context';
+import { api } from '@/lib/api';
+import { ApiError } from '@/lib/types';
+import { useAuth } from '@/contexts/auth-context';
 
-/**
- * A hook for making API calls with loading and error state management
- */
 export function useApi<T = unknown>() {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
@@ -16,12 +13,10 @@ export function useApi<T = unknown>() {
     async <R>(
       apiCall: () => Promise<R>
     ): Promise<R | null> => {
-      // Reset state before starting a new request
       setIsLoading(true);
       setError(null);
 
       try {
-        // Only allow API calls if user is authenticated
         if (!user) {
           throw new Error('User is not authenticated');
         }

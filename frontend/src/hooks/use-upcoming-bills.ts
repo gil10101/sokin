@@ -1,8 +1,9 @@
 "use client"
 
 import { useQuery } from '@tanstack/react-query'
-import { useAuth } from '../contexts/auth-context'
+import { useAuth } from '@/contexts/auth-context'
 import { addDays, isBefore, isAfter, parseISO, isWithinInterval } from 'date-fns'
+import { logger } from '@/lib/logger'
 
 /**
  * Hook for fetching upcoming bills data for analytics cards
@@ -103,7 +104,7 @@ export function useUpcomingBills() {
           thisWeekCount
         }
       } catch (error) {
-        console.error('Error fetching upcoming bills:', error)
+        logger.error('Error fetching upcoming bills', error instanceof Error ? error : { error })
         return {
           upcomingBills: [],
           totalUpcoming: 0,

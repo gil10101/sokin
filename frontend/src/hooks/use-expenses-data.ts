@@ -1,21 +1,21 @@
 "use client"
 
 import { useQuery } from '@tanstack/react-query'
-import { useAuth } from '../contexts/auth-context'
-import { api } from '../lib/api'
+import { useAuth } from '@/contexts/auth-context'
+import { api } from '@/lib/api'
 
 export interface Expense {
   id: string
   name?: string
   amount: number
-  date: string | number | Date | { toDate: () => Date }
+  date: string
   category: string
   description?: string
   userId: string
 }
 
 interface ExpensesResponse {
-  expenses?: Expense[]
+  success?: boolean
   data?: Expense[]
   pagination?: {
     hasMore: boolean
@@ -43,18 +43,42 @@ export function useExpensesData(options: UseExpensesOptions = {}) {
     queryFn: async () => {
       if (!user) return []
 
-      const params = new URLSearchParams()
+      const normalizeExpenses = (items: Expense[]) =>
+        items.map((expense) => ({
+          ...expense,
+          description: expense.description ?? (expense as Expense & { notes?: string }).notes
+        }))
+
       if (options.limit) {
+        const params = new URLSearchParams()
         params.set('limit', options.limit.toString())
+
+        const endpoint = `expenses?${params.toString()}`
+        const response = await api.get<ExpensesResponse>(endpoint)
+        return normalizeExpenses(response.data ?? [])
       }
 
-      const endpoint = params.toString() 
-        ? `expenses?${params.toString()}` 
-        : 'expenses'
+      const items: Expense[] = []
+      let cursor: string | null = null
+      let hasMore = true
+      let pageCount = 0
 
-      const response = await api.get<ExpensesResponse>(endpoint)
-      // Handle multiple possible response structures from the API
-      return response.expenses || response.data || []
+      while (hasMore && pageCount < 50) {
+        const params = new URLSearchParams()
+        params.set('limit', '100')
+        if (cursor) {
+          params.set('cursor', cursor)
+        }
+
+        const response = await api.get<ExpensesResponse>(`expenses?${params.toString()}`)
+        const pageItems = response.data ?? []
+        items.push(...pageItems)
+        cursor = response.pagination?.nextCursor ?? null
+        hasMore = response.pagination?.hasMore ?? false
+        pageCount += 1
+      }
+
+      return normalizeExpenses(items)
     },
   })
 }

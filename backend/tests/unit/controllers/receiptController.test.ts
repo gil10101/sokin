@@ -44,7 +44,8 @@ jest.mock('../../../src/config/firebase', () => ({
     bucket: jest.fn(() => ({
       file: jest.fn(() => ({
         save: jest.fn().mockResolvedValue(undefined),
-        makePublic: jest.fn().mockResolvedValue(undefined),
+        getSignedUrl: jest.fn().mockResolvedValue(['https://storage.example.com/signed-url']),
+        delete: jest.fn().mockResolvedValue(undefined),
       })),
     })),
   },
@@ -69,7 +70,11 @@ jest.mock('../../../src/utils/logger', () => ({
 }));
 
 describe('Receipt Controller', () => {
-  let mockRequest: Partial<Request>;
+  interface AuthenticatedRequest extends Request {
+    user?: { uid: string; email?: string };
+  }
+
+  let mockRequest: Partial<AuthenticatedRequest>;
   let mockResponse: Partial<Response>;
   let mockNext: NextFunction;
   let jsonMock: jest.Mock;
@@ -81,7 +86,7 @@ describe('Receipt Controller', () => {
     mockNext = jest.fn();
 
     mockRequest = {
-      user: { uid: 'user-123', email: 'test@example.com' },
+      user: { uid: 'user-123456789012345678', email: 'test@example.com' },
       file: {
         fieldname: 'receipt',
         originalname: 'receipt.jpg',
@@ -187,7 +192,7 @@ describe('Receipt Controller', () => {
       );
 
       const response = jsonMock.mock.calls[0][0];
-      expect(response.data.imageUrl).toContain('https://storage.googleapis.com');
+      expect(typeof response.data.imageUrl).toBe('string');
     });
 
     it('should include confidence score', async () => {

@@ -1,9 +1,20 @@
+/**
+ * Expense Routes
+ * 
+ * RESTful routes for expense management with rate limiting,
+ * authentication, and validation middleware. Supports cursor-based
+ * pagination for efficient data retrieval.
+ * 
+ * @module routes/expenses
+ */
+
 import express from 'express';
 import { auth } from '../middleware/auth';
-import { validate, validateParams } from '../middleware/validation';
+import { validate, validateParams, validateQuery } from '../middleware/validation';
 import { createRateLimiter } from '../middleware/rateLimiter';
-import { createExpenseSchema, updateExpenseSchema, idParamsSchema } from '../models/schemas';
-import { getAllExpenses, getExpenseById, createExpense, updateExpense, deleteExpense } from '../controllers/expenses';
+import { asyncHandler } from '../middleware/errorHandler';
+import { createExpenseSchema, updateExpenseSchema, idParamsSchema, expensesPaginationSchema } from '../models/schemas';
+import { getAllExpenses, getExpenseById, createExpense, updateExpense, deleteExpense, getExpenseAnalytics } from '../controllers/expenses';
 
 const router = express.Router();
 
@@ -11,19 +22,54 @@ const router = express.Router();
 const readRateLimit = createRateLimiter.read(); // 200 requests per 15 minutes
 const writeRateLimit = createRateLimiter.api(); // 100 requests per 15 minutes
 
-// Get all expenses for a user
-router.get('/', readRateLimit, auth, getAllExpenses);
+/**
+ * @route   GET /api/expenses
+ * @desc    Get paginated expenses for authenticated user
+ * @query   limit - Number of items (1-100, default: 50)
+ * @query   cursor - Pagination cursor (document ID)
+ * @query   sortOrder - 'asc' or 'desc' (default: 'desc')
+ * @query   sortBy - 'date', 'createdAt', 'amount', 'name' (default: 'date')
+ * @query   category - Filter by category
+ * @query   startDate - Filter by start date (ISO)
+ * @query   endDate - Filter by end date (ISO)
+ * @access  Private
+ */
+router.get('/', readRateLimit, auth, validateQuery(expensesPaginationSchema), asyncHandler(getAllExpenses));
 
-// Get a specific expense
-router.get('/:id', readRateLimit, auth, validateParams(idParamsSchema), getExpenseById);
+/**
+ * @route   GET /api/expenses/analytics
+ * @desc    Get expense analytics and spending insights
+ * @query   timeframe - Timeframe: '3months', '6months', or '12months' (default: '6months')
+ * @access  Private
+ */
+router.get('/analytics', readRateLimit, auth, asyncHandler(getExpenseAnalytics));
 
-// Create a new expense
-router.post('/', writeRateLimit, auth, validate(createExpenseSchema), createExpense);
+/**
+ * @route   GET /api/expenses/:id
+ * @desc    Get a specific expense by ID
+ * @access  Private (owner only)
+ */
+router.get('/:id', readRateLimit, auth, validateParams(idParamsSchema), asyncHandler(getExpenseById));
 
-// Update an expense
-router.put('/:id', writeRateLimit, auth, validateParams(idParamsSchema), validate(updateExpenseSchema), updateExpense);
+/**
+ * @route   POST /api/expenses
+ * @desc    Create a new expense
+ * @access  Private
+ */
+router.post('/', writeRateLimit, auth, validate(createExpenseSchema), asyncHandler(createExpense));
 
-// Delete an expense
-router.delete('/:id', writeRateLimit, auth, validateParams(idParamsSchema), deleteExpense);
+/**
+ * @route   PUT /api/expenses/:id
+ * @desc    Update an existing expense
+ * @access  Private (owner only)
+ */
+router.put('/:id', writeRateLimit, auth, validateParams(idParamsSchema), validate(updateExpenseSchema), asyncHandler(updateExpense));
+
+/**
+ * @route   DELETE /api/expenses/:id
+ * @desc    Delete an expense
+ * @access  Private (owner only)
+ */
+router.delete('/:id', writeRateLimit, auth, validateParams(idParamsSchema), asyncHandler(deleteExpense));
 
 export default router; 

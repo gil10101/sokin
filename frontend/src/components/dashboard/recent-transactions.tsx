@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { ShoppingBag, Coffee, Home, Car, Utensils, LucideIcon } from "lucide-react"
-import { useAuth } from "../../contexts/auth-context"
+import { useAuth } from "@/contexts/auth-context"
 import { format } from "date-fns"
-import { expensesAPI } from "../../lib/api"
+import { expensesAPI } from "@/lib/api"
+import { logger } from "@/lib/logger"
 
 // Helper function to safely parse dates
 const safeParseDate = (dateValue: string | number | Date | null | undefined): Date => {
@@ -72,19 +73,19 @@ export function RecentTransactions() {
         sortOrder: 'desc'
       })
 
-      const transactionsData = response.items.map((expense) => ({
-        id: expense.id || '',
+      const transactionsData = response.items.map((expense, index) => ({
+        id: expense.id || `temp-${Date.now()}-${index}`,
         name: expense.name,
         amount: expense.amount,
         date: expense.date,
         category: expense.category,
-        description: expense.notes,
+        description: expense.description,
         userId: expense.userId
       })) as Transaction[]
 
       setTransactions(transactionsData)
     } catch (error) {
-      console.error('Failed to fetch recent transactions:', error)
+      logger.error('Failed to fetch recent transactions', error instanceof Error ? error : { error })
       setTransactions([])
     } finally {
       setLoading(false)

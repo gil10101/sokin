@@ -8,6 +8,7 @@
 
 import React, { useState, useEffect, useCallback, useId, useRef } from 'react'
 import dynamic from 'next/dynamic'
+import { logger } from '@/lib/logger'
 
 interface ConditionalThreeProps {
   children: React.ReactNode
@@ -39,7 +40,7 @@ const preloadThreeJs = (): Promise<void> => {
       threeJsLoaded = true
     })
     .catch(error => {
-      console.warn('Failed to preload Three.js:', error)
+      logger.warn('Failed to preload Three.js', error instanceof Error ? { message: error.message } : { error })
       // Clear promise and rethrow error so handleLoad can handle the rejection
       threeJsPromise = null
       throw error
@@ -77,7 +78,7 @@ export const ConditionalThree: React.FC<ConditionalThreeProps> = ({
       setShouldLoad(true)
     } catch (error) {
       setError('Failed to load 3D visualization')
-      console.error('Error loading Three.js:', error)
+      logger.error('Error loading Three.js', error instanceof Error ? error : { error })
     } finally {
       setIsLoading(false)
     }
@@ -173,7 +174,7 @@ export const usePreloadThree = () => {
       await preloadThreeJs()
       setIsPreloaded(true)
     } catch (error) {
-      console.error('Failed to preload Three.js:', error)
+      logger.error('Failed to preload Three.js', error instanceof Error ? error : { error })
     }
   }
 

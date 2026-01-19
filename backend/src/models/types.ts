@@ -17,7 +17,9 @@ export interface Budget {
   name: string;
   amount: number;
   period: 'daily' | 'weekly' | 'monthly' | 'yearly';
+  category?: string;
   categories?: string[];
+  notes?: string | null;
   startDate: string;
   endDate?: string;
   createdAt: string;
@@ -29,6 +31,26 @@ export interface Budget {
   isActive?: boolean;
 }
 
+export interface Subscription {
+  id?: string;
+  userId: string;
+  name: string;
+  logo?: string;
+  amount: number;
+  billingCycle: 'monthly' | 'quarterly' | 'semi-annually' | 'annually' | 'custom';
+  customInterval?: number;
+  customIntervalUnit?: 'days' | 'weeks' | 'months' | 'years';
+  startDate: string;
+  nextPaymentDate: string;
+  paymentMethod: string;
+  website?: string | null;
+  notes?: string | null;
+  autoRenew: boolean;
+  category: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
 export interface BudgetAlertThreshold {
   percentage: number; // e.g., 50, 75, 90, 100
   type: 'warning' | 'danger' | 'exceeded';
@@ -38,12 +60,14 @@ export interface BudgetAlertThreshold {
 export interface Notification {
   id?: string;
   userId: string;
-  type: 'budget_warning' | 'budget_exceeded' | 'bill_reminder' | 'goal_milestone' | 'spending_insight';
+  type: 'info' | 'success' | 'warning' | 'error' | 'system' | 'budget_warning' | 'budget_exceeded' | 'bill_reminder' | 'goal_milestone' | 'spending_insight';
   title: string;
   message: string;
   data?: Record<string, unknown>; // Additional context data
   read: boolean;
+  dismissed?: boolean;
   createdAt: string;
+  link?: string;
   scheduledFor?: string; // For future notifications
   priority: 'low' | 'medium' | 'high';
 }
@@ -388,4 +412,18 @@ export interface NetWorthInsight {
   category?: string;
   actionable?: boolean;
   priority: 'low' | 'medium' | 'high';
-} 
+}
+
+/** Pagination response metadata for cursor-based pagination */
+export interface PaginationMeta {
+  /** Total count of items (estimated for large datasets) */
+  totalCount?: number;
+  /** Number of items returned */
+  count: number;
+  /** Limit used for this request */
+  limit: number;
+  /** Cursor for next page (null if no more pages) */
+  nextCursor: string | null;
+  /** Whether there are more items */
+  hasMore: boolean;
+}

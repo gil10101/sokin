@@ -20,8 +20,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { Button } from '../ui/button'
 import { Badge } from '../ui/badge'
-import { useAuth } from '../../contexts/auth-context'
-import { logger } from '../../lib/logger'
+import { useAuth } from '@/contexts/auth-context'
+import { logger } from '@/lib/logger'
 import { 
   Asset, 
   Liability, 
@@ -29,7 +29,7 @@ import {
   LiabilityCategory,
   AssetType,
   LiabilityType
-} from '../../lib/types'
+} from '@/lib/types'
 
 interface AssetLiabilityBreakdownProps {
   assets: Asset[]

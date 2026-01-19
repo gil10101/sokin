@@ -1,8 +1,8 @@
 "use client"
 
 import { useQuery } from '@tanstack/react-query'
-import { useAuth } from '../contexts/auth-context'
-import { api } from '../lib/api'
+import { useAuth } from '@/contexts/auth-context'
+import { api } from '@/lib/api'
 
 /**
  * Hook for fetching and processing analytics data via the backend API

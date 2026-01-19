@@ -4,23 +4,23 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { collection, addDoc, getDocs } from "firebase/firestore"
-import { db } from "../../../lib/firebase"
-import { useAuth } from "../../../contexts/auth-context"
+import { useAuth } from "@/contexts/auth-context"
 import { format } from "date-fns"
 import { CalendarIcon, Check, ChevronsUpDown, Plus } from "lucide-react"
-import { cn } from "../../../lib/utils"
-import { DashboardSidebar } from "../../../components/dashboard/sidebar"
-import { Input } from "../../../components/ui/input"
-import { Button } from "../../../components/ui/button"
-import { Textarea } from "../../../components/ui/textarea"
-import { Calendar } from "../../../components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "../../../components/ui/popover"
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "../../../components/ui/command"
-import { useToast } from "../../../hooks/use-toast"
-import { MotionContainer } from "../../../components/ui/motion-container"
-import { ReceiptScanner } from "../../../components/dashboard/receipt-scanner"
+import { cn } from "@/lib/utils"
+import { DashboardSidebar } from "@/components/dashboard/sidebar"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { Textarea } from "@/components/ui/textarea"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
+import { useToast } from "@/hooks/use-toast"
+import { MotionContainer } from "@/components/ui/motion-container"
+import { ReceiptScanner } from "@/components/dashboard/receipt-scanner"
 import { useQueryClient } from "@tanstack/react-query"
+import { logger } from "@/lib/logger"
+import { expensesAPI, userProfileAPI } from "@/lib/api"
 
 // Import the ParsedReceiptData type from receipt-scanner
 interface ParsedReceiptData {
@@ -37,7 +37,7 @@ interface ParsedReceiptData {
 }
 
 // Import the useNotifications hook
-import { useNotifications } from "../../../contexts/notifications-context"
+import { useNotifications } from "@/contexts/notifications-context"
 
 // Types for receipt data - extends ParsedReceiptData for compatibility
 interface ReceiptData extends ParsedReceiptData {
@@ -58,7 +58,12 @@ const DEFAULT_CATEGORIES = [
   "Other",
 ]
 
-export default function AddExpensePage() {
+interface AddExpensePageProps {
+  params?: Promise<Record<string, string>>;
+  searchParams?: Promise<Record<string, string>>;
+}
+
+export default function AddExpensePage(props: AddExpensePageProps) {
   const [collapsed, setCollapsed] = useState(false)
   const { user } = useAuth()
   const router = useRouter()
@@ -86,32 +91,13 @@ export default function AddExpensePage() {
       if (!user) return
 
       try {
-        // Try to fetch user-specific categories first
-        const userCategoriesDoc = await getDocs(collection(db, "users", user.uid, "categories"))
-
-        if (!userCategoriesDoc.empty) {
-          const userCategories = userCategoriesDoc.docs[0].data().categories
-          if (userCategories && userCategories.length > 0) {
-            setCategories(userCategories)
-            return
-          }
+        const userCategories = await userProfileAPI.getCategories(user.uid)
+        if (userCategories.length > 0) {
+          setCategories(userCategories)
+          return
         }
-
-        // Fallback to global categories if user doesn't have any
-        const categoriesSnapshot = await getDocs(collection(db, "categories"))
-        if (!categoriesSnapshot.empty) {
-          const categoriesList = categoriesSnapshot.docs.map((doc) => doc.data().name)
-          if (categoriesList.length > 0) {
-            setCategories([...DEFAULT_CATEGORIES, ...categoriesList])
-            return
-          }
-        }
-
-        // If we couldn't fetch any categories, use the defaults
         setCategories(DEFAULT_CATEGORIES)
       } catch (error) {
-
-        // Use default categories if there's an error
         setCategories(DEFAULT_CATEGORIES)
       }
     }
@@ -171,7 +157,7 @@ export default function AddExpensePage() {
     setLoading(true)
 
     try {
-      // Prepare receipt data for Firestore (only store serializable data)
+      // Prepare receipt data for API payload
       const serializableReceiptData = receiptData ? {
         merchant: receiptData.merchant || null,
         amount: receiptData.amount || null,
@@ -184,9 +170,7 @@ export default function AddExpensePage() {
         imageUrl: receiptData.imageUrl || null,
       } : null
 
-      // Add expense to Firestore
-      await addDoc(collection(db, "expenses"), {
-        userId: user.uid,
+      await expensesAPI.createExpense({
         name: name.trim(),
         amount: parsedAmount,
         description: description?.trim() || "",
@@ -194,8 +178,6 @@ export default function AddExpensePage() {
         date: date.toISOString(),
         receiptImageUrl: receiptImageUrl?.trim() || "",
         receiptData: serializableReceiptData,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
       })
 
       toast({
@@ -228,21 +210,13 @@ export default function AddExpensePage() {
       // Redirect to expenses page
       router.push("/dashboard/expenses")
     } catch (error: unknown) {
-      console.error("Error adding expense:", error)
+      logger.error("Error adding expense", error instanceof Error ? error : { error })
       
       let errorMessage = "There was an error adding your expense"
       
       if (error instanceof Error) {
         errorMessage = error.message
         
-        // Handle specific Firestore errors
-        if (error.message.includes("permission-denied")) {
-          errorMessage = "You don't have permission to add expenses. Please check your account status."
-        } else if (error.message.includes("invalid-argument")) {
-          errorMessage = "Invalid data provided. Please check your input and try again."
-        } else if (error.message.includes("unavailable")) {
-          errorMessage = "Service temporarily unavailable. Please try again."
-        }
       }
       
       toast({

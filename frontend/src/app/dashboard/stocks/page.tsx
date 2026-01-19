@@ -4,22 +4,22 @@
 
 import React, { useState, useEffect, useCallback } from "react"
 import { ChevronRight, Search, TrendingUp, TrendingDown, Activity, ArrowUpDown, Plus, Minus, Star, DollarSign } from "lucide-react"
-import { DashboardSidebar } from "../../../components/dashboard/sidebar"
-import { UserPortfolio } from "../../../components/dashboard/user-portfolio"
-import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card"
-import { Badge } from "../../../components/ui/badge"
-import { Input } from "../../../components/ui/input"
-import { LoadingSpinner } from "../../../components/ui/loading-spinner"
-import { Button } from "../../../components/ui/button"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../components/ui/table"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../../components/ui/dialog"
-import { Label } from "../../../components/ui/label"
-import { ScrollArea } from "../../../components/ui/scroll-area"
-import { useAuth } from "../../../contexts/auth-context"
-import { toast } from "../../../components/ui/use-toast"
-import { logger } from "../../../lib/logger"
-import { useStockPrices } from "../../../hooks/use-stock-prices"
-import { User } from "../../../lib/types"
+import { DashboardSidebar } from "@/components/dashboard/sidebar"
+import { UserPortfolio } from "@/components/dashboard/user-portfolio"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { Button } from "@/components/ui/button"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { useAuth } from "@/contexts/auth-context"
+import { toast } from "@/hooks/use-toast"
+import { logger } from "@/lib/logger"
+import { useStockPrices } from "@/hooks/use-stock-prices"
+import { User } from "@/lib/types"
 import { 
   StockAPI, 
   StockData,
@@ -28,7 +28,7 @@ import {
   formatChange, 
   formatPercent,
   formatVolume
-} from "../../../lib/stock-api"
+} from "@/lib/stock-api"
 
 // Simple sparkline component
 const Sparkline: React.FC<{ data: number[]; positive: boolean }> = ({ data, positive }) => {
@@ -450,7 +450,12 @@ type SortField = 'symbol' | 'price' | 'change' | 'changePercent' | 'volume' | 'w
 type SortDirection = 'asc' | 'desc'
 type TabType = 'trending-now' | 'search-results' | 'watchlist' | 'most-active' | 'top-gainers' | 'top-losers'
 
-export default function StocksPage() {
+interface StocksPageProps {
+  params?: Promise<Record<string, string>>;
+  searchParams?: Promise<Record<string, string>>;
+}
+
+export default function StocksPage(props: StocksPageProps) {
   const { user } = useAuth()
   const [collapsed, setCollapsed] = useState(false)
   const [trendingStocks, setTrendingStocks] = useState<StockData[]>([])

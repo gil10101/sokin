@@ -1,10 +1,9 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
-import { doc, getDoc, updateDoc } from "firebase/firestore"
-import { auth, db } from "@/lib/firebase"
+import { auth } from "@/lib/firebase"
 import { useAuthState } from "react-firebase-hooks/auth"
-import { MotionDiv, MotionMain } from "../../../components/ui/dynamic-motion"
+import { MotionDiv, MotionMain } from "@/components/ui/dynamic-motion"
 import { DashboardSidebar } from "@/components/dashboard/sidebar"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
@@ -13,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Save, Moon, Globe, CreditCard } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { userProfileAPI } from "@/lib/api"
 
 // Properly typed UI components
 const TypedSelectTrigger = SelectTrigger
@@ -39,7 +39,12 @@ interface Settings {
   budgets: Record<string, number>;
 }
 
-export default function SettingsPage() {
+interface SettingsPageProps {
+  params?: Promise<Record<string, string>>;
+  searchParams?: Promise<Record<string, string>>;
+}
+
+export default function SettingsPage(props: SettingsPageProps) {
   const [collapsed, setCollapsed] = useState(false)
   const [user] = useAuthState(auth)
   const { toast } = useToast()
@@ -66,13 +71,9 @@ export default function SettingsPage() {
 
       setLoading(true)
       try {
-        const userDoc = await getDoc(doc(db, "users", user.uid))
-        if (userDoc.exists() && userDoc.data().settings) {
-          const userData = userDoc.data();
-          const serializedSettings = {
-            ...userData.settings,
-          };
-          setSettings(serializedSettings);
+        const profile = await userProfileAPI.getProfile(user.uid)
+        if (profile.settings) {
+          setSettings(profile.settings as Settings)
         }
       } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : "There was an error loading your settings"
@@ -94,7 +95,7 @@ export default function SettingsPage() {
 
     setSaving(true)
     try {
-      await updateDoc(doc(db, "users", user.uid), {
+      await userProfileAPI.updateProfile(user.uid, {
         settings,
       })
 

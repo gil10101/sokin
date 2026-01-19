@@ -3,30 +3,30 @@
 import type React from "react"
 
 import { useState, useEffect, useCallback, useMemo } from "react"
-import { PlusCircle, CreditCard, ChevronRight, Calendar, Search, TrendingUp } from "../../lib/icons"
+import { CreditCard, ChevronRight, Calendar, Search, TrendingUp, Plus } from "@/lib/icons"
 import { DashboardSidebar } from "@/components/dashboard/sidebar"
 import dynamic from "next/dynamic"
 import Image from "next/image"
 // Lazy load heavy chart components with optimized loading states and progressive loading
-const ExpenseChart = dynamic(() => import("../../components/dashboard/expense-chart").then(mod => ({ default: mod.ExpenseChart })), {
+const ExpenseChart = dynamic(() => import("@/components/dashboard/expense-chart").then(mod => ({ default: mod.ExpenseChart })), {
   ssr: false,
   loading: () => <div className="h-80 bg-cream/5 rounded-lg animate-pulse flex items-center justify-center"><div className="text-cream/60">Loading chart...</div></div>
 })
-const CategoryBreakdown = dynamic(() => import("../../components/dashboard/category-breakdown").then(mod => ({ default: mod.CategoryBreakdown })), {
+const CategoryBreakdown = dynamic(() => import("@/components/dashboard/category-breakdown").then(mod => ({ default: mod.CategoryBreakdown })), {
   ssr: false,
   loading: () => <div className="h-64 bg-cream/5 rounded-lg animate-pulse flex items-center justify-center"><div className="text-cream/60">Loading breakdown...</div></div>
 })
-const AdvancedAnalytics = dynamic(() => import("../../components/dashboard/advanced-analytics").then(mod => ({ default: mod.AdvancedAnalytics })), {
+const AdvancedAnalytics = dynamic(() => import("@/components/dashboard/advanced-analytics").then(mod => ({ default: mod.AdvancedAnalytics })), {
   ssr: false,
   loading: () => <div className="h-40 bg-cream/5 rounded-lg animate-pulse flex items-center justify-center"><div className="text-cream/60">Loading analytics...</div></div>
 })
-const StockMarket = dynamic(() => import("../../components/dashboard/stock-market").then(mod => ({ default: mod.StockMarket })), {
+const StockMarket = dynamic(() => import("@/components/dashboard/stock-market").then(mod => ({ default: mod.StockMarket })), {
   ssr: false,
   loading: () => <div className="h-96 bg-cream/5 rounded-lg animate-pulse flex items-center justify-center"><div className="text-cream/60">Loading market data...</div></div>
 })
 
 // Lazy load motion container to reduce initial bundle
-const MotionContainer = dynamic(() => import("../../components/ui/motion-container").then(mod => mod.MotionContainer), {
+const MotionContainer = dynamic(() => import("@/components/ui/motion-container").then(mod => mod.MotionContainer), {
   ssr: false,
   loading: () => <div />
 })
@@ -41,9 +41,8 @@ import { Input } from "@/components/ui/input"
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter } from "next/navigation"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
-import { useUpcomingBills } from "../../hooks/use-upcoming-bills"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../../lib/ui-components"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select"
+import { useUpcomingBills } from "@/hooks/use-upcoming-bills"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { NotificationsDropdown } from "@/components/notifications/notifications-dropdown"
 import { api } from "@/lib/api"
 import { useQueryClient } from "@tanstack/react-query"
@@ -70,7 +69,12 @@ interface Notification {
   createdAt: string
 }
 
-export default function DashboardPage() {
+interface DashboardPageProps {
+  params?: Promise<Record<string, string>>;
+  searchParams?: Promise<Record<string, string>>;
+}
+
+export default function DashboardPage(props: DashboardPageProps) {
   const queryClient = useQueryClient()
   const [collapsed, setCollapsed] = useState(false)
   const { user, loading: authLoading } = useAuth()
@@ -383,9 +387,10 @@ export default function DashboardPage() {
               </div>
               <button
                 onClick={() => router.push("/dashboard/add-expense")}
-                className="md:hidden flex items-center justify-center h-10 w-10 rounded-full bg-cream text-dark font-medium text-sm transition-all hover:bg-cream/90"
+                aria-label="Add expense"
+                className="md:hidden flex items-center justify-center h-10 w-10 p-0 rounded-lg bg-cream text-dark font-medium transition-all duration-200 shadow-sm hover:shadow-md hover:bg-cream/90"
               >
-                <PlusCircle className="h-5 w-5" />
+                <Plus className="h-5 w-5" />
               </button>
             </div>
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
@@ -440,10 +445,10 @@ export default function DashboardPage() {
                 <NotificationsDropdown />
                 <button
                   onClick={() => router.push("/dashboard/add-expense")}
-                  className="hidden md:flex items-center justify-center h-10 px-4 rounded-full bg-cream text-dark font-medium text-sm transition-all hover:bg-cream/90 group"
+                  className="hidden md:flex items-center justify-center h-11 px-5 rounded-lg bg-cream text-dark font-medium text-sm tracking-wide transition-all duration-200 shadow-sm hover:shadow-md hover:bg-cream/90 gap-2"
                 >
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  Add Expense
+                  <Plus className="h-4 w-4" />
+                  <span className="uppercase">Add Expense</span>
                 </button>
               </div>
             </div>
@@ -502,7 +507,7 @@ export default function DashboardPage() {
             </MotionContainer>
           </div>
 
-          {/* Row 2: 3 Containers - Spending Trends (Large), Category Breakdown (Medium), Bill Reminders (Small) */}
+          {/* Row 2: 2 Containers - Spending Trends (Large), Category Breakdown (Medium) */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-4 lg:gap-6 mb-6 lg:mb-8">
             {/* Spending Trends - Large (6 columns on lg+, full width on md) */}
             <div className="md:col-span-2 lg:col-span-6">
@@ -532,9 +537,9 @@ export default function DashboardPage() {
               </MotionContainer>
             </div>
 
-            {/* Category Breakdown - Medium (4 columns on lg+, half width on md) */}
-            <div className="md:col-span-1 lg:col-span-4">
-              <MotionContainer className="bg-cream/5 rounded-xl p-4 lg:p-6 h-full min-h-[320px]" delay={0.6}>
+            {/* Category Breakdown - Medium (6 columns on lg+, half width on md) */}
+            <div className="md:col-span-1 lg:col-span-6">
+              <MotionContainer className="bg-cream/5 rounded-xl p-4 lg:p-6 h-full min-h-[420px]" delay={0.6}>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4 lg:mb-6">
                   <h2 className="text-base lg:text-lg font-medium font-outfit">Spending by Category</h2>
                   <button 
@@ -548,10 +553,12 @@ export default function DashboardPage() {
                 <CategoryBreakdown />
               </MotionContainer>
             </div>
+          </div>
 
-            {/* Bill Reminders - Small (2 columns on lg+, half width on md) */}
-            <div className="md:col-span-1 lg:col-span-2">
-              <MotionContainer className="bg-cream/5 rounded-xl p-4 lg:p-6 h-full min-h-[280px]" delay={0.7}>
+          {/* Responsive Layout Container - Adapts based on portfolio state */}
+          <ResponsiveLayoutContainer
+            billsSection={
+              <MotionContainer className="bg-cream/5 rounded-xl p-4 lg:p-6 h-full" delay={0.7}>
                 <div className="flex flex-col gap-2 mb-4">
                   <h2 className="text-base lg:text-lg font-medium font-outfit">Bills</h2>
                   <button
@@ -564,14 +571,10 @@ export default function DashboardPage() {
                 </div>
                 <BillReminders />
               </MotionContainer>
-            </div>
-          </div>
-
-          {/* Responsive Layout Container - Adapts based on portfolio state */}
-          <ResponsiveLayoutContainer
+            }
             stockMarketSection={
-              <MotionContainer className="bg-cream/5 rounded-xl p-4 lg:p-6 min-h-[400px]" delay={0.8}>
-                <div className="flex items-center justify-between mb-4 lg:mb-6">
+              <MotionContainer className="bg-cream/5 rounded-xl p-4 lg:p-6 flex flex-col h-full" delay={0.8}>
+                <div className="flex items-center justify-between mb-4 lg:mb-6 flex-shrink-0">
                   <h2 className="text-lg lg:text-xl font-medium font-outfit">Stock Market</h2>
                   <button
                     onClick={() => router.push("/dashboard/stocks")}
@@ -581,13 +584,15 @@ export default function DashboardPage() {
                     <ChevronRight className="h-4 w-4 ml-1 transform group-hover:translate-x-1 transition-transform duration-300" />
                   </button>
                 </div>
-                <StockMarket compact={true} />
+                <div className="flex-1 min-h-[800px] overflow-auto scrollbar-hide">
+                  <StockMarket compact={true} />
+                </div>
               </MotionContainer>
             }
             savingsAnalyticsSection={
-              <div className="space-y-4 lg:space-y-6">
+              <div className="space-y-4 lg:space-y-6 h-full flex flex-col">
                 {/* Savings Goals */}
-                <MotionContainer className="bg-cream/5 rounded-xl p-4 lg:p-6 min-h-[180px]" delay={0.9}>
+                <MotionContainer className="bg-cream/5 rounded-xl p-4 lg:p-6 flex-1 flex flex-col" delay={0.9}>
                   <div className="flex items-center justify-between mb-4 lg:mb-6">
                     <h2 className="text-lg lg:text-xl font-medium font-outfit">Savings Goals</h2>
                     <button
@@ -598,11 +603,13 @@ export default function DashboardPage() {
                       <ChevronRight className="h-4 w-4 ml-1 transform group-hover:translate-x-1 transition-transform duration-300" />
                     </button>
                   </div>
-                  <SavingsGoals hideHeader />
+                  <div className="flex-1 min-h-0">
+                    <SavingsGoals hideHeader />
+                  </div>
                 </MotionContainer>
 
                 {/* Advanced Analytics with integrated Monthly Category Breakdown */}
-                <MotionContainer className="bg-cream/5 rounded-xl p-4 lg:p-6 min-h-[180px]" delay={1.0}>
+                <MotionContainer className="bg-cream/5 rounded-xl p-4 lg:p-6 flex-1 flex flex-col" delay={1.0}>
                   <div className="flex items-center justify-between mb-4 lg:mb-6">
                     <h2 className="text-lg lg:text-xl font-medium font-outfit">Analytics Overview</h2>
                     <button
@@ -613,12 +620,14 @@ export default function DashboardPage() {
                       <ChevronRight className="h-4 w-4 ml-1 transform group-hover:translate-x-1 transition-transform duration-300" />
                     </button>
                   </div>
-                  <AdvancedAnalytics budgets={budgets} timeframe={timeframe} />
+                  <div className="flex-1 min-h-0">
+                    <AdvancedAnalytics budgets={budgets} timeframe={timeframe} />
+                  </div>
                 </MotionContainer>
               </div>
             }
             recentTransactionsSection={
-              <MotionContainer className="bg-cream/5 rounded-xl p-4 lg:p-6 min-h-[350px] flex flex-col" delay={1.1}>
+              <MotionContainer className="bg-cream/5 rounded-xl p-4 lg:p-6 flex flex-col h-full" delay={1.1}>
                 <div className="flex items-center justify-between mb-4 lg:mb-6">
                   <h2 className="text-lg lg:text-xl font-medium font-outfit">Recent Transactions</h2>
                   <button

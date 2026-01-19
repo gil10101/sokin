@@ -1,19 +1,16 @@
 "use client"
 
-import { useEffect, useState, useMemo, useCallback } from "react"
+import { useEffect, useState, useMemo, useCallback, useRef } from "react"
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts"
 import { ChevronRight, X, Calendar, Filter, ShoppingBag, Coffee, Home, Car, Utensils, ArrowDown, LucideIcon } from "lucide-react"
-import { useRouter } from "next/navigation"
-import { collection, query, where, orderBy, limit, getDocs } from "firebase/firestore"
-import { db } from "../../lib/firebase"
-import { useExpensesData } from "../../hooks/use-expenses-data"
-import { useAuth } from "../../contexts/auth-context"
-import { useViewport } from "../../hooks/use-mobile"
+import { useExpensesData } from "@/hooks/use-expenses-data"
+import { useAuth } from "@/contexts/auth-context"
+import { useViewport } from "@/hooks/use-mobile"
 import { format, subDays, isAfter } from "date-fns"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu"
 import React from "react"
-import { safeParseDate } from "../../types/firebase"
-import { logger } from "../../lib/logger"
+import { safeParseDate } from "@/types/firebase"
+import { logger } from "@/lib/logger"
 
 // Define transaction type
 interface Transaction {
@@ -56,6 +53,7 @@ interface CategoryWithPercentage {
   value: number
   color: string
   percentage: number
+  [key: string]: string | number  // Index signature for Recharts compatibility
 }
 
 // Default category colors
@@ -93,18 +91,40 @@ export function CategoryBreakdown() {
   const [transactionsByCategory, setTransactionsByCategory] = useState<CategoryTransactions>({})
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'distribution' | 'comparison'>('distribution')
-  const router = useRouter()
 
   useEffect(() => {
     setMounted(true)
   }, [])
 
   const { data: expenses = [], isLoading: expensesLoading } = useExpensesData()
+  const prevProcessedKeyRef = useRef<string>('')
 
-  const processCategoryData = useCallback(() => {
-    if (!user) return
+  // Create a composite key that includes all dependencies to prevent infinite loops
+  const processKey = useMemo(() => {
+    if (!user || expensesLoading || !expenses || expenses.length === 0) {
+      return `${user?.uid || ''}-${dateRange}-loading-${expensesLoading}`
+    }
+    const expensesKey = expenses.map(e => `${e.id}-${e.date}-${e.amount}-${e.category}`).sort().join('|')
+    return `${user.uid}-${dateRange}-${expensesKey}`
+  }, [user?.uid, dateRange, expensesLoading, expenses])
 
+  // Process category data only when key actually changes
+  useEffect(() => {
+    if (!user || !mounted || expensesLoading) {
+      if (expensesLoading) {
+        setLoading(true)
+      }
+      return
+    }
+
+    // Skip if we've already processed this exact combination
+    if (prevProcessedKeyRef.current === processKey) {
+      return
+    }
+
+    prevProcessedKeyRef.current = processKey
     setLoading(true)
+
     try {
       const endDate = new Date()
       let startDate = new Date()
@@ -160,6 +180,7 @@ export function CategoryBreakdown() {
 
       setCategoryData(categoryArray)
       setTransactionsByCategory(txByCategory)
+      setLoading(false)
     } catch (error) {
       logger.error("Error processing category data", {
         userId: user?.uid,
@@ -168,16 +189,9 @@ export function CategoryBreakdown() {
       })
       setCategoryData([])
       setTransactionsByCategory({})
-    } finally {
       setLoading(false)
     }
-  }, [user, dateRange, expenses])
-
-  useEffect(() => {
-    if (user && mounted && !expensesLoading) {
-      processCategoryData()
-    }
-  }, [user, mounted, dateRange, expensesLoading, expenses, processCategoryData])
+  }, [user, mounted, dateRange, expensesLoading, processKey, expenses])
 
   // Memoize total calculation to prevent recalculation on each render
   const total = useMemo(() => categoryData.reduce((sum, item) => sum + item.value, 0), [categoryData])
@@ -356,7 +370,7 @@ export function CategoryBreakdown() {
                           tickFormatter={(value) => `$${value}`}
                         />
                         <Tooltip
-                          formatter={(value: number) => [`$${value.toFixed(2)}`, "Amount"]}
+                          formatter={(value: number | undefined) => value !== undefined ? [`$${value.toFixed(2)}`, "Amount"] : ['N/A', "Amount"]}
                           contentStyle={{
                             backgroundColor: "#FFFFFF",
                             border: "1px solid #000000",

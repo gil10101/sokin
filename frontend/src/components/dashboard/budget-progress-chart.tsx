@@ -1,14 +1,13 @@
 "use client"
 
-import { useEffect, useState, useMemo, useCallback, useRef } from "react"
+import { useEffect, useState, useMemo, useCallback } from "react"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell, ResponsiveContainer, LabelList } from "recharts"
 import { MotionDiv } from "../ui/dynamic-motion"
-import { collection, query, where, getDocs } from "firebase/firestore"
-import { db } from "../../lib/firebase"
-import { useExpensesData } from "../../hooks/use-expenses-data"
-import { useAuth } from "../../contexts/auth-context"
+import { useAuth } from "@/contexts/auth-context"
 import { startOfMonth, endOfMonth, isWithinInterval } from "date-fns"
-import { useViewport } from "../../hooks/use-mobile"
+import { useViewport } from "@/hooks/use-mobile"
+import { budgetsAPI } from "@/lib/api"
+import { useExpensesData } from "@/hooks/use-expenses-data"
 
 // Helper function to safely parse dates including Firebase Timestamps
 const safeParseDate = (dateValue: unknown): Date => {
@@ -27,20 +26,15 @@ const safeParseDate = (dateValue: unknown): Date => {
 interface Budget {
   id: string
   userId: string
-  category: string
+  category?: string
+  categories?: string[]
   amount: number
   spent?: number
-  month: string
-  year: number
+  startDate: string
+  endDate?: string
+  period: "daily" | "weekly" | "monthly" | "yearly"
 }
 
-interface Expense {
-  id: string
-  name: string
-  amount: number
-  date: string
-  category: string
-}
 
 interface BudgetProgressData {
   category: string
@@ -56,11 +50,11 @@ interface BudgetProgressChartProps {
 
 export function BudgetProgressChart({ selectedMonth }: BudgetProgressChartProps) {
   const [budgets, setBudgets] = useState<Budget[]>([])
-  const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
   const [chartData, setChartData] = useState<BudgetProgressData[]>([])
   const { user } = useAuth()
   const { isMobile, isTablet } = useViewport()
+  const { data: expenses = [], isLoading: expensesLoading } = useExpensesData()
 
   // Responsive chart configuration
   const chartConfig = useMemo(() => {
@@ -94,119 +88,96 @@ export function BudgetProgressChart({ selectedMonth }: BudgetProgressChartProps)
   // Use current month if selectedMonth is not provided
   const currentMonth = useMemo(() => selectedMonth || new Date(), [selectedMonth])
   
-  const fetchData = useCallback(async () => {
+  const fetchBudgets = useCallback(async () => {
     if (!user) return
 
     try {
       setLoading(true)
-      
-      const month = currentMonth.getMonth() + 1 // 1-12
-      const year = currentMonth.getFullYear()
-      
-      // Fetch budgets for the selected month
-      const budgetsRef = collection(db, "budgets")
-      const budgetsQuery = query(
-        budgetsRef, 
-        where("userId", "==", user.uid),
-        where("month", "==", month.toString()),
-        where("year", "==", year)
-      )
-      
-      const budgetsSnapshot = await getDocs(budgetsQuery)
+
       const budgetsData: Budget[] = []
-      
-      budgetsSnapshot.forEach((doc) => {
-        const data = doc.data()
-        budgetsData.push({
-          id: doc.id,
-          userId: data.userId,
-          category: data.category,
-          amount: data.amount || 0,
-          spent: data.spent || 0,
-          month: data.month,
-          year: data.year
+      let cursor: string | null = null
+      let hasMore = true
+      let pageCount = 0
+
+      while (hasMore && pageCount < 50) {
+        const page = await budgetsAPI.getBudgets({
+          limit: 100,
+          cursor: cursor || undefined
         })
-      })
-      
-      // Fetch expenses for the selected month
-      const expensesRef = collection(db, "expenses")
-      const expensesQuery = query(expensesRef, where("userId", "==", user.uid))
-      const expensesSnapshot = await getDocs(expensesQuery)
-      
-      const monthStart = startOfMonth(currentMonth)
-      const monthEnd = endOfMonth(currentMonth)
-      
-      const expensesData: Expense[] = []
-      
-      expensesSnapshot.forEach((doc) => {
-        const data = doc.data()
-        const expenseDate = safeParseDate(data.date)
-        
-        if (isWithinInterval(expenseDate, { start: monthStart, end: monthEnd })) {
-          expensesData.push({
-            id: doc.id,
-            name: data.name || 'Unknown',
-            amount: data.amount || 0,
-            date: expenseDate.toISOString(),
-            category: data.category || 'Other'
-          })
-        }
-      })
-      
+        budgetsData.push(...page.items)
+        cursor = page.nextCursor || null
+        hasMore = page.hasMore
+        pageCount += 1
+      }
+
       setBudgets(budgetsData)
-      setExpenses(expensesData)
-      
     } catch (error) {
-      // Log error to Sentry instead of console
       import('@/lib/logger').then(({ logger }) => {
         logger.error('Error fetching budget data', { error: error instanceof Error ? error.message : String(error) })
       })
       setBudgets([])
-      setExpenses([])
     } finally {
       setLoading(false)
     }
-  }, [user, currentMonth])
+  }, [user])
 
   useEffect(() => {
-    fetchData()
-  }, [fetchData])
+    if (!user) {
+      setBudgets([])
+      setLoading(false)
+      return
+    }
+    fetchBudgets()
+  }, [fetchBudgets, user])
 
   // Process chart data
   useEffect(() => {
-    if (!budgets.length) {
+    if (!budgets.length || expensesLoading) {
       setChartData([])
       return
     }
 
-    // Calculate spent amounts by category for the selected month
+    const monthStart = startOfMonth(currentMonth)
+    const monthEnd = endOfMonth(currentMonth)
+
+    const activeBudgets = budgets.filter((budget) => {
+      const startDate = safeParseDate(budget.startDate)
+      const endDate = budget.endDate ? safeParseDate(budget.endDate) : null
+      const withinStart = startDate <= monthEnd
+      const withinEnd = endDate ? endDate >= monthStart : true
+      return withinStart && withinEnd
+    })
+
     const spentByCategory: { [key: string]: number } = {}
-    
-    expenses.forEach(expense => {
+
+    expenses.forEach((expense) => {
+      const expenseDate = safeParseDate(expense.date)
+      if (!isWithinInterval(expenseDate, { start: monthStart, end: monthEnd })) {
+        return
+      }
       const category = expense.category
       spentByCategory[category] = (spentByCategory[category] || 0) + expense.amount
     })
 
-    // Create chart data combining budgets and actual spending
-    const processedData: BudgetProgressData[] = budgets.map(budget => {
-      const spent = spentByCategory[budget.category] || 0
+    const processedData: BudgetProgressData[] = activeBudgets.map((budget) => {
+      const category = budget.category || budget.categories?.[0] || "Other"
+      const spent = spentByCategory[category] || 0
       const remaining = Math.max(0, budget.amount - spent)
       const percentage = budget.amount > 0 ? Math.min(100, (spent / budget.amount) * 100) : 0
 
       return {
-        category: budget.category,
+        category,
         budgeted: budget.amount,
-        spent: spent,
-        remaining: remaining,
-        percentage: percentage
+        spent,
+        remaining,
+        percentage
       }
     })
 
-    // Sort by percentage (highest first)
     processedData.sort((a, b) => b.percentage - a.percentage)
 
     setChartData(processedData)
-  }, [budgets, expenses])
+  }, [budgets, expenses, currentMonth, expensesLoading])
 
   const getBarColor = (percentage: number): string => {
     if (percentage >= 90) return '#ef4444' // Red - over budget or close to it
@@ -235,7 +206,7 @@ export function BudgetProgressChart({ selectedMonth }: BudgetProgressChartProps)
     )
   }
 
-  if (loading) {
+  if (loading || expensesLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-cream/30"></div>

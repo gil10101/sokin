@@ -1,0 +1,1727 @@
+Starting CodeRabbit review in plain text mode...
+
+Connecting to review service
+Setting up
+Analyzing
+Reviewing
+
+============================================================================
+File: backend/API.md
+Line: 821 to 834
+Type: potential_issue
+
+Comment:
+Incomplete Notifications API endpoint documentation.
+
+All three endpoints lack response examples or specifications.
+
+Provide:
+- GET /notifications: Example response showing notification array structure, pagination support
+- PUT /notifications/:id/read: Example request/response
+- PUT /notifications/read-all: Example response
+
+Prompt for AI Agent:
+In backend/API.md around lines 821 to 834, the Notifications API endpoints are missing response and request examples and schema details; add concise example payloads and brief specs: for GET /notifications include a sample JSON response showing an array of notification objects (id, type, message, read, createdAt, metadata), pagination fields (page, perPage, total, hasNext) and HTTP 200; for PUT /notifications/:id/read include a sample request (e.g., empty body or { read: true }) and sample 200 response returning the updated notification object (or 404 example for not found); for PUT /notifications/read-all include a sample 200 response indicating number of updated notifications or an array of updated IDs. Keep examples minimal, label HTTP status codes, and ensure field names/types are listed so consumers know the shape.
+
+
+
+============================================================================
+File: backend/API.md
+Line: 738 to 760
+Type: potential_issue
+
+Comment:
+Inconsistent documentation depth for Bill Reminders API endpoints.
+
+Only POST /bill-reminders (lines 738-750) includes a request body example. PUT and DELETE endpoints lack request/response specifications, inconsistent with other fully-documented endpoints like Expenses.
+
+Add complete specifications for:
+- PUT /bill-reminders/:id: Which fields are updatable? Provide example request and response.
+- DELETE /bill-reminders/:id: Confirm response format (likely same as line 428-429 in Expenses).
+
+Also, explicitly mark which fields in POST request are required (name, amount, dueDate, etc.).
+
+Prompt for AI Agent:
+In backend/API.md around lines 738 to 760, the Bill Reminders endpoints are inconsistently documented: the POST includes an example but doesn't mark required fields, and PUT/DELETE lack request/response details; update the section to (1) annotate the POST body fields as required/optional (e.g., name, amount, dueDate, frequency, category) and state validation formats, (2) add a PUT /bill-reminders/:id subsection that lists which fields are updatable, provide an example request JSON and an example success response JSON (matching style used elsewhere), and (3) add a DELETE /bill-reminders/:id subsection that states the response format (use the same success/delete response as Expenses lines ~428-429) and include an example response; keep wording and formatting consistent with other endpoint docs.
+
+
+
+============================================================================
+File: backend/API.md
+Line: 763 to 790
+Type: potential_issue
+
+Comment:
+Incomplete Goals API endpoint documentation.
+
+Only POST /goals (lines 769-781) includes a request body. GET, PUT, and DELETE lack response examples and specifications.
+
+Provide:
+- GET /goals: Example response showing goals array structure
+- PUT /goals/:id: Which fields are updatable? Example request and response.
+- DELETE /goals/:id: Confirm response format.
+- Mark required fields for POST request (name, targetAmount, deadline, etc.).
+
+Prompt for AI Agent:
+In backend/API.md around lines 763 to 790, the Goals API section is missing response examples and field specifications; update it by (1) marking required POST fields (e.g., name, targetAmount, deadline) and optional ones (e.g., currentAmount, description), plus types and validation notes; (2) add a GET /goals example response showing an array of goal objects with id, name, targetAmount, currentAmount, deadline, createdAt, updatedAt and HTTP 200; (3) document PUT /goals/:id with which fields are updatable (name, targetAmount, currentAmount, deadline, description), include a sample request body and a sample successful response (HTTP 200 with the updated goal object) and note validation/partial update behavior; and (4) document DELETE /goals/:id with the expected response (e.g., HTTP 204 no content or HTTP 200 with a deletion confirmation JSON) and status code. Ensure each example includes JSON shape and HTTP status codes.
+
+
+
+============================================================================
+File: backend/API.md
+Line: 815 to 818
+Type: potential_issue
+
+Comment:
+Incomplete Dashboard API documentation.
+
+GET /dashboard/summary lacks any response example or specification. Provide example response showing what data/fields are included in the summary.
+
+Prompt for AI Agent:
+In backend/API.md around lines 815 to 818, the GET /dashboard/summary endpoint is missing a response example and schema; add a concise 200 OK response example (JSON) that shows the exact fields returned (e.g., totalUsers, activeUsers, newSignups, totalOrders, totalRevenue, revenuePeriod, topPages array with {page,views}, recentActivities array with {id, type, message, timestamp}, and lastUpdated ISO timestamp), note Content-Type: application/json, and include a brief field-by-field description or JSON schema snippet and possible status codes (200, 401, 500) so consumers know the shape and meaning of each field.
+
+
+
+============================================================================
+File: backend/API.md
+Line: 195 to 517
+Type: refactor_suggestion
+
+Comment:
+Inconsistent "Protected" and "Public" endpoint labeling.
+
+Some endpoints explicitly note Protected endpoint. (lines 645, 670, 706, 722) or Public endpoint. (lines 524, 558, 592, 619), but most do not. Given that line 37 states all endpoints except /health and public stock data require authentication, add consistent labeling (or a note) to all endpoints for clarity.
+
+Alternatively, reorganize sections to clearly separate public vs. protected endpoints.
+
+
+
+Also applies to: 632-729, 734-834
+
+
+
+
+============================================================================
+File: backend/API.md
+Line: 510 to 517
+Type: potential_issue
+
+Comment:
+Document request/response schemas for PUT and DELETE operations.
+
+Several endpoints lack specifications for updatable fields and response format. For example, PUT /budgets/:id and DELETE endpoints don't show which fields can be modified or what the response contains. This makes implementation ambiguous.
+
+Standardize by providing examples similar to the PUT /expenses/:id pattern (lines 406-419).
+
+Prompt for AI Agent:
+In backend/API.md around lines 510 to 517, the PUT /budgets/:id and DELETE /budgets/:id endpoints are missing request and response schemas; add a PUT block that lists allowed updatable fields (e.g., name, amount, start_date, end_date, category_id), include a JSON request body example, the expected success response schema and example (updated budget object) and status code (200), and document possible error responses (400, 404); likewise for DELETE, document the expected request (path param only), success response (204 No Content or a 200 with a deleted resource summary—pick one consistent with PUT /expenses/:id), include example responses and error codes, and mirror formatting and wording used in the PUT /expenses/:id section (lines 406-419) for consistency.
+
+
+
+============================================================================
+File: backend/API.md
+Line: 473 to 493
+Type: potential_issue
+
+Comment:
+Clarify pagination support across list endpoints.
+
+GET /expenses (line 314-349) fully documents pagination with cursor, limit, hasMore, and nextCursor. Other list endpoints (GET /budgets, GET /goals, GET /bill-reminders, GET /notifications) don't specify pagination support.
+
+Either:
+1. Document pagination parameters and response structure for all list endpoints consistently, or
+2. Explicitly state which endpoints do not support pagination.
+
+
+
+
+Also applies to: 728-729
+
+Prompt for AI Agent:
+In backend/API.md around lines 473 to 493 (and also apply same change to lines ~728-729), the GET /budgets section (and other list endpoints: GET /goals, GET /bill-reminders, GET /notifications) lacks clarity about pagination support; update each list endpoint to either (A) document the same pagination request parameters (cursor, limit) and response fields (hasMore, nextCursor, data array) using the same structure as GET /expenses, or (B) add a single-line explicit statement that the endpoint does not support pagination; apply the chosen approach consistently across all listed endpoints and ensure examples reflect the paginated response shape if you choose option A.
+
+
+
+============================================================================
+File: backend/API.md
+Line: 793 to 810
+Type: potential_issue
+
+Comment:
+Incomplete Net Worth API endpoint documentation.
+
+All endpoints (GET /net-worth/current, POST /net-worth/assets, POST /net-worth/liabilities, GET /net-worth/history) lack response examples, query parameters, or specifications.
+
+Provide examples for:
+- GET /net-worth/current: Example snapshot response
+- POST /net-worth/assets: Request body structure and required fields
+- POST /net-worth/liabilities: Request body structure and required fields
+- GET /net-worth/history: Response format, pagination support, query parameters (timeframe? date range?)
+
+Prompt for AI Agent:
+In backend/API.md around lines 793 to 810, the Net Worth API endpoints are missing concrete request/response examples and parameter specifications; add for each endpoint: GET /net-worth/current — include a full example JSON response showing timestamp, totalNetWorth, assets (array of {id, type, name, value, currency}), liabilities (array of {id, type, name, amount, currency}), and any metadata; POST /net-worth/assets — document the request body JSON schema with required fields (e.g., id optional, type, name, value, currency, acquiredDate), validation rules and an example request and success response (created/updated asset and 200/201 codes); POST /net-worth/liabilities — similarly document the request body schema with required fields (id optional, type, name, amount, currency, dueDate), validation rules and example request and response; GET /net-worth/history — specify query parameters (startDate, endDate, timeframe/granularity, page, pageSize), pagination format (page, pageSize, total, items), and an example paginated response with time-series entries (date, totalNetWorth, assetsSnapshot, liabilitiesSnapshot); ensure HTTP status codes and error response examples are included for each endpoint.
+
+
+
+============================================================================
+File: .github/workflows/backend-ci-cd.yml
+Line: 351
+Type: potential_issue
+
+Comment:
+Ternary operator syntax may not work in GitHub Actions YAML template context.
+
+The expression ${{ steps.health-check.outputs.healthy && 'Passed' || 'Failed' }} uses JavaScript ternary-like syntax, but GitHub Actions context expressions use a different syntax. This may not evaluate correctly. Use the proper GitHub Actions conditional syntax or a separate step to compute the status.
+
+       - name: Deployment summary
+         if: always()
+         run: |
+           echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+           echo "" >> $GITHUB_STEP_SUMMARY
+           echo "- Environment: Production" >> $GITHUB_STEP_SUMMARY
+           echo "- URL: ${{ steps.deploy.outputs.url }}" >> $GITHUB_STEP_SUMMARY
+           echo "- Commit: \${{ github.sha }}\" >> $GITHUB_STEP_SUMMARY
+-          echo "- Health Check: ${{ steps.health-check.outputs.healthy && 'Passed' || 'Failed' }}" >> $GITHUB_STEP_SUMMARY
++          HEALTH_STATUS="${{ steps.health-check.outputs.healthy == 'true' && 'Passed' || 'Failed' }}"
++          echo "- Health Check: ${HEALTH_STATUS}" >> $GITHUB_STEP_SUMMARY
+           echo "- Triggered by: @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+
+
+
+GitHub Actions workflow syntax for conditional ternary expressions
+
+Prompt for AI Agent:
+.github/workflows/backend-ci-cd.yml around line 351: the workflow currently uses a JavaScript-style ternary-like expression which won’t reliably evaluate in GitHub Actions expressions; replace it with a proper GitHub Actions conditional expression (the if/eq/.../else/.../end expression) or compute the status in a preceding step (set an output like status=Passed/Failed based on eq(steps.health-check.outputs.healthy, 'true')) and then append that output to GITHUB_STEP_SUMMARY.
+
+
+
+============================================================================
+File: frontend/src/hooks/use-expenses-data.ts
+Line: 55 to 57
+Type: potential_issue
+
+Comment:
+Fix the fallback logic to handle empty arrays correctly.
+
+The || operator treats empty arrays as falsy, so if the API returns {expenses: []}, the code will incorrectly fall back to response.data. This will cause incorrect behavior when there are legitimately no expenses.
+
+
+
+Apply this diff to use nullish coalescing instead:
+
+       const response = await api.get(endpoint)
+       // Handle multiple possible response structures from the API
+-      return response.expenses || response.data || []
++      return response.expenses ?? response.data ?? []
+
+Prompt for AI Agent:
+In frontend/src/hooks/use-expenses-data.ts around lines 55 to 57, the fallback logic uses || which treats empty arrays as falsy and will incorrectly replace a legitimate [] with response.data; change the fallback to use the nullish coalescing operator (??) so you return response.expenses ?? response.data ?? [] ensuring empty arrays are preserved, and keep typings consistent with ExpensesResponse.
+
+
+
+============================================================================
+File: frontend/src/app/dashboard/page.tsx
+Line: 384 to 389
+Type: potential_issue
+
+Comment:
+Add accessible label for screen reader users.
+
+The mobile button lacks an accessible label, making it unusable for screen reader users who cannot see the Plus icon.
+
+
+
+Apply this diff to add an aria-label:
+
+  router.push("/dashboard/add-expense")}
+-  className="md:hidden flex items-center justify-center h-10 w-10 p-0 rounded-lg bg-cream text-dark font-medium transition-all duration-200 shadow-sm hover:shadow-md hover:bg-cream/90"
++  className="md:hidden flex items-center justify-center h-10 w-10 p-0 rounded-lg bg-cream text-dark font-medium transition-all duration-200 shadow-sm hover:shadow-md hover:bg-cream/90"
++  aria-label="Add expense"
+ >
+
+Prompt for AI Agent:
+In frontend/src/app/dashboard/page.tsx around lines 384 to 389, the mobile Add Expense button only uses an icon and lacks an accessible label for screen readers; add an aria-label attribute (e.g., aria-label="Add expense") to the  element so assistive technologies can announce its purpose, ensuring the label is descriptive and matches the button action.
+
+
+
+============================================================================
+File: .github/workflows/backend-ci-cd.yml
+Line: 23 to 26
+Type: potential_issue
+
+Comment:
+Pull request trigger only listens to main branch.
+
+The workflow is triggered on PRs only to main (line 23), but pushes trigger on both main and develop (line 18). This means PRs to develop won't run the CI pipeline. If develop is an active branch, consider adding it to the PR trigger or document this intentional restriction.
+
+   pull_request:
+-    branches: [main]
++    branches: [main, develop]
+     paths:
+       - 'backend/'
+       - '.github/workflows/backend-ci-cd.yml'
+
+
+
+
+Is the PR trigger intentionally limited to main only, or should it also cover develop?
+
+Prompt for AI Agent:
+In .github/workflows/backend-ci-cd.yml around lines 23 to 26 the pull_request trigger only lists branches: [main], causing PRs to other active branches (e.g., develop) to not run this CI; update the pull_request.branches array to include develop (e.g., branches: [main, develop]) if you want PRs to develop to run the workflow, or if the restriction is intentional, add a comment in the workflow or repository docs stating that PRs run only for main and PRs to develop are excluded.
+
+
+
+============================================================================
+File: .github/workflows/backend-ci-cd.yml
+Line: 263 to 264
+Type: potential_issue
+
+Comment:
+Deployment ID extraction is fragile and error-prone.
+
+Extracting the deployment ID via sed and cut assumes a specific URL format. If Vercel changes URL structure or special characters appear in deployment names, this could fail silently or extract incorrect values. Consider using jq to parse the Vercel API response directly instead of string manipulation.
+
+-      - name: Get deployment ID
+-        id: get-deployment-id
+-        run: |
+-          DEPLOY_URL="${{ steps.deploy.outputs.url }}"
+-          # Extract deployment ID from URL
+-          DEPLOYMENT_ID=$(echo $DEPLOY_URL | sed 's/https:\/\///' | cut -d'.' -f1)
+-          echo "deployment_id=$DEPLOYMENT_ID" >> $GITHUB_OUTPUT
++      - name: Get deployment ID
++        id: get-deployment-id
++        run: |
++          # Query Vercel API to get the most recent deployment ID
++          DEPLOYMENT_ID=$(curl -s "https://api.vercel.com/v13/deployments?teamId=${{ secrets.VERCEL_ORG_ID }}&projectId=${{ secrets.VERCEL_PROJECT_ID }}&target=production&limit=1" \
++            -H "Authorization: Bearer ${{ secrets.VERCEL_TOKEN }}" | jq -r '.deployments[0].uid')
++          echo "deployment_id=$DEPLOYMENT_ID" >> $GITHUB_OUTPUT
+
+Prompt for AI Agent:
+In .github/workflows/backend-ci-cd.yml around lines 263 to 264, the deployment ID is being extracted from DEPLOY_URL using sed and cut which is brittle; instead fetch the deployment object/response from the Vercel API and parse the JSON with jq to reliably extract the correct deployment id field (e.g., use the API response key that contains the id), validate the field exists, and write that value to $GITHUB_OUTPUT; ensure error handling/reporting if jq returns empty so the job fails rather than producing an incorrect deployment_id.
+
+
+
+============================================================================
+File: backend/src/controllers/dashboardController.ts
+Line: 106 to 107
+Type: potential_issue
+
+Comment:
+Cache write failure should not fail the request.
+
+If cache.setAsync throws, the entire request will fail with a 500 error even though the data was successfully fetched. Consider wrapping the cache write in a try-catch or using fire-and-forget pattern to ensure cache failures don't impact user experience.
+
+
+     const payload: DashboardPayload = { expenses, budgets, notifications };
+     
+     // Cache in distributed cache for shared access across serverless instances
+-    await cache.setAsync(cacheKey, payload, CACHE_TTL.DASHBOARD);
++    cache.setAsync(cacheKey, payload, CACHE_TTL.DASHBOARD).catch((err) => {
++      logger.warn('Failed to cache dashboard data', { 
++        error: err instanceof Error ? err.message : 'Unknown error',
++        userId 
++      });
++    });
+
+Prompt for AI Agent:
+In backend/src/controllers/dashboardController.ts around lines 106 to 107, the call to await cache.setAsync(cacheKey, payload, CACHE_TTL.DASHBOARD) can throw and cause the whole request to fail; wrap the cache write in a try-catch (or use a fire-and-forget without awaiting) and swallow the error so it doesn't propagate, and log the error for observability (e.g., try { await cache.setAsync(...) } catch (err) { logger.warn(...) } or cache.setAsync(...).catch(err => logger.warn(...))).
+
+
+
+============================================================================
+File: frontend/src/app/dashboard/bills/page.tsx
+Line: 216 to 219
+Type: potential_issue
+
+Comment:
+Layout inconsistency between loading and loaded states.
+
+The wrapper div adds ml-12 margin on mobile but removes it on larger screens (md:ml-0). This creates two issues:
+
+1. The loading state (line 193) doesn't apply this same margin, causing a layout shift when content loads.
+2. The margin logic seems backwards—typically you'd want no margin on mobile (sidebar hidden/collapsed) and margin on desktop (sidebar visible).
+
+Apply consistent margins across both states and verify the responsive behavior aligns with the sidebar's collapsed/expanded logic.
+
+Prompt for AI Agent:
+In frontend/src/app/dashboard/bills/page.tsx around lines 216-219 (and referencing the loading state at ~line 193), the responsive margin on the wrapper is inverted and inconsistent with the loading state; change the class from "ml-12 md:ml-0" to "ml-0 md:ml-12" (or otherwise ensure mobile has no left margin and desktop applies the left margin) and apply the exact same responsive classes to the loading-state container at line 193 so there is no layout shift when content loads; also verify this responsive margin matches the sidebar collapsed/expanded logic and adjust conditional classes if the sidebar state drives different spacing.
+
+
+
+============================================================================
+File: frontend/src/components/ui/add-button.tsx
+Line: 97 to 99
+Type: potential_issue
+
+Comment:
+Type assertion assumes icon accepts className prop.
+
+The type assertion as React.ReactElement assumes the custom icon element accepts a className prop, which may not always be true. This could fail silently if the icon component doesn't support className.
+
+
+
+Consider adding a runtime check or documenting this requirement:
+
+{React.isValidElement(iconElement) && 'props' in iconElement && typeof iconElement.props === 'object'
+  ? React.cloneElement(iconElement as React.ReactElement, { className: "h-4 w-4" })
+  : }
+
+
+Or add a JSDoc comment to the icon prop clarifying that custom icons must accept a className prop.
+
+Prompt for AI Agent:
+In frontend/src/components/ui/add-button.tsx around lines 97 to 99, the code force-casts iconElement to a React element with a className prop which can be invalid for custom icons; update the logic to either (1) perform a runtime check that iconElement is a valid React element and that iconElement.props is an object (e.g., 'props' in iconElement and typeof iconElement.props === 'object') before calling React.cloneElement, falling back to the Plus icon if the check fails, or (2) add a JSDoc/prop comment to the component's icon prop explicitly requiring that custom icon components accept a className prop so future callers know the contract.
+
+
+
+============================================================================
+File: .github/workflows/backend-ci-cd.yml
+Line: 122 to 124
+Type: potential_issue
+
+Comment:
+Coverage check depends on bc command without verification.
+
+The command echo "$COVERAGE < 70" | bc -l assumes bc is installed on the runner. While likely available on ubuntu-latest, it's not guaranteed and adds an implicit dependency. Use native bash arithmetic instead.
+
+       - name: Check coverage threshold
+         run: |
+           COVERAGE=$(cat coverage/coverage-summary.json | jq '.total.lines.pct')
+           echo "Line coverage: $COVERAGE%"
+-          if (( $(echo "$COVERAGE < 70" | bc -l) )); then
++          if (( $(printf "%.0f" "$COVERAGE") < 70 )); then
+             echo "::warning::Coverage is below 70% threshold"
+           fi
+
+Prompt for AI Agent:
+In .github/workflows/backend-ci-cd.yml around lines 122 to 124, the coverage check relies on the external bc command; instead strip any fractional part from $COVERAGE and use Bash integer comparison. Replace the bc pipeline with something like: extract integer part via ${COVERAGE%.*} (or default to 0 if empty) and use a numeric comparison ([ ... -lt 70 ] or (( ... < 70 ))), then emit the same warning; ensure the script handles empty or non-numeric COVERAGE by defaulting to 0 before comparison.
+
+
+
+============================================================================
+File: backend/src/controllers/goalsController.ts
+Line: 385 to 397
+Type: potential_issue
+
+Comment:
+Missing input validation for update fields.
+
+The update logic whitelists fields but doesn't validate their values. Unlike createGoal, a user could update targetAmount to a negative number, name to an empty string, or priority to an invalid value.
+
+Apply the same validation rules as createGoal:
+
+
+
+ const { name, description, targetAmount, targetDate, category, priority } = req.body;
+ const updateData: Partial & { updatedAt: string } = {
+   updatedAt: new Date().toISOString()
+ };
+
+-if (name !== undefined) updateData.name = name;
++if (name !== undefined) {
++  if (typeof name !== 'string' || name.trim().length === 0) {
++    throw new AppError('Name must be a non-empty string', 400, true);
++  }
++  if (name.length > 100) {
++    throw new AppError('Name cannot exceed 100 characters', 400, true);
++  }
++  updateData.name = name.trim();
++}
+-if (targetAmount !== undefined) updateData.targetAmount = targetAmount;
++if (targetAmount !== undefined) {
++  const numericAmount = Number(targetAmount);
++  if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
++    throw new AppError('Target amount must be a positive number', 400, true);
++  }
++  updateData.targetAmount = numericAmount;
++}
++// Similar validation for priority, targetDate...
+
+Prompt for AI Agent:
+In backend/src/controllers/goalsController.ts around lines 385 to 397, the update path currently whitelists fields but does not validate them — replicate the same validation rules used in createGoal: check name is a non-empty string, description (if present) is a string, targetAmount (if present) is a number > 0, targetDate (if present) is a valid date (and optionally not in the past), and priority (if present) is one of the allowed enum values; coerce types safely (parse numbers/dates), return 400 with a clear error message when validation fails, and only assign validated/sanitized values to updateData before saving.
+
+
+
+============================================================================
+File: backend/src/controllers/goalsController.ts
+Line: 277 to 322
+Type: potential_issue
+
+Comment:
+Potential race condition on concurrent contributions.
+
+The read-modify-write pattern (read goalDoc, compute new values, update) is not atomic. If two contributions are added simultaneously, one could be lost because the second update overwrites the first's contributions array.
+
+Consider using Firestore transactions or FieldValue.arrayUnion() for the contributions array:
+
+
+
++import { FieldValue } from 'firebase-admin/firestore';
++
+ // In addContribution:
+-await goalRef.update({
+-  currentAmount: newCurrentAmount,
+-  contributions: [...(goalData.contributions || []), contribution],
+-  milestones: updatedMilestones,
+-  isCompleted,
+-  completedAt: isCompleted ? new Date().toISOString() : goalData.completedAt,
+-  updatedAt: new Date().toISOString()
+-});
++await db.runTransaction(async (transaction) => {
++  const doc = await transaction.get(goalRef);
++  const data = doc.data() as SavingsGoal;
++  const newAmount = data.currentAmount + amount;
++  const completed = newAmount >= data.targetAmount;
++  
++  transaction.update(goalRef, {
++    currentAmount: FieldValue.increment(amount),
++    contributions: FieldValue.arrayUnion(contribution),
++    milestones: / recalculate from newAmount /,
++    isCompleted: completed,
++    completedAt: completed && !data.completedAt ? new Date().toISOString() : data.completedAt,
++    updatedAt: new Date().toISOString()
++  });
++});
+
+
+
+
+============================================================================
+File: backend/jest.config.js
+Line: 1 to 6
+Type: potential_issue
+
+Comment:
+Fix inconsistent coverage target in documentation.
+
+The comment states "Targets 50% code coverage" but the actual branches threshold is 35%. Update the documentation to reflect the varied thresholds or specify the exact percentages.
+
+
+Apply this diff to clarify the coverage targets:
+
+- * Targets 50% code coverage across controllers, middleware, and utilities.
++ * Targets varied code coverage: 35% branches, 55% functions, 50% lines/statements.
+
+Prompt for AI Agent:
+In backend/jest.config.js around lines 1 to 6, the header comment inaccurately claims "Targets 50% code coverage" while the actual coverage thresholds differ (e.g., branches 35%); update the comment to either list the exact thresholds for each metric (branches, functions, lines, statements) or change the wording to say that varied thresholds are enforced and then enumerate the numeric percentages to match the config so documentation and config are consistent.
+
+
+
+============================================================================
+File: backend/src/middleware/auth.ts
+Line: 127 to 129
+Type: potential_issue
+
+Comment:
+Documentation inconsistency with actual error codes.
+
+The JSDoc states @throws {AppError} 500 - When Firebase auth is not initialized, but line 159 throws a 503 status code. Update the documentation to match the implementation.
+
+
+
+ * @throws {AppError} 401 - When no token is provided or token is invalid
+- * @throws {AppError} 500 - When Firebase auth is not initialized (production only)
++ * @throws {AppError} 503 - When Firebase auth is not initialized and mock auth not enabled
+
+Prompt for AI Agent:
+In backend/src/middleware/auth.ts around lines 127 to 129 (and referring to the throw at line 159), the JSDoc incorrectly documents a 500 AppError for uninitialized Firebase auth while the implementation throws a 503; update the JSDoc to state @throws {AppError} 503 - When Firebase auth is not initialized (production only) to match the code (or alternatively change the thrown status to 500 if you prefer implementation to match docs) so documentation and implementation are consistent.
+
+
+
+============================================================================
+File: backend/src/controllers/stocksController/finnhubService.ts
+Line: 32
+Type: potential_issue
+
+Comment:
+Symbol pattern doesn't match symbols mentioned in code comments.
+
+The regex /^[A-Z^]{1,10}$/ only allows uppercase letters and ^, but code comments elsewhere (lines 266, 289, 322) mention handling symbols like BRK.A and BRK.B which contain dots. This pattern would reject valid stock symbols.
+
+
+
+Consider updating the pattern to include dots:
+
+-export const STOCK_SYMBOL_PATTERN = /^[A-Z^]{1,10}$/
++export const STOCK_SYMBOL_PATTERN = /^[A-Z^.]{1,10}$/
+
+Prompt for AI Agent:
+In backend/src/controllers/stocksController/finnhubService.ts around line 32, the current regex /^[A-Z^]{1,10}$/ only allows uppercase letters and the literal caret and will reject valid symbols like "BRK.A" or "BRK.B"; replace it with a pattern that allows uppercase letters, digits and dots (and remove the stray caret), e.g. use a regex like /^[A-Z0-9.]{1,10}$/ to permit symbols containing dots while still enforcing length and uppercase constraints.
+
+
+
+============================================================================
+File: frontend/src/components/dashboard/recent-transactions.tsx
+Line: 69 to 83
+Type: potential_issue
+
+Comment:
+Critical: Empty string fallback for id will cause React key issues.
+
+Line 76 defaults expense.id to an empty string when missing. Since transaction.id is used as a React key on line 142, multiple transactions without IDs will all have empty string keys, causing React warnings and potential rendering bugs (duplicate keys, incorrect updates, component state issues).
+
+
+
+Consider one of these solutions:
+
+Solution 1 (recommended): Generate a unique fallback identifier:
+
+-      const transactionsData = response.items.map((expense) => ({
+-        id: expense.id || '',
++      const transactionsData = response.items.map((expense, index) => ({
++        id: expense.id || temp-${Date.now()}-${index},
+
+
+Solution 2: Filter out transactions without IDs (if IDs are expected to always exist):
+
+-      const transactionsData = response.items.map((expense) => ({
++      const transactionsData = response.items
++        .filter(expense => expense.id)
++        .map((expense) => ({
+-        id: expense.id || '',
++        id: expense.id,
+
+
+Also verify that the API response structure includes an items array and that all required fields (name, amount, date, category, userId, notes) exist on each expense object.
+
+Prompt for AI Agent:
+In frontend/src/components/dashboard/recent-transactions.tsx around lines 69 to 83, the mapping sets id: expense.id || '' which can produce duplicate empty-string React keys; replace this by either generating a unique fallback id when expense.id is missing (e.g., append a stable generated UID or use a combination of other unique fields like date+userId+index) or filter out items that have no id if the API guarantees IDs, and also add a defensive check that response.items exists and required fields (name, amount, date, category, userId, notes) are present before mapping to Transaction[].
+
+
+
+============================================================================
+File: backend/src/controllers/notificationController.ts
+Line: 449 to 475
+Type: potential_issue
+
+Comment:
+Add authentication for Cloud Function caller or restrict access.
+
+The function accepts userId from the request body without verifying the caller has permission to trigger alerts for that user. If this endpoint is publicly accessible, any user could trigger alert generation for any other user.
+
+
+
+Consider one of these approaches:
+
+Option 1: Verify the caller is an authorized Cloud Function
+// Verify request is from Cloud Scheduler or authorized service
+const authHeader = req.headers.authorization;
+if (authHeader !== Bearer ${process.env.CLOUD_SCHEDULER_TOKEN}) {
+  throw new AppError('Unauthorized: Invalid service token', 403, true);
+}
+
+
+Option 2: Use authenticated user's ID instead of body
+   try {
+-    const { userId } = req.body;
++    const userId = req.user?.uid;
+     
+     if (!userId) {
+-      throw new AppError('User ID required', 400, true);
++      throw new AppError('Unauthorized: User ID missing', 401, true);
+     }
+
+Prompt for AI Agent:
+In backend/src/controllers/notificationController.ts around lines 449 to 475, the controller trusts userId from the request body which allows unauthorized callers to trigger alerts for arbitrary users; fix by enforcing caller authentication/authorization: either (1) validate an incoming service token (e.g. compare req.headers.authorization Bearer token to process.env.CLOUD_SCHEDULER_TOKEN) and return a 403 AppError on mismatch, or (2) derive the target userId from the authenticated request (e.g. req.user.id) instead of req.body.userId and ensure the authenticated user is permitted to run this action; also validate presence of the resulting userId, log unauthorized access attempts, and short-circuit with appropriate AppError responses.
+
+
+
+============================================================================
+File: frontend/src/components/dashboard/savings-goals.tsx
+Line: 123 to 124
+Type: potential_issue
+
+Comment:
+Critical: API response field mismatch causes runtime errors.
+
+The API returns goals with a deadline field, but the code casts the response to SavingsGoal[] which expects a targetDate field (line 44). This mismatch causes goal.targetDate to be undefined when accessed later (e.g., line 492: getDaysRemaining(goal.targetDate)), breaking the days-remaining calculation and goal rendering.
+
+
+
+Either:
+1. Update the SavingsGoal interface to use deadline instead of targetDate and update all references throughout the component, or
+2. Transform the API response to map deadline to targetDate before setting state.
+
+Option 1 (recommended): Update the interface
+
+ interface SavingsGoal {
+   id?: string
+   userId: string
+   name: string
+   description?: string
+   targetAmount: number
+   currentAmount: number
+-  targetDate: string
++  deadline: string
+   category: string
+   priority: 'low' | 'medium' | 'high'
+   isCompleted: boolean
+   completedAt?: string
+   createdAt: string
+   updatedAt?: string
+   milestones?: GoalMilestone[]
+   contributions?: GoalContribution[]
+ }
+
+
+Then update line 492 from getDaysRemaining(goal.targetDate) to getDaysRemaining(goal.deadline).
+
+Option 2: Transform the response
+
+-      const goalsData = await goalsAPI.getGoals()
+-      setGoals(goalsData as SavingsGoal[])
++      const goalsData = await goalsAPI.getGoals()
++      const transformedGoals = goalsData.map((goal: any) => ({
++        ...goal,
++        targetDate: goal.deadline
++      }))
++      setGoals(transformedGoals as SavingsGoal[])
+
+
+
+
+============================================================================
+File: frontend/src/components/ui/add-button.tsx
+Line: 59 to 102
+Type: potential_issue
+
+Comment:
+Major accessibility issue: Rendering two buttons in the DOM.
+
+Rendering both mobile and desktop buttons in the DOM with CSS-based hiding creates significant accessibility problems:
+- Screen readers may announce both buttons even when one is visually hidden
+- Keyboard navigation can tab to the hidden button, confusing users
+- This violates WCAG 2.1 guidelines for accessible UI patterns
+
+
+
+Recommended solution: Use a single  element with responsive classes that adjust its styling, rather than rendering two separate buttons.
+
+-  return (
+-    
+-      {/ Mobile: Icon-only compact button /}
+-      
+-        {iconElement}
+-      
+-
+-      {/ Desktop/Tablet: Full button with icon and text /}
+-      
+-        {React.isValidElement(iconElement) 
+-          ? React.cloneElement(iconElement as React.ReactElement, { className: "h-4 w-4" })
+-          : }
+-        Add {label}
+-      
+-    
+-  )
++  return (
++    
++      {React.isValidElement(iconElement) 
++        ? React.cloneElement(iconElement as React.ReactElement, { className: "h-5 w-5 md:h-4 md:w-4" })
++        : }
++      Add {label}
++    
++  )
+
+Prompt for AI Agent:
+frontend/src/components/ui/add-button.tsx around lines 59 to 102: The issue is rendering two separate Button elements (mobile icon-only and desktop full) which breaks accessibility; replace them with a single Button that preserves onClick/disabled/aria-label/className and merges the responsive classes so the element visually changes between icon-only and full versions. Inside that single Button, render the icon (cloned with size classes) and the label text conditionally styled for visibility across breakpoints (e.g., visually-hidden on small screens and visible on md+), keep aria-label logic, and ensure any decorative icon is marked appropriately so screen readers only announce one actionable control and keyboard focus/tab order is correct.
+
+
+
+============================================================================
+File: backend/src/middleware/validation.ts
+Line: 162 to 183
+Type: potential_issue
+
+Comment:
+Type safety concern with req.query assignment.
+
+Line 180 directly assigns the validated value to req.query, but Express types req.query as ParsedQs (from the 'qs' library), not a plain object. This could cause type mismatches and break code expecting the ParsedQs structure.
+
+Consider one of these approaches:
+1. Add a validatedQuery property to the Request interface (similar to validatedParams)
+2. Use type assertion if you're certain the validated structure is compatible
+3. Document this behavior clearly and ensure consuming code is aware
+
+
+
+Apply this diff to add a separate storage property:
+
+ declare global {
+   namespace Express {
+     interface Request {
+       / Type-safe validated URL parameters */
+       validatedParams?: Record;
++      / Type-safe validated query parameters */
++      validatedQuery?: Record;
+     }
+   }
+ }
+
+
+Then update the middleware:
+
+-    // Replace query with validated value
+-    req.query = value;
++    // Store validated query in separate property for type safety
++    req.validatedQuery = value;
+
+Prompt for AI Agent:
+In backend/src/middleware/validation.ts around lines 162 to 183, the middleware assigns the validated object back to req.query which conflicts with Express's ParsedQs typing; instead add and use a separate typed property (e.g., validatedQuery) on the Request interface and set req.validatedQuery = value in this middleware, leaving req.query untouched. Update your global type declarations (or an existing types file) to extend Express.Request with validatedQuery: Record | the specific validated type, and change any consuming code to read from req.validatedQuery (or use a type assertion at call sites if necessary).
+
+
+
+============================================================================
+File: frontend/src/hooks/use-infinite-expenses.ts
+Line: 51 to 56
+Type: potential_issue
+
+Comment:
+Type inconsistency: pagination field handling.
+
+The ExpensesResponse interface (line 18) defines pagination as required, but line 55 uses optional chaining (response.pagination?.nextCursor). Either:
+- Update the interface to mark pagination as optional: pagination?: { ... }
+- Remove the optional chaining if pagination is guaranteed
+
+
+
+If pagination can be absent, apply this diff:
+
+ interface ExpensesResponse {
+   data: ExpenseLite[]
+-  pagination: {
++  pagination?: {
+     hasMore: boolean
+     nextCursor: string | null
+     count: number
+   }
+ }
+
+Prompt for AI Agent:
+In frontend/src/hooks/use-infinite-expenses.ts around lines 51 to 56 and the ExpensesResponse interface at line 18, the code uses optional chaining on response.pagination but the interface marks pagination as required; make the types consistent by updating the ExpensesResponse interface to declare pagination as optional (pagination?: { nextCursor?: string | null; ... }) and ensure nextCursor's type matches how it's used (string | null or undefined), or alternatively remove the optional chaining here if pagination is truly always present; pick the matching approach and update the interface or the usage accordingly.
+
+
+
+============================================================================
+File: backend/src/controllers/stocksController/index.ts
+Line: 99 to 104
+Type: potential_issue
+
+Comment:
+Same field name mismatch in portfolio calculation.
+
+This query also uses orderBy('timestamp', 'asc') but the field doesn't exist in saved transactions.
+
+
+
+   const transactionsSnapshot = await db
+     .collection('stockTransactions')
+     .where('userId', '==', userId)
+-    .orderBy('timestamp', 'asc')
++    .orderBy('createdAt', 'asc')
+     .get()
+
+Prompt for AI Agent:
+In backend/src/controllers/stocksController/index.ts around lines 99 to 104, the query uses orderBy('timestamp', 'asc') but saved transactions don't have a 'timestamp' field; update the orderBy to use the actual timestamp field name from the transaction schema (for example 'createdAt' or the field used when persisting transactions), e.g. orderBy('', 'asc'), and ensure that field is indexed in Firestore if required so the query succeeds.
+
+
+
+============================================================================
+File: backend/src/controllers/stocksController/index.ts
+Line: 122 to 126
+Type: potential_issue
+
+Comment:
+Guard against proportionSold exceeding 1.
+
+If tx.shares > existing.shares (which could happen due to data inconsistency), proportionSold exceeds 1, causing newTotalInvested to become negative. While line 122 clamps newShares to 0, the investment calculation isn't similarly protected.
+
+
+
+       const newShares = Math.max(0, existing.shares - tx.shares)
+-      const proportionSold = tx.shares / existing.shares
++      const proportionSold = Math.min(1, tx.shares / existing.shares)
+       const newTotalInvested = existing.totalInvested * (1 - proportionSold)
+
+Prompt for AI Agent:
+In backend/src/controllers/stocksController/index.ts around lines 122 to 126, the calculation for proportionSold and newTotalInvested can produce negative values when tx.shares > existing.shares; clamp proportionSold to at most 1 (e.g., proportionSold = Math.min(1, tx.shares / existing.shares)) or guard with an existing.shares > 0 check before computing, then compute newTotalInvested = existing.totalInvested * (1 - proportionSold); also ensure when newShares === 0 you set totalInvested to 0 and avoid dividing by zero when computing avgPrice.
+
+
+
+============================================================================
+File: backend/src/utils/cache.ts
+Line: 307 to 373
+Type: potential_issue
+
+Comment:
+Major: Thundering herd risk from concurrent background refreshes.
+
+Lines 328 and 355 trigger background refresh without deduplication, creating a thundering herd problem:
+
+- Multiple concurrent requests can all trigger background refresh simultaneously
+- Each executes the expensive callback (e.g., database query) independently
+- This multiplies load on the data source unnecessarily
+
+Recommended solution: Track in-flight refreshes to deduplicate concurrent refresh requests.
+
+
+
+
+Add a deduplication mechanism:
+
+class Cache {
+  private memoryCache: Map>;
+  private defaultTtl: number;
+  private refreshing: Set = new Set(); // Add this
+  
+  // ... existing code ...
+  
+  private backgroundRefresh(
+    cacheKey: string,
+    metaKey: string,
+    ttlSeconds: number,
+    callback: () => Promise
+  ): void {
+    // Check if already refreshing
+    if (this.refreshing.has(cacheKey)) {
+      return;
+    }
+    
+    this.refreshing.add(cacheKey);
+    
+    callback()
+      .then(async (value) => {
+        await Promise.all([
+          this.setAsync(cacheKey, value, ttlSeconds),
+          this.setAsync(metaKey, { cachedAt: Date.now() }, ttlSeconds)
+        ]);
+        logger.debug('Background cache refresh completed', { key: cacheKey });
+      })
+      .catch(err => {
+        logger.debug('Background cache refresh failed', { key: cacheKey, error: err?.message });
+      })
+      .finally(() => {
+        this.refreshing.delete(cacheKey);
+      });
+  }
+}
+
+
+
+
+============================================================================
+File: backend/src/index.ts
+Line: 29 to 36
+Type: potential_issue
+
+Comment:
+Validate that CORS origins don't contain wildcards when credentials are enabled.
+
+When credentials: true (line 44), the CORS specification requires that Access-Control-Allow-Origin must be a specific origin, not a wildcard (`). If CORS_ORIGIN is set to ""`, browsers will block all credentialed requests, causing runtime failures.
+
+
+
+Apply this diff to add validation:
+
+ // Parse and validate CORS origins
+ const corsOrigins = process.env.CORS_ORIGIN?.split(',').map(o => o.trim()).filter(Boolean);
++
++// Validate no wildcards when credentials are enabled
++if (corsOrigins?.includes('*')) {
++  logger.error('CORS_ORIGIN cannot contain "*" when credentials are enabled');
++  process.exit(1);
++}
+ 
+ // In production, CORS must be explicitly configured
+ if (process.env.NODE_ENV === 'production' && (!corsOrigins || corsOrigins.length === 0)) {
+
+Prompt for AI Agent:
+In backend/src/index.ts around lines 29 to 36, the CORS origin parsing currently allows a wildcard value which will break credentialed requests; add a validation step that if credentials are enabled (see line 44) then any '' origin is rejected: check parsed corsOrigins for a literal '' (after trim) and if found, log an explicit error about wildcard origins being invalid when credentials are true and exit(1); ensure this check runs in the same production validation path so startup fails with a clear message instead of allowing runtime credentialed requests to be blocked by browsers.
+
+
+
+============================================================================
+File: backend/src/controllers/stocksController/index.ts
+Line: 390 to 393
+Type: potential_issue
+
+Comment:
+Preserve validation error messages for sell failures.
+
+When a sell validation fails (e.g., "you only own X shares"), the error is caught and replaced with a generic "Transaction failed" message. Users won't know why their sell was rejected.
+
+
+
+   } catch (error) {
+-    logger.error('Transaction failed', { error: error instanceof Error ? error.message : 'Unknown' })
+-    res.status(500).json({ success: false, error: 'Transaction failed' })
++    const message = error instanceof Error ? error.message : 'Transaction failed'
++    const isValidationError = message.includes('Cannot sell') || message.includes('don\'t own')
++    logger.error('Transaction failed', { error: message, isValidationError })
++    res.status(isValidationError ? 400 : 500).json({ success: false, error: message })
+   }
+
+Prompt for AI Agent:
+In backend/src/controllers/stocksController/index.ts around lines 390 to 393, the catch block currently logs a generic message and returns "Transaction failed", which hides validation errors (e.g., "you only own X shares"); update the handler to detect validation errors (or any Error with a meaningful message) and return that message in the JSON response (use a 400 status for client validation failures, 500 for unexpected server errors), and ensure the logger records the full error object/message; i.e., if error is a known validation error or error.message exists, send res.status(400).json({ success: false, error: error.message }) otherwise keep res.status(500).json({ success: false, error: 'Transaction failed' }) while logging the full error.
+
+
+
+============================================================================
+File: backend/src/controllers/stocksController/index.ts
+Line: 443 to 447
+Type: potential_issue
+
+Comment:
+Field name mismatch: querying 'timestamp' but saving 'transactionDate'.
+
+The query orders by 'timestamp' (line 445), but executeTransaction saves transactions with transactionDate and createdAt fields (lines 367, 374). This will either fail (if a Firestore index expects 'timestamp') or return empty/incorrect results.
+
+The same issue exists in calculateUserPortfolioFromFirebase at line 103.
+
+
+
+     const snapshot = await db.collection('stockTransactions')
+       .where('userId', '==', userId)
+-      .orderBy('timestamp', 'desc')
++      .orderBy('createdAt', 'desc')
+       .limit(limitResult.value)
+       .get()
+
+
+Also update the timestamp normalization logic to check for createdAt or transactionDate instead of timestamp.
+
+Prompt for AI Agent:
+In backend/src/controllers/stocksController/index.ts around lines 443-447 (and also update calculateUserPortfolioFromFirebase at line 103), the query orders by 'timestamp' but saved documents use 'transactionDate' and 'createdAt'; change the queries to orderBy('transactionDate') (or 'createdAt' if you prefer chronological create time) and ensure any limit/sorting uses that field, and update the timestamp normalization logic to prefer transactionDate and fall back to createdAt (instead of checking 'timestamp') so reads and writes use the same field names.
+
+
+
+============================================================================
+File: backend/src/controllers/stocksController/index.ts
+Line: 357 to 369
+Type: potential_issue
+
+Comment:
+Add null check for db before running transaction.
+
+Other functions check if (!db) throw new Error('Firestore not initialized') (lines 97, 441), but this critical path doesn't. If db is null, the error message will be unclear.
+
+
+
+     if (type === 'sell') {
++      if (!db) throw new Error('Firestore not initialized')
+       await db.runTransaction(async (transaction) => {
+
+Prompt for AI Agent:
+In backend/src/controllers/stocksController/index.ts around lines 357 to 369, the code calls db.runTransaction without verifying db is initialized; add the same null-check used elsewhere: if (!db) throw new Error('Firestore not initialized') before calling db.runTransaction so a clear error is thrown when Firestore isn't available.
+
+
+
+============================================================================
+File: backend/src/controllers/stocksController/index.ts
+Line: 354 to 369
+Type: potential_issue
+
+Comment:
+TOCTOU vulnerability: Portfolio query is not part of the transaction.
+
+The calculateUserPortfolioFromFirebase call at line 358 executes queries outside the Firestore transaction context. Firestore transactions only provide atomicity for documents read/written through the transaction object. The current implementation still has a race condition where two concurrent sells could both pass the holdings check.
+
+
+
+To fix this properly, you need to read the transaction documents through the transaction object:
+
+     if (type === 'sell') {
+-      // Use Firestore transaction to prevent TOCTOU race condition
+-      // This ensures atomic check-and-write to prevent overselling
+       await db.runTransaction(async (transaction) => {
+-        const portfolio = await calculateUserPortfolioFromFirebase(userId)
+-        const holding = portfolio.find(s => s.symbol === sanitizedSymbol)
+-        if (!holding) throw new Error(Cannot sell ${sanitizedSymbol} - you don't own any shares)
+-        if (holding.shares  {
++          const data = doc.data()
++          ownedShares += data.transactionType === 'buy' ? data.shares : -data.shares
++        })
++        if (ownedShares <= 0) throw new Error(Cannot sell ${sanitizedSymbol} - you don't own any shares)
++        if (ownedShares < shares) throw new Error(Cannot sell ${shares} shares of ${sanitizedSymbol} - you only own ${ownedShares} shares)
+         
+         const txRef = db.collection('stockTransactions').doc()
+         transaction.set(txRef, {
+
+Prompt for AI Agent:
+In backend/src/controllers/stocksController/index.ts around lines 354 to 369, the call to calculateUserPortfolioFromFirebase runs outside the Firestore transaction causing a TOCTOU race; instead, perform all reads and writes inside the transaction using the provided transaction object: query the user's holding documents (or the user/portfolio doc) via transaction.get(...) so you read the canonical state inside the transaction, validate that the holding exists and has enough shares, then create the stockTransactions doc and update the holding/portfolio doc(s) via transaction.set/update within the same transaction so the check-and-write is atomic and prevents concurrent oversells.
+
+
+
+============================================================================
+File: backend/src/utils/upstashCache.ts
+Line: 312 to 322
+Type: potential_issue
+
+Comment:
+JSON.stringify can throw for circular references.
+
+Line 313 doesn't handle potential serialization errors (circular structures, BigInt values). This would propagate an uncaught exception to the caller.
+
+
+
+  async set(key: string, value: T, ttlSeconds: number = CACHE_CONFIG.DEFAULT_TTL): Promise {
+-   const serialized = JSON.stringify(value);
++   let serialized: string;
++   try {
++     serialized = JSON.stringify(value);
++   } catch (error) {
++     logger.warn('Failed to serialize cache value', { key, error: error instanceof Error ? error.message : 'Unknown' });
++     return;
++   }
+
+    // Always set in memory cache
+    this.setInMemory(key, value, ttlSeconds);
+
+Prompt for AI Agent:
+In backend/src/utils/upstashCache.ts around lines 312 to 322, JSON.stringify can throw on circular refs or unsupported types; wrap the serialization and Upstash set in a try/catch. Specifically, attempt to JSON.stringify(value) inside try; on success continue with setInMemory and the Upstash SETEX. On error, still call setInMemory(key, value, ttlSeconds), skip the Upstash write, and log a warning that includes the key and the serialization error. Optionally attempt a safe fallback serializer (e.g. a replacer that converts BigInt to string or a library like flatted) if you want to preserve remote caching, but do not let serialization exceptions propagate to callers.
+
+
+
+============================================================================
+File: backend/src/controllers/billRemindersController.ts
+Line: 265 to 324
+Type: potential_issue
+
+Comment:
+Validate paidDate before storing it.
+
+The paidDate from the request body is used directly without validation at line 301. An invalid date string could be stored in the database, causing issues downstream. This is inconsistent with the validation applied to dueDate in the create function.
+
+
+
+Apply this diff to add date validation:
+
+     const userId = req.user?.uid;
+     const { billId } = req.params;
+     const { paidDate } = req.body;
+
+     if (!userId) {
+       throw new AppError('Unauthorized: User ID missing', 401, true);
+     }
+
+     if (!db) {
+       throw new AppError('Database not initialized', 500, false);
+     }
++
++    // Validate paidDate if provided
++    if (paidDate && (typeof paidDate !== 'string' || isNaN(Date.parse(paidDate)))) {
++      throw new AppError('Paid date must be a valid date', 400, true);
++    }
+
+     const billRef = db.collection('billReminders').doc(billId);
+
+Prompt for AI Agent:
+In backend/src/controllers/billRemindersController.ts around lines 265 to 324, the paidDate from req.body is used directly; validate it before storing by parsing it into a Date and checking !isNaN(parsed.getTime()). If paidDate is present but invalid, throw new AppError('Invalid paidDate', 400, true); if absent, use new Date() as the paidDate; when updating the document, store the validated date as an ISO string (parsed.toISOString()). Ensure the validation logic mirrors the dueDate validation used in the create flow and update the logger/response paths accordingly.
+
+
+
+============================================================================
+File: backend/src/utils/cache.ts
+Line: 190 to 211
+Type: potential_issue
+
+Comment:
+Critical: Hardcoded backfill TTL can serve stale data beyond intended expiry.
+
+Line 206 sets a fixed 15-second TTL when backfilling memory from Upstash, regardless of the original TTL or remaining lifetime. This creates a correctness issue:
+
+- If a value was cached with TTL < 15s (e.g., PORTFOLIO: 15), the memory cache could serve it for up to 15s after it expires in Upstash
+- This breaks the TTL contract and could serve stale data longer than intended
+
+Solutions:
+1. Recommended: Don't backfill memory from Upstash reads, or use a very short TTL (e.g., 1-2s) to minimize staleness
+2. Track original TTL alongside cached values and use that for backfill
+3. Use a percentage of the original TTL (e.g., 10%) for backfill
+
+
+
+Example fix for solution 1:
+
+     if (upstashValue !== null) {
+-      // Cache in memory with short TTL to minimize staleness window
+-      // Shorter backfill prevents serving stale data after Upstash expiry
+-      this.memoryCache.set(key, { 
+-        value: upstashValue, 
+-        expiry: Date.now() + 15000 // 15 seconds - safe backfill TTL
+-      });
++      // Cache in memory with minimal TTL to avoid staleness
++      this.memoryCache.set(key, { 
++        value: upstashValue, 
++        expiry: Date.now() + 2000 // 2 seconds - minimal backfill
++      });
+     }
+
+Prompt for AI Agent:
+In backend/src/utils/cache.ts around lines 190–211 the code backfills the in-memory cache with a hardcoded 15s TTL which can violate the original TTL and serve stale data; fix by either removing the backfill entirely or computing a safe TTL: when reading from Upstash, determine the remaining TTL (originalExpiry - now) and only set memoryCache if remainingTTL > 0, using Math.min(remainingTTL, a very small backfill cap like 1000–2000ms) so memory never extends the Upstash lifetime, or alternatively store the original TTL when writing and use that remaining value for backfill instead of the fixed 15s.
+
+
+
+============================================================================
+File: backend/src/controllers/billRemindersController.ts
+Line: 210 to 212
+Type: potential_issue
+
+Comment:
+Critical: Frequency validation doesn't match the TypeScript interface.
+
+The validFrequencies array includes ['once', 'daily', 'weekly', 'biweekly', 'monthly', 'quarterly', 'yearly'], but the BillReminder interface at line 22 defines frequency as 'weekly' | 'monthly' | 'quarterly' | 'yearly' | 'one-time'.
+
+Mismatches:
+- 'once' should be 'one-time'
+- 'daily' and 'biweekly' are not in the interface
+
+This discrepancy will allow invalid data to pass runtime validation but fail TypeScript type checking elsewhere in the codebase.
+
+
+
+Apply this diff to align the validation with the interface:
+
+-    const validFrequencies = ['once', 'daily', 'weekly', 'biweekly', 'monthly', 'quarterly', 'yearly'];
++    const validFrequencies = ['weekly', 'monthly', 'quarterly', 'yearly', 'one-time'];
+
+
+If you need the additional frequency options, update the BillReminder interface definition at line 22.
+
+Prompt for AI Agent:
+In backend/src/controllers/billRemindersController.ts around lines 210 to 212, the runtime frequency validation array doesn't match the BillReminder TypeScript interface (defined at line 22): change the validFrequencies array to exactly ['one-time', 'weekly', 'monthly', 'quarterly', 'yearly'] to replace 'once' with 'one-time' and remove 'daily' and 'biweekly', or alternatively update the BillReminder interface at line 22 to include 'once'/'daily'/'biweekly' if those extra options are intended; ensure both the validation array and the interface are identical and update any error message text to list the corrected values.
+
+
+
+============================================================================
+File: backend/src/utils/upstashCache.ts
+Line: 204 to 222
+Type: potential_issue
+
+Comment:
+Potential race condition during health check.
+
+Temporarily setting isUpstashAvailable = true (line 207) before the PING completes allows concurrent requests to attempt Upstash calls during the health check window, potentially causing spurious failures.
+
+
+
+Consider bypassing the availability check specifically for health checks:
+
+-  private async executeCommand(command: string[]): Promise {
+-    if (!this.isUpstashAvailable || !this.restUrl || !this.restToken) {
++  private async executeCommand(command: string[], bypassAvailabilityCheck = false): Promise {
++    if ((!bypassAvailabilityCheck && !this.isUpstashAvailable) || !this.restUrl || !this.restToken) {
+       return null;
+     }
+
+
+Then in checkUpstashHealth:
+
+-      this.isUpstashAvailable = true;
+-      const result = await this.executeCommand(['PING']);
++      const result = await this.executeCommand(['PING'], true);
+
+Prompt for AI Agent:
+In backend/src/utils/upstashCache.ts around lines 204 to 222, avoid setting isUpstashAvailable = true before the PING completes because that allows concurrent callers to attempt Upstash operations during the health check window; instead add a way to bypass the availability guard for health checks (e.g., add a boolean parameter like skipAvailabilityCheck to executeCommand or create an internal low-level ping method) and call that from checkUpstashHealth without changing isUpstashAvailable until the PING succeeds; on success set isUpstashAvailable = true, on failure set it false and schedule the retry timer; also add a short-lived healthCheckInProgress flag to prevent overlapping health checks.
+
+
+
+============================================================================
+File: frontend/src/contexts/auth-context.tsx
+Line: 113 to 122
+Type: potential_issue
+
+Comment:
+Unsafe type cast for empty/non-JSON responses.
+
+Returning {} as T can cause runtime errors when callers access expected properties like response.data. If the API returns 204 or non-JSON content, callers expecting { success: boolean; data: UserData } will get undefined when accessing .data.
+
+
+
+Consider returning null or a discriminated union, or throw for unexpected content types:
+
+  // Handle empty responses (e.g., 204 No Content) or non-JSON responses
+  const contentType = response.headers.get('content-type')
+  if (response.status === 204 || 
+      response.headers.get('content-length') === '0' ||
+      !contentType?.includes('application/json')) {
+-   return {} as T
++   return null as unknown as T
+  }
+
+  return await response.json()
+
+
+Then update callers to handle null returns, or better yet, make the generic type explicitly nullable: apiRequest.
+
+Prompt for AI Agent:
+In frontend/src/contexts/auth-context.tsx around lines 113 to 122, the function currently returns an unsafe cast "{} as T" for 204/empty/non-JSON responses which causes runtime property access errors; change the function to return a well-typed null (or throw) instead of an empty object by updating the function signature to return Promise (or a discriminated union), return null for empty/non-JSON responses, and then update all callers to handle the nullable return (or propagate/handle the thrown error) so consumers no longer assume required properties exist on an empty object.
+
+
+
+============================================================================
+File: backend/src/models/schemas.ts
+Line: 282 to 291
+Type: potential_issue
+
+Comment:
+Default sortBy: 'date' is problematic for a generic pagination schema.
+
+The schema is exported as a generic pagination schema but defaults sortBy to 'date', which may not exist on all entities (e.g., assets, liabilities, notifications). If used directly for non-expense entities, this will cause runtime errors when querying entities that lack a date field.
+
+Consider one of these approaches:
+1. Change the default to a more universal field like 'createdAt'
+2. Remove the default entirely, requiring each entity-specific schema to specify it
+3. Make sortBy required without a default
+
+
+
+-  / Field to sort by (default: 'date' for expenses, 'createdAt' for others) */
+-  sortBy: Joi.string().valid('date', 'createdAt', 'amount', 'name').default('date')
++  / Field to sort by (must be specified by entity-specific schemas) */
++  sortBy: Joi.string().valid('date', 'createdAt', 'amount', 'name').default('createdAt')
+
+Prompt for AI Agent:
+In backend/src/models/schemas.ts around lines 282 to 291, the generic pagination schema defaults sortBy to 'date', which doesn't exist on many entities; remove the .default('date') and make sortBy explicitly required (or at least remove its default) so each entity-specific schema must provide the appropriate default/allowed value (e.g., 'createdAt' for most entities) to avoid runtime errors when paginating non-expense types.
+
+
+
+============================================================================
+File: backend/src/controllers/billRemindersController.ts
+Line: 359 to 373
+Type: potential_issue
+
+Comment:
+Add validation for updated fields.
+
+The update function allows modifying fields without validation, creating an opportunity for invalid data to enter the database. For instance:
+- name could be empty or exceed 100 characters
+- amount could be negative or non-numeric  
+- dueDate could have an invalid format
+- frequency could be an invalid value
+- reminderDays could contain out-of-range numbers
+
+This is inconsistent with the comprehensive validation in createBillReminder and creates a security/data integrity gap.
+
+
+
+Apply validation similar to the create function for each field that's being updated:
+
+     // Only copy allowed fields from request body
+-    if (req.body.name !== undefined) updateData.name = req.body.name;
+-    if (req.body.amount !== undefined) updateData.amount = req.body.amount;
+-    if (req.body.dueDate !== undefined) updateData.dueDate = req.body.dueDate;
+-    if (req.body.frequency !== undefined) updateData.frequency = req.body.frequency;
++    if (req.body.name !== undefined) {
++      if (typeof req.body.name !== 'string' || req.body.name.trim().length === 0) {
++        throw new AppError('Name must be a non-empty string', 400, true);
++      }
++      if (req.body.name.length > 100) {
++        throw new AppError('Name cannot exceed 100 characters', 400, true);
++      }
++      updateData.name = req.body.name.trim();
++    }
++    if (req.body.amount !== undefined) {
++      const numericAmount = Number(req.body.amount);
++      if (!Number.isFinite(numericAmount) || numericAmount  typeof d !== 'number' || d  365)) {
++        throw new AppError('Reminder days must be an array of numbers between 0 and 365', 400, true);
++      }
++      updateData.reminderDays = req.body.reminderDays;
++    }
++    if (req.body.autoPayEnabled !== undefined) {
++      if (typeof req.body.autoPayEnabled !== 'boolean') {
++        throw new AppError('Auto pay enabled must be a boolean', 400, true);
++      }
++      updateData.autoPayEnabled = req.body.autoPayEnabled;
++    }
++    if (req.body.linkedAccount !== undefined) {
++      updateData.linkedAccount = req.body.linkedAccount?.trim() || undefined;
++    }
+
+Prompt for AI Agent:
+In backend/src/controllers/billRemindersController.ts around lines 359 to 373, the current update path copies allowed fields from req.body without validation; add the same field-level validation used in createBillReminder before assigning each value: trim and ensure name is non-empty and  = 0, validate dueDate is a valid ISO/date, ensure frequency is one of the allowed enum values, validate category/description lengths (apply same limits as create), ensure reminderDays is an array of integers within the allowed range, verify autoPayEnabled is boolean, and validate linkedAccount ID format; if any field fails validation return a 400 with an error message and only set updateData fields after they pass validation, keeping updatedAt assignment as-is.
+
+
+
+============================================================================
+File: backend/src/controllers/stocksController/index.ts
+Line: 276 to 284
+Type: potential_issue
+
+Comment:
+Return empty results instead of 500 error for no matches.
+
+When search yields no valid results, throwing an error returns HTTP 500, which incorrectly signals a server failure. An empty search result is a valid outcome.
+
+
+
+         const validResults = results.filter(s => s && s.price > 0)
+-        if (validResults.length > 0) { res.json({ success: true, data: validResults }); return }
++        res.json({ success: true, data: validResults }); return
+       }
+     }
+-    throw new Error('No valid search results')
++    res.json({ success: true, data: [] })
+   } catch (error) {
+
+Prompt for AI Agent:
+In backend/src/controllers/stocksController/index.ts around lines 276 to 284, do not throw an Error when no valid search results are found; instead return a successful 200 response with an empty data array. Replace the throw new Error('No valid search results') with res.json({ success: true, data: [] }) and keep the catch block as-is to log and return 500 only for genuine runtime errors.
+
+
+
+============================================================================
+File: backend/src/controllers/budgets.ts
+Line: 144 to 156
+Type: potential_issue
+
+Comment:
+Cursor validation adds an extra DB read on every paginated request.
+
+Fetching the cursor document to validate it incurs an additional database read for every paginated query. For high-traffic endpoints, this could significantly impact performance and costs.
+
+Consider these alternatives:
+- Use Firestore's snapshot-based cursors passed as opaque tokens
+- Encode cursor metadata (timestamp/sortField value) that can be validated without a DB call
+- Accept that invalid cursors will simply return no results (failing gracefully)
+
+
+
+Additionally, the catch block (lines 152-155) treats all errors as invalid cursors, which could mask legitimate database connectivity issues.
+
+Prompt for AI Agent:
+In backend/src/controllers/budgets.ts around lines 144 to 156, the current code does an extra DB read to validate the pagination cursor and then treats any error as an "Invalid pagination cursor", which wastes reads and can mask real DB errors; instead remove the doc GET and either decode an opaque/encoded cursor payload (e.g., include the timestamp/sortField value or a signed token) and call query.startAfter(decodedValue), or accept invalid cursors by not validating and just calling startAfter with the provided value (letting the query return no results); if you must keep a DB read, narrow the try/catch so only a missing or mismatched cursor triggers AppError('Invalid pagination cursor', 400, true) and rethrow other exceptions (or wrap them as 500/internal errors) rather than treating all exceptions as invalid cursors.
+
+
+
+============================================================================
+File: backend/src/controllers/budgets.ts
+Line: 119 to 123
+Type: potential_issue
+
+Comment:
+Cache stampede vulnerability under concurrent load.
+
+The current cache-aside pattern has no protection against cache stampedes. When the cache expires, multiple concurrent requests will simultaneously:
+1. Miss the cache (line 119-120)
+2. Query the database (line 159)
+3. Write to the cache (line 185)
+
+This defeats the purpose of caching and can overwhelm the database during traffic spikes.
+
+Consider implementing one of these patterns:
+- Request coalescing: Use a promise cache or mutex to ensure only one request fetches data
+- Probabilistic early expiration: Refresh cache before TTL expires
+- Cache warming: Background job to refresh popular queries
+
+
+
+Example request coalescing approach:
+
+const inflightRequests = new Map>();
+
+// In getAllBudgets, before cache check:
+const existing = inflightRequests.get(cacheKey);
+if (existing) {
+  const result = await existing;
+  res.status(200).json(result);
+  return;
+}
+
+// After cache miss:
+const fetchPromise = (async () => {
+  // ... existing DB query logic ...
+  return result;
+})();
+
+inflightRequests.set(cacheKey, fetchPromise);
+try {
+  const result = await fetchPromise;
+  await cache.setAsync(cacheKey, result, CACHE_TTL.LIST_QUERY);
+  return result;
+} finally {
+  inflightRequests.delete(cacheKey);
+}
+
+
+
+Also applies to: 184-185
+
+Prompt for AI Agent:
+backend/src/controllers/budgets.ts around lines 119-123 (and also affecting lines ~159 and 184-185): the current cache-aside flow is vulnerable to a cache-stampede because multiple concurrent requests can miss the cache, run the DB query, and write to cache simultaneously; implement request coalescing by adding a module-level Map keyed by cacheKey to store in-flight fetch Promises, check the map before querying the cache/DB and await an existing promise if present, otherwise create and store a fetch Promise that performs the DB query and cache set (with TTL), ensure the Promise is removed from the map in a finally block so subsequent requests can proceed, and make sure errors propagate and do not leave stale map entries; alternatively you may implement probabilistic early expiration or background cache warming for hot keys, but the immediate fix is to add the inflightRequests Map wrapping around the cache-miss -> DB query -> cache-set sequence.
+
+
+
+============================================================================
+File: backend/src/controllers/budgets.ts
+Line: 416 to 419
+Type: potential_issue
+
+Comment:
+Cache invalidation failures could cause false error responses.
+
+If any cache invalidation promise rejects, Promise.all will throw, causing the outer catch block to execute. This results in:
+1. Database operation succeeds (update/delete at lines 413, 491)
+2. Cache invalidation fails
+3. Client receives error response even though the operation succeeded
+4. Cache becomes inconsistent with database
+
+Consider making cache invalidation non-blocking or handling failures gracefully:
+
+
+
+Option 1: Fire-and-forget (recommended for most cases)
+
+ await db.collection('budgets').doc(budgetId).update(updateData);
+ 
+ // Invalidate caches
+-await Promise.all([
+-  cache.invalidatePatternAsync(budgets:${userId}:*),
+-  cache.delAsync(buildBudgetCacheKey(budgetId))
+-]);
++Promise.all([
++  cache.invalidatePatternAsync(budgets:${userId}:*),
++  cache.delAsync(buildBudgetCacheKey(budgetId))
++]).catch(err => {
++  logger.warn('Cache invalidation failed', { budgetId, userId, error: err.message });
++});
+
+
+Option 2: Best-effort with logging
+
+ await db.collection('budgets').doc(budgetId).update(updateData);
+ 
+ // Invalidate caches
+-await Promise.all([
+-  cache.invalidatePatternAsync(budgets:${userId}:*),
+-  cache.delAsync(buildBudgetCacheKey(budgetId))
+-]);
++try {
++  await Promise.all([
++    cache.invalidatePatternAsync(budgets:${userId}:*),
++    cache.delAsync(buildBudgetCacheKey(budgetId))
++  ]);
++} catch (err) {
++  logger.error('Cache invalidation failed', { budgetId, userId, error: err.message });
++  // Continue - cache will expire naturally
++}
+
+
+
+Also applies to: 494-497
+
+Prompt for AI Agent:
+In backend/src/controllers/budgets.ts around lines 416-419 (and likewise 494-497), the current Promise.all wrapper causes cache invalidation failures to reject the whole flow and return an error to the client even when the DB operation succeeded; change the invalidation to be non-blocking or best-effort: replace Promise.all with a fire-and-forget or Promise.allSettled approach and ensure any rejection is caught and logged (do not rethrow), so the handler returns the successful DB result to the client while still attempting to invalidate cache and recording failures for debugging.
+
+
+
+============================================================================
+File: backend/src/controllers/netWorthController.ts
+Line: 1008 to 1013
+Type: potential_issue
+
+Comment:
+Snapshot update failures are silently swallowed.
+
+When updateNetWorthSnapshot fails, the error is only logged but not propagated. This means CRUD operations succeed but the net worth history becomes stale without any indication to the user or calling code. Consider either propagating the error or returning a status flag.
+
+Prompt for AI Agent:
+In backend/src/controllers/netWorthController.ts around lines 1008 to 1013, the catch block for updateNetWorthSnapshot only logs the error and swallows it; change behavior so failures are not silent by either (A) rethrowing the caught error after logging so callers can handle it, or (B) changing the method signature to return a success/failure status (e.g., boolean or Result) and return false on failure after logging; ensure all callers are updated to handle the propagated error or check the status and act accordingly.
+
+
+
+============================================================================
+File: backend/src/controllers/budgets.ts
+Line: 406 to 407
+Type: potential_issue
+
+Comment:
+Missing amount validation allows invalid data.
+
+Unlike createBudget which validates amount is positive and finite (lines 311-314), updateBudget performs no validation before converting to Number. This allows:
+- NaN (if amount is non-numeric string)
+- Negative amounts
+- Infinity
+
+This is a data integrity issue that could break calculations and reports.
+
+
+
+Apply this diff to add consistent validation:
+
+ if (name !== undefined) updateData.name = name;
+-if (amount !== undefined) updateData.amount = Number(amount);
++if (amount !== undefined) {
++  const numericAmount = Number(amount);
++  if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
++    throw new AppError('Amount must be a positive number', 400, true);
++  }
++  updateData.amount = numericAmount;
++}
+ if (period !== undefined) updateData.period = period;
+
+Prompt for AI Agent:
+In backend/src/controllers/budgets.ts around lines 406 to 407, the update path currently sets updateData.amount = Number(amount) without validation; change it to mirror createBudget's checks by parsing amount to a Number, verifying it's finite (Number.isFinite), not NaN, and greater than 0 before assigning to updateData.amount, and return a 400/appropriate error if validation fails so NaN, negative, or Infinity values cannot be saved.
+
+
+
+============================================================================
+File: frontend/src/lib/stock-api.ts
+Line: 428 to 438
+Type: potential_issue
+
+Comment:
+Using placeholder timestamps causes data integrity issues.
+
+Lines 429, 436-437 use the current time for both createdAt and updatedAt timestamps. This approach loses important historical data about when holdings were originally created and last modified. If these timestamps are used for:
+- Business logic (e.g., tax calculations, holding period determination)
+- Reporting or analytics
+- UI display of holding age
+
+...the placeholder values will produce incorrect results.
+
+
+
+Consider one of these solutions:
+1. Preferred: Update the backend API to return actual timestamps for portfolio holdings
+2. Alternative: Omit the timestamp fields entirely if they're not available, rather than using fake values
+
+ return holdings.map((h: UserPortfolioStock) => ({
+   userId,
+   symbol: h.symbol,
+   shares: h.shares,
+   averagePrice: h.purchasePrice,
+   totalInvested: h.purchasePrice * h.shares,
+-  createdAt: now,
+-  updatedAt: now,
+ }))
+
+
+If timestamps are required by the interface, consider making them optional in the PortfolioHolding interface.
+
+Prompt for AI Agent:
+In frontend/src/lib/stock-api.ts around lines 428-438, the code sets createdAt and updatedAt to the current time as placeholders which corrupts historical data; instead either (preferred) update the backend API to return real createdAt/updatedAt values and map those through here, or (if backend cannot be changed now) remove the placeholder fields from the mapped objects and make the PortfolioHolding/holding interface timestamps optional so the frontend does not fabricate dates; update the mapping to omit createdAt/updatedAt when missing and coordinate with backend to add real timestamps.
+
+
+
+============================================================================
+File: backend/src/controllers/netWorthController.ts
+Line: 636 to 644
+Type: potential_issue
+
+Comment:
+Unbounded cache key cardinality from user-controlled limit parameter.
+
+The cache key includes the limit value directly from query params. A malicious or misbehaving client could request many different limit values (1, 2, 3, ..., 1000), creating numerous cache entries per user. Consider clamping to a maximum or using standard buckets (e.g., 6, 12, 24).
+
+
+-    const limit = parseInt(req.query.limit as string) || 12; // Default 12 months
++    const parsedLimit = parseInt(req.query.limit as string) || 12;
++    const limit = Math.min(Math.max(parsedLimit, 1), 60); // Clamp between 1 and 60
+
+Prompt for AI Agent:
+In backend/src/controllers/netWorthController.ts around lines 636 to 644, the cache key uses the raw user-controlled limit query param which allows unbounded cache key cardinality; clamp or bucket the incoming limit before building the cache key (e.g., parse the param, enforce a maximum like MAX_LIMIT = 36 and a minimum of 1, or map to a small set of allowed buckets such as [6,12,24]); then use the sanitized/bucketed value when calling buildNetWorthHistoryCacheKey and for subsequent queries. Ensure the code still falls back to the default (12) when parsing fails and rejects or normalizes out-of-range values to prevent many distinct cache entries.
+
+
+
+============================================================================
+File: frontend/src/lib/api.ts
+Line: 497 to 518
+Type: potential_issue
+
+Comment:
+File upload retries may cause duplicate expense records.
+
+The processReceipt method uses enhancedFetch which automatically retries failed requests (up to 3 times). For file uploads, this could lead to duplicate processing if:
+1. The upload succeeds and is processed by the backend
+2. The response fails to reach the client (network error)
+3. The client retries, creating a duplicate expense
+
+
+
+Consider one of these approaches:
+
+Option 1: Disable retries for file uploads by creating a separate fetch function without retry logic.
+
+Option 2: Implement idempotency tokens to prevent duplicate processing:
+
+ async processReceipt(file: File): Promise {
+   const formData = new FormData()
+   formData.append('receipt', file)
++  formData.append('idempotencyKey', ${Date.now()}-${Math.random()})
+   
+   const token = await auth.currentUser?.getIdToken()
+   if (!token) throw new Error('Authentication required')
+   
+-  const response = await enhancedFetch('receipts/process', {
++  // Use fetch directly without retries for file uploads
++  const baseUrl = getApiBaseUrl()
++  const controller = new AbortController()
++  const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT)
++  
++  const response = await fetch(${baseUrl}/receipts/process, {
+     method: 'POST',
+     headers: {
+       'Authorization': Bearer ${token}
+     },
+-    body: formData
++    body: formData,
++    signal: controller.signal
+   })
++  
++  clearTimeout(timeoutId)
++  
++  if (!response.ok) {
++    const errorData = await response.json().catch(() => ({}))
++    throw new Error(errorData.error || 'Receipt processing failed')
++  }
+   
+   return await response.json()
+ }
+
+
+
+
+============================================================================
+File: frontend/src/lib/api.ts
+Line: 552 to 558
+Type: potential_issue
+
+Comment:
+Type mismatch between createGoal parameters and Goal interface.
+
+The createGoal method accepts deadline? but the Goal interface defines targetDate (line 29). This inconsistency could cause confusion and runtime errors if the backend expects targetDate.
+
+Additionally, the parameter type omits several required Goal fields like priority, isCompleted, etc.
+
+
+
+Align the parameter type with the Goal interface:
+
+ async createGoal(goal: {
+   name: string
+   targetAmount: number
+   currentAmount?: number
+-  deadline?: string
++  targetDate: string
+   category?: string
++  description?: string
++  priority?: 'low' | 'medium' | 'high'
+ }): Promise {
+   const headers = await getAuthHeaders()
+   const response = await enhancedFetch('goals', {
+     method: 'POST',
+     headers,
+     body: JSON.stringify(goal)
+   })
+   
+   invalidateCache('goals')
+   return response.json()
+ }
+
+
+Alternatively, create a dedicated CreateGoalPayload interface similar to CreateExpensePayload (line 143).
+
+Prompt for AI Agent:
+In frontend/src/lib/api.ts around lines 552 to 558, the createGoal parameter type is inconsistent with the Goal interface (uses deadline? while Goal has targetDate and omits required fields like priority and isCompleted); update the method to accept a payload that matches the Goal shape or introduce a new CreateGoalPayload interface (like CreateExpensePayload) containing all server-expected fields (e.g., name, targetAmount, currentAmount?, targetDate, category?, priority, isCompleted, etc.), change the createGoal signature to use that type, and convert/rename fields (deadline → targetDate) before sending to the backend so types and runtime data align.
+
+
+
+Review completed ✔

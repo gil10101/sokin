@@ -4,7 +4,6 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { doc, getDoc, updateDoc } from "firebase/firestore"
 import {
   updateProfile,
   updateEmail,
@@ -12,19 +11,25 @@ import {
   EmailAuthProvider,
   reauthenticateWithCredential,
 } from "firebase/auth"
-import { auth, db } from "../../../lib/firebase"
+import { auth } from "@/lib/firebase"
 import { useAuthState } from "react-firebase-hooks/auth"
-import { MotionDiv, MotionMain } from "../../../components/ui/dynamic-motion"
-import { DashboardSidebar } from "../../../components/dashboard/sidebar"
-import { Input } from "../../../components/ui/input"
-import { Button } from "../../../components/ui/button"
-import { Avatar, AvatarFallback, AvatarImage } from "../../../components/ui/avatar"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../components/ui/tabs"
+import { MotionDiv, MotionMain } from "@/components/ui/dynamic-motion"
+import { DashboardSidebar } from "@/components/dashboard/sidebar"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Eye, EyeOff, Save, User } from "lucide-react"
-import { useToast } from "../../../hooks/use-toast"
-import type { UserProfile } from "../../../lib/types"
+import { useToast } from "@/hooks/use-toast"
+import type { UserProfile } from "@/lib/types"
+import { userProfileAPI } from "@/lib/api"
 
-export default function ProfilePage() {
+interface ProfilePageProps {
+  params?: Promise<Record<string, string>>;
+  searchParams?: Promise<Record<string, string>>;
+}
+
+export default function ProfilePage(props: ProfilePageProps) {
   const [collapsed, setCollapsed] = useState(false)
   const [user, loading] = useAuthState(auth)
   const router = useRouter()
@@ -55,13 +60,11 @@ export default function ProfilePage() {
     
     const fetchUserData = async () => {
       try {
-        const userDoc = await getDoc(doc(db, "users", user.uid))
-        if (userDoc.exists()) {
-          setUserData(userDoc.data() as UserProfile)
-        }
+        const profile = await userProfileAPI.getProfile(user.uid)
+        setUserData(profile)
 
-        setName(user.displayName || "")
-        setEmail(user.email || "")
+        setName(profile.name || user.displayName || "")
+        setEmail(profile.email || user.email || "")
         setIsInitialized(true)
       } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : "There was an error loading your profile"
@@ -86,20 +89,15 @@ export default function ProfilePage() {
       // Update display name in Firebase Auth
       await updateProfile(user, { displayName: name })
 
-      // Update user document in Firestore
-      await updateDoc(doc(db, "users", user.uid), {
-        name,
-      })
-
       // Update email if changed
       if (email !== user.email) {
         await updateEmail(user, email)
-
-        // Update email in Firestore
-        await updateDoc(doc(db, "users", user.uid), {
-          email,
-        })
       }
+
+      await userProfileAPI.updateProfile(user.uid, {
+        name,
+        email,
+      })
 
       toast({
         title: "Profile updated",

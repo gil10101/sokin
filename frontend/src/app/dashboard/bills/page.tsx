@@ -3,11 +3,11 @@
 import React, { useState, useEffect, useCallback } from "react"
 
 import { isBefore, isAfter } from "date-fns"
-import { DashboardSidebar } from "../../../components/dashboard/sidebar"
-import { BillReminders } from "../../../components/dashboard/bill-reminders"
-import { MetricCard } from "../../../components/dashboard/metric-card"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../../../components/ui/dropdown-menu"
-import { MotionContainer } from "../../../components/ui/motion-container"
+import { DashboardSidebar } from "@/components/dashboard/sidebar"
+import { BillReminders } from "@/components/dashboard/bill-reminders"
+import { MetricCard } from "@/components/dashboard/metric-card"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { MotionContainer } from "@/components/ui/motion-container"
 import {
   Bell,
   DollarSign,
@@ -15,10 +15,10 @@ import {
   Clock,
   ChevronRight
 } from "lucide-react"
-import { MotionDiv, MotionMain, MotionHeader } from "../../../components/ui/dynamic-motion"
-import { useToast } from "../../../hooks/use-toast"
-import { LoadingSpinner } from "../../../components/ui/loading-spinner"
-import { AddButton } from "../../../components/ui/add-button"
+import { MotionDiv, MotionMain, MotionHeader } from "@/components/ui/dynamic-motion"
+import { useToast } from "@/hooks/use-toast"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { AddButton } from "@/components/ui/add-button"
 
 interface BillReminder {
   id: string
@@ -44,7 +44,12 @@ interface BillStats {
   categoryBreakdown: { category: string; amount: number; count: number }[]
 }
 
-export default function BillsPage() {
+interface BillsPageProps {
+  params?: Promise<Record<string, string>>;
+  searchParams?: Promise<Record<string, string>>;
+}
+
+export default function BillsPage(props: BillsPageProps) {
   const [bills, setBills] = useState<BillReminder[]>([])
   const [stats, setStats] = useState<BillStats>({
     totalBills: 0,
@@ -192,8 +197,10 @@ export default function BillsPage() {
         <DashboardSidebar collapsed={collapsed} setCollapsed={setCollapsed} />
         <main className="flex-1 overflow-auto p-6 md:p-8 lg:p-10">
           <div className="max-w-7xl mx-auto">
-            <div className="flex items-center justify-center h-96">
-              <LoadingSpinner variant="pulse" size="lg" />
+            <div className="ml-12 md:ml-0">
+              <div className="flex items-center justify-center h-96">
+                <LoadingSpinner variant="pulse" size="lg" />
+              </div>
             </div>
           </div>
         </main>

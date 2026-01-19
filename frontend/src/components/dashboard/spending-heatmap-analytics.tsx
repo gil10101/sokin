@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo } from 'react'
-import { useViewport } from '../../hooks/use-mobile'
+import { useViewport } from '@/hooks/use-mobile'
 import { format, subMonths, eachDayOfInterval } from 'date-fns'
 
 // Simple card components to avoid React 19 type conflicts

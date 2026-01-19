@@ -3,29 +3,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.idParamsSchema = exports.updateLiabilitySchema = exports.createLiabilitySchema = exports.updateAssetSchema = exports.createAssetSchema = exports.registerFcmTokenSchema = exports.updateNotificationPreferencesSchema = exports.markNotificationReadParamsSchema = exports.updateUserSchema = exports.updateBudgetSchema = exports.createBudgetSchema = exports.updateExpenseSchema = exports.createExpenseSchema = void 0;
+exports.budgetsPaginationSchema = exports.expensesPaginationSchema = exports.paginationQuerySchema = exports.stockSymbolParamsSchema = exports.userIdParamsSchema = exports.idParamsSchema = exports.updateLiabilitySchema = exports.createLiabilitySchema = exports.updateAssetSchema = exports.createAssetSchema = exports.registerFcmTokenSchema = exports.updateNotificationPreferencesSchema = exports.markNotificationReadParamsSchema = exports.updateUserSchema = exports.updateBudgetSchema = exports.createBudgetSchema = exports.updateExpenseSchema = exports.createExpenseSchema = void 0;
 const joi_1 = __importDefault(require("joi"));
-// Security-focused validation patterns
-const patterns = {
-    // Basic alphanumeric + limited safe symbols, no quotes/parentheses for XSS protection
-    safeText: /^[a-zA-Z0-9\s\-_.,!?]{1,200}$/,
-    // Currency amounts (positive numbers with up to 2 decimals)
-    currency: /^\d+(\.\d{1,2})?$/,
-    // Categories (alphanumeric with spaces, hyphens, underscores - strict length limit)
-    category: /^[a-zA-Z0-9\s\-_]{1,50}$/,
-    // Firebase document IDs (exactly 20 URL-safe base64-like characters)
-    firebaseId: /^[a-zA-Z0-9_-]{20}$/
-};
-// Common validation helpers
-const commonValidations = {
-    userId: joi_1.default.string().pattern(patterns.firebaseId).required(),
-    amount: joi_1.default.number().positive().max(999999.99).precision(2).required(),
-    category: joi_1.default.string().pattern(patterns.category).min(1).max(50).required(),
-    name: joi_1.default.string().pattern(patterns.safeText).min(1).max(100).required(),
-    description: joi_1.default.string().pattern(patterns.safeText).allow('').max(500),
-    date: joi_1.default.date().max('now').required(),
-    tags: joi_1.default.array().items(joi_1.default.string().pattern(patterns.category).max(30)).max(10)
-};
 // Expense schemas
 exports.createExpenseSchema = joi_1.default.object({
     name: joi_1.default.string().required().trim(),
@@ -243,4 +222,66 @@ exports.updateLiabilitySchema = joi_1.default.object({
 // ID validation schema for path parameters
 exports.idParamsSchema = joi_1.default.object({
     id: joi_1.default.string().trim().min(8).max(128).required()
+});
+// User ID validation schema for path parameters (Firebase UID format)
+exports.userIdParamsSchema = joi_1.default.object({
+    userId: joi_1.default.string()
+        .trim()
+        .pattern(/^[a-zA-Z0-9_-]{20,128}$/)
+        .required()
+        .messages({
+        'string.pattern.base': 'Invalid user ID format',
+        'any.required': 'User ID is required'
+    })
+});
+// Stock symbol validation schema for path parameters
+exports.stockSymbolParamsSchema = joi_1.default.object({
+    symbol: joi_1.default.string()
+        .trim()
+        .uppercase()
+        .min(1)
+        .max(10)
+        .pattern(/^[A-Z^]+$/)
+        .required()
+        .messages({
+        'string.pattern.base': 'Invalid stock symbol format',
+        'any.required': 'Stock symbol is required'
+    })
+});
+// Pagination query parameters schema
+exports.paginationQuerySchema = joi_1.default.object({
+    /** Number of items to return (1-100, default: 50) */
+    limit: joi_1.default.number().integer().min(1).max(100).default(50),
+    /** Cursor for pagination (document ID to start after) */
+    cursor: joi_1.default.string().trim().min(8).max(128).optional(),
+    /** Sort order: 'asc' or 'desc' (default: 'desc') */
+    sortOrder: joi_1.default.string().valid('asc', 'desc').default('desc'),
+    /** Field to sort by (default: 'date' for expenses, 'createdAt' for others) */
+    sortBy: joi_1.default.string().valid('date', 'createdAt', 'amount', 'name').default('date')
+});
+// Expenses-specific pagination with date filtering
+exports.expensesPaginationSchema = exports.paginationQuerySchema.keys({
+    /** Filter by category */
+    category: joi_1.default.string().trim().max(50).optional(),
+    /** Filter by start date (ISO format) */
+    startDate: joi_1.default.string().isoDate().optional(),
+    /** Filter by end date (ISO format) */
+    endDate: joi_1.default.string().isoDate().optional()
+}).custom((value, helpers) => {
+    // Validate that endDate is not before startDate
+    if (value.startDate && value.endDate && value.startDate > value.endDate) {
+        return helpers.error('any.invalid', { message: 'endDate must be after or equal to startDate' });
+    }
+    return value;
+}, 'date range validation').messages({
+    'any.invalid': 'endDate must be after or equal to startDate'
+});
+// Budgets-specific pagination
+exports.budgetsPaginationSchema = exports.paginationQuerySchema.keys({
+    /** Filter by period type */
+    period: joi_1.default.string().valid('daily', 'weekly', 'monthly', 'yearly').optional(),
+    /** Filter active budgets only */
+    activeOnly: joi_1.default.boolean().default(false)
+}).keys({
+    sortBy: joi_1.default.string().valid('createdAt', 'amount', 'name', 'startDate').default('createdAt')
 });

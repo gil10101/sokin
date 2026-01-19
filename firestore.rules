@@ -17,10 +17,15 @@ rules_version = '2';
  * - notifications: User notifications
  * - goals: User savings goals
  * - billReminders: User bill reminders
+ * - assets: User financial assets
+ * - liabilities: User financial liabilities/debts
+ * - incomes: User income records
+ * - netWorthSnapshots: User net worth history
+ * - predictions: AI/ML spending predictions
  * - portfolios: User stock portfolios (deprecated - use stockTransactions)
  * - watchlists: User stock watchlists
  * - stockTransactions: User stock transactions
- * - netWorthSnapshots: User net worth history
+ * - rateLimits: Server-side rate limiting (no client access)
  * - categories: Global expense categories (read-only)
  */
 service cloud.firestore {
@@ -79,12 +84,13 @@ service cloud.firestore {
      * Helper function to validate stock symbol format
      * @param {string} symbol - The stock symbol to validate
      * @returns {bool} True if symbol format is valid
+     * Allows uppercase letters, digits, dots (e.g., BRK.A), and caret (^) for indices
      */
     function isValidStockSymbol(symbol) {
       return symbol is string && 
              symbol.size() >= 1 && 
              symbol.size() <= 10 &&
-             symbol.matches('^[A-Z^]+$');
+             symbol.matches('^[A-Z0-9.^]+$');
     }
 
     /**
@@ -203,7 +209,7 @@ service cloud.firestore {
         hasRequiredFields(['userId', 'name', 'amount', 'billingCycle']) &&
         isValidAmount(request.resource.data.amount) &&
         request.resource.data.name is string &&
-        request.resource.data.billingCycle in ['daily', 'weekly', 'monthly', 'yearly'] &&
+        request.resource.data.billingCycle in ['monthly', 'quarterly', 'semi-annually', 'annually', 'custom'] &&
         hasValidTimestamps();
         
       allow update: if isAuthenticated() && 
@@ -225,7 +231,12 @@ service cloud.firestore {
         hasRequiredFields(['userId', 'title', 'message', 'type']) &&
         request.resource.data.title is string &&
         request.resource.data.message is string &&
-        request.resource.data.type in ['info', 'warning', 'error', 'success'] &&
+        // Application-specific notification types
+        request.resource.data.type in [
+          'budget_warning', 'budget_exceeded', 'bill_reminder', 
+          'goal_milestone', 'goal_achieved', 'spending_insight',
+          'monthly_report', 'info', 'warning', 'error', 'success', 'system'
+        ] &&
         hasValidTimestamps();
         
       allow update: if isAuthenticated() && 
@@ -270,7 +281,8 @@ service cloud.firestore {
         hasRequiredFields(['userId', 'name', 'amount', 'dueDate']) &&
         request.resource.data.name is string &&
         isValidAmount(request.resource.data.amount) &&
-        request.resource.data.dueDate is timestamp &&
+        // dueDate can be ISO string or Firestore timestamp
+        (request.resource.data.dueDate is string || request.resource.data.dueDate is timestamp) &&
         hasValidTimestamps();
         
       allow update: if isAuthenticated() && 
@@ -323,16 +335,16 @@ service cloud.firestore {
       allow read, write: if isAuthenticated() && request.auth.uid == resource.data.userId;
       allow create: if isAuthenticated() && 
         request.auth.uid == request.resource.data.userId &&
-        hasRequiredFields(['userId', 'symbol', 'type', 'shares', 'price', 'totalValue']) &&
+        hasRequiredFields(['userId', 'symbol', 'transactionType', 'shares', 'pricePerShare', 'totalAmount']) &&
         isValidStockSymbol(request.resource.data.symbol) &&
-        request.resource.data.type in ['buy', 'sell'] &&
+        request.resource.data.transactionType in ['buy', 'sell'] &&
         request.resource.data.shares is number &&
         request.resource.data.shares > 0 &&
         request.resource.data.shares <= 1000000 && // Max 1M shares per transaction
-        isValidAmount(request.resource.data.price) &&
-        isValidAmount(request.resource.data.totalValue) &&
-        // Validate total value calculation (with 1% tolerance for rounding)
-        math.abs(request.resource.data.totalValue - (request.resource.data.shares * request.resource.data.price)) <= (request.resource.data.totalValue * 0.01) &&
+        isValidAmount(request.resource.data.pricePerShare) &&
+        isValidAmount(request.resource.data.totalAmount) &&
+        // Validate total amount calculation (with 1% tolerance for rounding)
+        math.abs(request.resource.data.totalAmount - (request.resource.data.shares * request.resource.data.pricePerShare)) <= (request.resource.data.totalAmount * 0.01) &&
         hasValidTimestamps();
         
       allow update: if isAuthenticated() && 
@@ -385,5 +397,79 @@ service cloud.firestore {
       // Block all client-side access to rate limiting data
       allow read, write: if false;
     }
+
+    /**
+     * Assets collection - User financial assets
+     * Security: Users can only access their own assets
+     * Validation: Ensures valid asset structure and amounts
+     */
+    match /assets/{assetId} {
+      allow read, write: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      allow create: if isAuthenticated() &&
+        request.auth.uid == request.resource.data.userId &&
+        hasRequiredFields(['userId', 'type', 'category', 'name', 'currentValue']) &&
+        request.resource.data.name is string &&
+        request.resource.data.type is string &&
+        request.resource.data.category in ['bank_accounts', 'investment_accounts', 'real_estate', 'vehicles', 'other_valuables'] &&
+        isValidAmount(request.resource.data.currentValue);
+
+      allow update: if isAuthenticated() &&
+        request.auth.uid == resource.data.userId &&
+        request.auth.uid == request.resource.data.userId &&
+        isValidAmount(request.resource.data.currentValue);
+    }
+
+    /**
+     * Liabilities collection - User financial liabilities/debts
+     * Security: Users can only access their own liabilities
+     * Validation: Ensures valid liability structure and amounts
+     */
+    match /liabilities/{liabilityId} {
+      allow read, write: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      allow create: if isAuthenticated() &&
+        request.auth.uid == request.resource.data.userId &&
+        hasRequiredFields(['userId', 'type', 'category', 'name', 'currentBalance']) &&
+        request.resource.data.name is string &&
+        request.resource.data.type is string &&
+        request.resource.data.category in ['credit_cards', 'mortgages', 'student_loans', 'auto_loans', 'personal_loans', 'other_debts'] &&
+        isValidAmount(request.resource.data.currentBalance);
+
+      allow update: if isAuthenticated() &&
+        request.auth.uid == resource.data.userId &&
+        request.auth.uid == request.resource.data.userId &&
+        isValidAmount(request.resource.data.currentBalance);
+    }
+
+    /**
+     * Incomes collection - User income records
+     * Security: Users can only access their own income records
+     */
+    match /incomes/{incomeId} {
+      allow read, write: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      allow create: if isAuthenticated() &&
+        request.auth.uid == request.resource.data.userId &&
+        hasRequiredFields(['userId', 'name', 'amount']) &&
+        request.resource.data.name is string &&
+        isValidAmount(request.resource.data.amount) &&
+        hasValidTimestamps();
+
+      allow update: if isAuthenticated() &&
+        request.auth.uid == resource.data.userId &&
+        request.auth.uid == request.resource.data.userId &&
+        isValidAmount(request.resource.data.amount) &&
+        hasValidTimestamps();
+    }
+
+    /**
+     * Predictions collection - AI/ML spending predictions
+     * Security: Users can only access their own predictions
+     * Note: Typically created by backend services
+     */
+    match /predictions/{predictionId} {
+      allow read: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      // Write access restricted - predictions are typically generated server-side
+      allow write: if isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+
   }
 }

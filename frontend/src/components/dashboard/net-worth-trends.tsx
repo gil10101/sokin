@@ -21,9 +21,9 @@ import {
   ComposedChart
 } from 'recharts'
 import { format, subMonths, parseISO } from 'date-fns'
-import { useAuth } from '../../contexts/auth-context'
-import { api } from '../../lib/api'
-import { NetWorthTrend, NetWorthSnapshot } from '../../lib/types'
+import { useAuth } from '@/contexts/auth-context'
+import { api } from '@/lib/api'
+import { NetWorthTrend, NetWorthSnapshot } from '@/lib/types'
 
 interface NetWorthTrendsProps {
   currentNetWorth: number

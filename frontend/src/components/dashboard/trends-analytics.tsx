@@ -2,7 +2,7 @@
 
 import React, { useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
-import { useIsMobile } from '../../hooks/use-mobile'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { 
   ResponsiveContainer, 
   BarChart,

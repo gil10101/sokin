@@ -9,7 +9,7 @@ let notificationsAPI: {
 
 const getNotificationsAPI = async () => {
   if (!notificationsAPI) {
-    const { notificationsAPI: api } = await import('./api-services');
+    const { notificationsAPI: api } = await import('./api');
     notificationsAPI = api;
   }
   return notificationsAPI;

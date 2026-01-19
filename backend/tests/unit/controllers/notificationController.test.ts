@@ -102,6 +102,13 @@ jest.mock('../../../src/config/firebase', () => {
   const mockAdd = jest.fn().mockResolvedValue({ id: 'new-notification-xyz789' });
   const mockUpdate = jest.fn().mockResolvedValue(undefined);
   const mockGet = jest.fn().mockResolvedValue(mockUserDoc);
+  const mockNotificationGet = jest.fn().mockResolvedValue({
+    exists: true,
+    data: jest.fn(() => ({
+      userId: 'user-123',
+      read: false
+    }))
+  });
 
   // Chainable query mock
   const createQueryMock = (snapshot: unknown) => ({
@@ -128,10 +135,12 @@ jest.mock('../../../src/config/firebase', () => {
             return createQueryMock({ docs: [], empty: true });
         }
       }),
-      doc: jest.fn(() => ({
-        get: mockGet,
-        update: mockUpdate,
-      })),
+      doc: jest.fn((path: string) => {
+        if (path.startsWith('notifications/')) {
+          return { get: mockNotificationGet, update: mockUpdate };
+        }
+        return { get: mockGet, update: mockUpdate };
+      }),
     },
     __mocks: {
       mockNotificationDoc,
@@ -140,6 +149,7 @@ jest.mock('../../../src/config/firebase', () => {
       mockAdd,
       mockUpdate,
       mockGet,
+      mockNotificationGet,
     },
   };
 });

@@ -31,8 +31,8 @@ import {
   ChevronRight
 } from 'lucide-react'
 import { format, addDays, isWithinInterval, isBefore, isAfter } from 'date-fns'
-import { MotionDiv, MotionButton, AnimatePresence } from "../../components/ui/dynamic-motion"
-import { useToast } from '../../hooks/use-toast'
+import { MotionDiv, MotionButton, AnimatePresence } from "@/components/ui/dynamic-motion"
+import { useToast } from '@/hooks/use-toast'
 
 // Import BillReminder from API services for consistency
 type ApiBillReminder = {

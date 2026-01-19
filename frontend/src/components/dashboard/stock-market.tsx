@@ -6,9 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
 import { Badge } from "../ui/badge"
 import { LoadingSpinner } from "../ui/loading-spinner"
 import { Button } from "../ui/button"
-import { useAuth } from "../../contexts/auth-context"
-import { useStockPrices } from "../../hooks/use-stock-prices"
-import { useViewport } from "../../hooks/use-mobile"
+import { useAuth } from "@/contexts/auth-context"
+import { useStockPrices } from "@/hooks/use-stock-prices"
+import { useViewport } from "@/hooks/use-mobile"
 import { 
   StockAPI, 
   MarketIndex, 
@@ -18,7 +18,7 @@ import {
   formatPrice, 
   formatChange, 
   formatPercent 
-} from "../../lib/stock-api"
+} from "@/lib/stock-api"
 
 // Simple sparkline component
 const Sparkline: React.FC<{ data: number[]; positive: boolean }> = ({ data, positive }) => {

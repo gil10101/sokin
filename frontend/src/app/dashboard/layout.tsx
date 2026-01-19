@@ -1,7 +1,7 @@
 import type React from "react"
 import { ProtectedRoute } from "@/components/protected-route"
 import { MobileNav } from "@/components/mobile-nav"
-import { DashboardErrorBoundary } from "@/components/ui/error-boundary"
+import { DashboardErrorBoundary } from "@/components/error-boundary"
 
 export default function DashboardLayout({
   children,

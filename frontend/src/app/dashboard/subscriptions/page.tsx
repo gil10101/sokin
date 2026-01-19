@@ -1,22 +1,19 @@
 "use client"
 
-import { AlertDialogTrigger } from "../../../components/ui/alert-dialog"
+import { AlertDialogTrigger } from "@/components/ui/alert-dialog"
 
 import type React from "react"
 
 import { useState, useEffect, useCallback } from "react"
-import { useRouter } from "next/navigation"
-import { collection, query, where, orderBy, getDocs, addDoc, doc, deleteDoc } from "firebase/firestore"
-import { db } from "../../../lib/firebase"
-import { useAuth } from "../../../contexts/auth-context"
+import { useAuth } from "@/contexts/auth-context"
 import { format, addMonths, addDays, addYears } from "date-fns"
-import { DashboardSidebar } from "../../../components/dashboard/sidebar"
-import { PageHeader } from "../../../components/dashboard/page-header"
-import { Button } from "../../../components/ui/button"
-import { Input } from "../../../components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/select"
-import { Calendar } from "../../../components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "../../../components/ui/popover"
+import { DashboardSidebar } from "@/components/dashboard/sidebar"
+import { PageHeader } from "@/components/dashboard/page-header"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
   Dialog,
   DialogContent,
@@ -24,7 +21,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "../../../components/ui/dialog"
+} from "@/components/ui/dialog"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,9 +31,9 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "../../../components/ui/alert-dialog"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../../../components/ui/collapsible"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../components/ui/table"
+} from "@/components/ui/alert-dialog"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
   CalendarIcon,
   ChevronDown,
@@ -49,10 +46,11 @@ import {
   SortDesc,
   Plus,
 } from "lucide-react"
-import { AddButton } from "../../../components/ui/add-button"
-import { useToast } from "../../../hooks/use-toast"
-import { LoadingSpinner } from "../../../components/ui/loading-spinner"
-import { MotionContainer } from "../../../components/ui/motion-container"
+import { AddButton } from "@/components/ui/add-button"
+import { useToast } from "@/hooks/use-toast"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { MotionContainer } from "@/components/ui/motion-container"
+import { subscriptionsAPI } from "@/lib/api"
 
 // Define subscription interface
 interface Subscription {
@@ -72,7 +70,7 @@ interface Subscription {
   category: string
   userId: string
   createdAt: string
-  updatedAt: string
+  updatedAt?: string
 }
 
 // Define payment history interface
@@ -306,10 +304,14 @@ const calculateAnnualCost = (
   }
 }
 
-export default function SubscriptionsPage() {
+interface SubscriptionsPageProps {
+  params?: Promise<Record<string, string>>;
+  searchParams?: Promise<Record<string, string>>;
+}
+
+export default function SubscriptionsPage(props: SubscriptionsPageProps) {
   const [collapsed, setCollapsed] = useState(false)
   const { user } = useAuth()
-  const router = useRouter()
   const { toast } = useToast()
 
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
@@ -404,20 +406,13 @@ export default function SubscriptionsPage() {
     setFilteredSubscriptions(result)
   }, [subscriptions, searchQuery, categoryFilter, sortBy, sortDirection])
 
-  // Fetch subscriptions from Firestore
+  // Fetch subscriptions from API
   const fetchSubscriptions = useCallback(async () => {
     if (!user) return
 
     setLoading(true)
     try {
-      const subscriptionsRef = collection(db, "subscriptions")
-      const q = query(subscriptionsRef, where("userId", "==", user.uid), orderBy("nextPaymentDate", "asc"))
-
-      const querySnapshot = await getDocs(q)
-      const subscriptionsData = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Subscription[]
+      const subscriptionsData = await subscriptionsAPI.getSubscriptions()
 
       setSubscriptions(subscriptionsData)
 
@@ -538,7 +533,7 @@ export default function SubscriptionsPage() {
       )
 
       // Prepare subscription data
-      const subscriptionData: Omit<Subscription, "id" | "createdAt"> = {
+      const subscriptionData = {
         name: formData.name,
         logo: SERVICE_LOGOS[formData.name] || `/placeholder.svg?height=40&width=40&text=${formData.name.charAt(0)}`,
         amount: Number.parseFloat(formData.amount),
@@ -550,8 +545,6 @@ export default function SubscriptionsPage() {
         notes: formData.notes || null,
         autoRenew: formData.autoRenew,
         category: formData.category,
-        userId: user.uid,
-        updatedAt: new Date().toISOString(),
       }
 
       // Only include custom interval fields if billing cycle is custom
@@ -561,17 +554,7 @@ export default function SubscriptionsPage() {
       }
 
       // Add subscription to Firestore
-      const docRef = await addDoc(collection(db, "subscriptions"), {
-        ...subscriptionData,
-        createdAt: new Date().toISOString(),
-      })
-
-      // Add to local state
-      const newSubscription = {
-        id: docRef.id,
-        ...subscriptionData,
-        createdAt: new Date().toISOString(),
-      } as Subscription
+      const newSubscription = await subscriptionsAPI.createSubscription(subscriptionData)
 
       setSubscriptions((prev) => [...prev, newSubscription])
 
@@ -607,7 +590,7 @@ export default function SubscriptionsPage() {
     if (!subscriptionToDelete) return
 
     try {
-      await deleteDoc(doc(db, "subscriptions", subscriptionToDelete))
+      await subscriptionsAPI.deleteSubscription(subscriptionToDelete)
 
       // Update local state
       setSubscriptions((prev) => prev.filter((subscription) => subscription.id !== subscriptionToDelete))

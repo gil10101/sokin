@@ -52,7 +52,7 @@ jest.mock('../../../src/config/firebase', () => {
       targetAmount: 10000,
       currentAmount: 2500,
       targetDate: '2026-01-01',
-      category: 'savings',
+      category: 'emergency',
       priority: 'high',
       isCompleted: false,
       contributions: [],
@@ -76,6 +76,11 @@ jest.mock('../../../src/config/firebase', () => {
     empty: false,
   };
 
+  const mockTransaction = {
+    get: jest.fn().mockResolvedValue(mockDoc),
+    update: jest.fn(),
+  };
+
   return {
     db: {
       collection: jest.fn(() => ({
@@ -89,8 +94,11 @@ jest.mock('../../../src/config/firebase', () => {
           get: jest.fn().mockResolvedValue(mockQuerySnapshot),
         })),
       })),
+      runTransaction: jest.fn(async (callback: (transaction: typeof mockTransaction) => Promise<{ newCurrentAmount: number; isCompleted: boolean }>) =>
+        callback(mockTransaction)
+      ),
     },
-    __mocks: { mockDoc, mockAdd, mockUpdate, mockDelete, mockGet },
+    __mocks: { mockDoc, mockAdd, mockUpdate, mockDelete, mockGet, mockTransaction },
   };
 });
 
@@ -109,7 +117,11 @@ import cache from '../../../src/utils/cache';
 const firebaseMocks = require('../../../src/config/firebase').__mocks;
 
 describe('Goals Controller', () => {
-  let mockRequest: Partial<Request>;
+  interface AuthenticatedRequest extends Request {
+    user?: { uid: string; email?: string };
+  }
+
+  let mockRequest: Partial<AuthenticatedRequest>;
   let mockResponse: Partial<Response>;
   let mockNext: NextFunction;
   let jsonMock: jest.Mock;
@@ -142,7 +154,7 @@ describe('Goals Controller', () => {
       targetAmount: 10000,
       currentAmount: 2500,
       targetDate: '2026-01-01',
-      category: 'savings',
+      category: 'emergency',
       priority: 'high',
       isCompleted: false,
       contributions: [],
@@ -155,6 +167,7 @@ describe('Goals Controller', () => {
       createdAt: '2025-01-01T00:00:00.000Z',
     }));
     firebaseMocks.mockDoc.exists = true;
+    firebaseMocks.mockTransaction.get.mockResolvedValue(firebaseMocks.mockDoc);
 
     // Reset cache mocks
     (cache.getAsync as jest.Mock).mockResolvedValue(null);
@@ -425,8 +438,7 @@ describe('Goals Controller', () => {
     it('should call next with error for non-existent goal', async () => {
       mockRequest.params = { goalId: 'non-existent' };
       mockRequest.body = { amount: 100 };
-      firebaseMocks.mockDoc.exists = false;
-      firebaseMocks.mockGet.mockResolvedValueOnce({ exists: false });
+      firebaseMocks.mockTransaction.get.mockResolvedValueOnce({ exists: false });
 
       await addContribution(
         mockRequest as Request,

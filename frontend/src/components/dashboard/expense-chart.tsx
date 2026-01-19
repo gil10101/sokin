@@ -1,17 +1,16 @@
 "use client"
 
-import { useEffect, useState, useRef, useMemo } from "react"
+import { useEffect, useState, useRef } from "react"
 import { Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Area, ComposedChart } from "recharts"
 // Removed ChartContainer due to type compatibility issues - using plain div instead
-import { LoadingSpinner } from "../../components/ui/loading-spinner"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { MotionDiv } from "../ui/dynamic-motion"
-import { collection, query, where, getDocs } from "firebase/firestore"
-import { db } from "../../lib/firebase"
-import { useAuth } from "../../contexts/auth-context"
-import { useViewport } from "../../hooks/use-mobile"
+import { useAuth } from "@/contexts/auth-context"
+import { useViewport } from "@/hooks/use-mobile"
 import { format, subDays, subMonths, isAfter } from "date-fns"
-import { safeParseDate } from "../../types/firebase"
-import { logger } from "../../lib/logger"
+import { safeParseDate } from "@/types/firebase"
+import { logger } from "@/lib/logger"
+import { useExpensesData } from "@/hooks/use-expenses-data"
 
 interface Expense {
   id: string
@@ -39,18 +38,20 @@ export function ExpenseChart({ timeframe = "30days" }: ExpenseChartProps) {
   const [loading, setLoading] = useState(true)
   const [chartData, setChartData] = useState<ChartDataPoint[]>([])
   const chartRef = useRef<HTMLDivElement>(null)
-  const [hasData, setHasData] = useState(false)
+  const { data: expenses = [], isLoading: expensesLoading } = useExpensesData()
 
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  const fetchExpenseData = async () => {
-    if (!user) return
+  // Load expense data on component mount and when dependencies change
+  useEffect(() => {
+    if (!mounted || expensesLoading || !user) {
+      setLoading(expensesLoading)
+      return
+    }
 
-    setLoading(true)
     try {
-      // Calculate date range based on timeframe
       const endDate = new Date()
       let startDate: Date
 
@@ -68,35 +69,18 @@ export function ExpenseChart({ timeframe = "30days" }: ExpenseChartProps) {
           startDate = subDays(endDate, 30)
       }
 
-      // Fetch expenses from Firebase
-      const expensesRef = collection(db, "expenses")
-      const q = query(expensesRef, where("userId", "==", user.uid))
-
-      const querySnapshot = await getDocs(q)
-      const allExpenses = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Expense[]
-
-      // Filter expenses by date range
-      const filteredExpenses = allExpenses.filter((expense) => {
+      const filteredExpenses = (expenses as Expense[]).filter((expense) => {
         const expenseDate = safeParseDate(expense.date)
         return isAfter(expenseDate, startDate) || expenseDate.getTime() === startDate.getTime()
       })
 
-      // Group expenses by actual expense dates only
       const expensesByDate = new Map<string, { amount: number, date: Date }>()
-      
       filteredExpenses.forEach((expense) => {
         const expenseDate = safeParseDate(expense.date)
-        let dateKey: string
-        
-        if (timeframe === "year") {
-          dateKey = format(expenseDate, "MMM yyyy")
-        } else {
-          dateKey = format(expenseDate, "MMM d")
-        }
-        
+        const dateKey = timeframe === "year"
+          ? format(expenseDate, "MMM yyyy")
+          : format(expenseDate, "MMM d")
+
         if (expensesByDate.has(dateKey)) {
           expensesByDate.get(dateKey)!.amount += expense.amount
         } else {
@@ -107,7 +91,6 @@ export function ExpenseChart({ timeframe = "30days" }: ExpenseChartProps) {
         }
       })
 
-      // Convert to chart data and sort by date
       const sortedData = Array.from(expensesByDate.entries())
         .map(([name, { amount, date }]) => ({
           name,
@@ -116,12 +99,10 @@ export function ExpenseChart({ timeframe = "30days" }: ExpenseChartProps) {
         }))
         .sort((a, b) => a.sortDate.getTime() - b.sortDate.getTime())
 
-      // Calculate proper moving average for each data point
       const groupedData: ChartDataPoint[] = sortedData.map((item, index) => {
-        // Calculate moving average based on all previous data points including current
         const relevantAmounts = sortedData.slice(0, index + 1).map(d => d.amount)
         const movingAverage = relevantAmounts.reduce((sum, amt) => sum + amt, 0) / relevantAmounts.length
-        
+
         return {
           name: item.name,
           amount: item.amount,
@@ -130,7 +111,6 @@ export function ExpenseChart({ timeframe = "30days" }: ExpenseChartProps) {
       })
 
       setChartData(groupedData)
-      setHasData(groupedData.length > 0)
     } catch (error) {
       logger.error("Error fetching expense data", {
         userId: user?.uid,
@@ -141,14 +121,7 @@ export function ExpenseChart({ timeframe = "30days" }: ExpenseChartProps) {
     } finally {
       setLoading(false)
     }
-  }
-
-  // Load expense data on component mount and when dependencies change
-  useEffect(() => {
-    if (mounted) {
-      fetchExpenseData()
-    }
-  }, [user, timeframe, mounted])
+  }, [user, timeframe, mounted, expenses, expensesLoading])
 
   // ResponsiveContainer automatically handles window resize events
   // No manual resize handling needed

@@ -5,23 +5,28 @@ import logger from '../utils/logger';
 import crypto from 'crypto';
 import rateLimit from 'express-rate-limit';
 
-// Rate limiter for cron authentication endpoints
+// Mock auth only in dev with ALLOW_MOCK_AUTH=true.
+const isDevelopmentWithMockAuth = (): boolean => {
+  return (
+    process.env.NODE_ENV === 'development' &&
+    process.env.ALLOW_MOCK_AUTH === 'true'
+  );
+};
+
+// Cron auth rate limit.
 export const cronRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // limit each IP to 5 requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: 5,
   message: {
     error: 'Too many failed authentication attempts',
-    retryAfter: Math.ceil(15 * 60) // seconds until reset
+    retryAfter: Math.ceil(15 * 60)
   },
   standardHeaders: true,
   legacyHeaders: false,
-  // Skip successful requests, only count failures
   skipSuccessfulRequests: true,
-  // Custom key generator to include endpoint in the key
   keyGenerator: (req: Request): string => {
     return `${req.ip}-${req.originalUrl}`;
   },
-  // Log rate limit violations
   handler: (req: Request, res: Response) => {
     logger.warn('Rate limit exceeded for cron authentication', {
       ip: req.ip,
@@ -36,25 +41,21 @@ export const cronRateLimiter = rateLimit({
   }
 });
 
-// Parse allowed cron IPs from environment variable
+// Parse allowed cron IPs.
 const ALLOWED_CRON_IPS = (process.env.ALLOWED_CRON_IPS || '').split(',').filter(Boolean);
 
-// Configuration validation function for application startup
 export const validateAuthConfig = (): void => {
   const errors: string[] = [];
 
-  // Validate CRON_SECRET
   if (!process.env.CRON_SECRET) {
     errors.push('CRON_SECRET environment variable is required for cron authentication');
   } else if (process.env.CRON_SECRET.length < 32) {
     errors.push('CRON_SECRET should be at least 32 characters long for security');
   }
 
-  // Validate ALLOWED_CRON_IPS format if configured
   if (process.env.ALLOWED_CRON_IPS) {
     const ips = ALLOWED_CRON_IPS;
     const invalidIps = ips.filter(ip => {
-      // Basic IP validation (supports IPv4 and basic IPv6)
       const ipv4Regex = /^(\d{1,3}\.){3}\d{1,3}$/;
       const ipv6Regex = /^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|^::1$|^::$/;
       return !ipv4Regex.test(ip) && !ipv6Regex.test(ip) && ip !== 'localhost';
@@ -70,7 +71,6 @@ export const validateAuthConfig = (): void => {
     throw new Error(`Authentication configuration errors:\n${errors.join('\n')}`);
   }
 
-  // Log successful validation
   logger.info('Authentication configuration validated successfully', {
     cronSecretConfigured: true,
     allowedIpsCount: ALLOWED_CRON_IPS.length,
@@ -78,7 +78,6 @@ export const validateAuthConfig = (): void => {
   });
 };
 
-// Add a custom user property to the Express Request type
 declare global {
   namespace Express {
     interface Request {
@@ -90,7 +89,7 @@ declare global {
   }
 }
 
-// Authentication middleware
+// Firebase auth middleware.
 export const auth = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const authHeader = req.headers.authorization;
@@ -101,34 +100,36 @@ export const auth = async (req: Request, res: Response, next: NextFunction): Pro
 
     const token = authHeader.split(' ')[1];
 
-    try {
-      if (!firebaseAuth) {
-        // For development without proper Firebase setup, create a mock user
-        if (process.env.NODE_ENV === 'development') {
-          logger.warn('Firebase auth not initialized - using development mock user');
-          req.user = {
-            uid: 'dev-user-' + Date.now(),
-            email: 'dev@example.com'
-          };
-          next();
-          return;
-        }
-        throw new AppError('Firebase auth not initialized', 500, false);
+    if (!firebaseAuth) {
+      // Allow mock auth in dev only.
+      if (isDevelopmentWithMockAuth()) {
+        logger.warn('Firebase auth not initialized - using development mock user (ALLOW_MOCK_AUTH=true)');
+        req.user = {
+          uid: 'dev-user-' + Date.now(),
+          email: 'dev@example.com'
+        };
+        next();
+        return;
       }
-      
+      // Fail closed if Firebase is missing.
+      logger.error('Firebase auth not initialized and mock auth not enabled');
+      throw new AppError('Authentication service unavailable', 503, false);
+    }
+    
+    try {
       const decodedToken = await firebaseAuth.verifyIdToken(token);
       req.user = {
         uid: decodedToken.uid,
         email: decodedToken.email
       };
       next();
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    } catch (tokenError: unknown) {
+      const errorMessage = tokenError instanceof Error ? tokenError.message : 'Unknown error';
       logger.error('Error verifying token:', { error: errorMessage });
       
-      // In development mode, if token verification fails, use mock user
-      if (process.env.NODE_ENV === 'development') {
-        logger.warn('Token verification failed in development - using mock user');
+      // Only allow mock auth fallback if explicitly enabled
+      if (isDevelopmentWithMockAuth()) {
+        logger.warn('Token verification failed - using mock user (ALLOW_MOCK_AUTH=true)');
         req.user = {
           uid: 'dev-user-' + Date.now(),
           email: 'dev@example.com'
@@ -137,15 +138,12 @@ export const auth = async (req: Request, res: Response, next: NextFunction): Pro
         return;
       }
       
+      // Fail-closed: reject invalid tokens
       throw new AppError('Unauthorized: Invalid token', 401, true);
     }
   } catch (error) {
-    if (error instanceof AppError) {
-      res.status(error.statusCode).json({ error: error.message });
-    } else {
-      logger.error('Authentication error:', { error });
-      res.status(500).json({ error: 'Internal server error' });
-    }
+    // Delegate to global error handler for consistent error responses
+    next(error instanceof AppError ? error : new AppError('Authentication failed', 500, false));
   }
 };
 
@@ -242,11 +240,7 @@ export const requireCronAuth = async (req: Request, res: Response, next: NextFun
     });
     next();
   } catch (error) {
-    if (error instanceof AppError) {
-      res.status(error.statusCode).json({ error: error.message });
-    } else {
-      logger.error('Cron authentication error:', { error });
-      res.status(500).json({ error: 'Internal server error' });
-    }
+    // Delegate to global error handler for consistent error responses
+    next(error instanceof AppError ? error : new AppError('Cron authentication failed', 500, false));
   }
 };

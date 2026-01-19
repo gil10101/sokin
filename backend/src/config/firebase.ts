@@ -7,11 +7,13 @@ import * as dotenv from 'dotenv';
 // Simple inline logger to avoid circular dependencies
 const log = {
   info: (msg: string) => console.log(`[INFO] ${msg}`),
-  error: (msg: string, meta?: any) => console.error(`[ERROR] ${msg}`, meta || '')
+  error: (msg: string, meta?: Record<string, unknown>) => console.error(`[ERROR] ${msg}`, meta || '')
 };
 
 // Load environment variables
 dotenv.config();
+
+const isProduction = process.env.NODE_ENV === 'production';
 
 // Initialize Firebase Admin with the service account
 const initializeFirebaseAdmin = () => {
@@ -97,8 +99,14 @@ const initializeFirebaseAdmin = () => {
   } catch (error) {
     if (error instanceof Error) {
       log.error(`Error initializing Firebase Admin: ${error.message}`, { stack: error.stack });
+      if (isProduction) {
+        throw error;
+      }
     } else {
       log.error('Unknown error initializing Firebase Admin');
+      if (isProduction) {
+        throw new Error('Unknown error initializing Firebase Admin');
+      }
     }
     return null;
   }
@@ -112,13 +120,19 @@ let storage: ReturnType<typeof getStorage> | null = null;
 
 try {
   app = initializeFirebaseAdmin();
+  if (!app) {
+    throw new Error('Firebase Admin initialization failed');
+  }
   // Export Firebase Admin services
-  auth = app ? getAuth(app) : null;
-  db = app ? getFirestore(app) : null;
-  storage = app ? getStorage(app) : null;
+  auth = getAuth(app);
+  db = getFirestore(app);
+  storage = getStorage(app);
 } catch (error) {
   console.error('[FIREBASE] Critical initialization error:', error);
-  // Don't crash - allow the app to start without Firebase
+  if (isProduction) {
+    throw error instanceof Error ? error : new Error('Critical Firebase initialization error');
+  }
+  // Don't crash in non-production - allow the app to start without Firebase
 }
 
 export { auth, db, storage };
@@ -139,4 +153,7 @@ if (db) {
   }
 } else {
   log.error('Failed to initialize Firestore - db is null');
+  if (isProduction) {
+    throw new Error('Firestore initialization failed');
+  }
 } 

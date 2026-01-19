@@ -1,13 +1,13 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
-import { collection, query, where, getDocs } from "firebase/firestore"
-import { db } from "../../lib/firebase"
-import { useAuth } from "../../contexts/auth-context"
+import { useState, useEffect, useMemo, useCallback } from "react"
+import { useAuth } from "@/contexts/auth-context"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell, ResponsiveContainer, LabelList } from "recharts"
-import { LoadingSpinner } from "../../components/ui/loading-spinner"
-import { Expense, Budget } from "../../lib/types"
-import { useViewport } from "../../hooks/use-mobile"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { Budget } from "@/lib/types"
+import { useViewport } from "@/hooks/use-mobile"
+import { budgetsAPI } from "@/lib/api"
+import { useExpensesData } from "@/hooks/use-expenses-data"
 
 // Date calculation helpers to prevent overflow and use exclusive bounds
 const addMonthsClamp = (date: Date, months: number): Date => {
@@ -62,6 +62,8 @@ export function BudgetProgressCard({ refreshTrigger }: BudgetProgressCardProps) 
   const [data, setData] = useState<BudgetProgress[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const { data: expenses = [], isLoading: expensesLoading } = useExpensesData()
+  const [budgets, setBudgets] = useState<Budget[]>([])
 
   // Responsive chart configuration
   const chartConfig = useMemo(() => {
@@ -86,164 +88,118 @@ export function BudgetProgressCard({ refreshTrigger }: BudgetProgressCardProps) 
     }
   }, [isMobile, isTablet])
 
-  useEffect(() => {
-    const fetchBudgetProgress = async () => {
-      if (!user) {
-        setLoading(false);
-        setData([]);
-        setError(null);
-        return;
+  const fetchBudgets = useCallback(async () => {
+    if (!user) return
+    try {
+      const budgetsData: Budget[] = []
+      let cursor: string | null = null
+      let hasMore = true
+      let pageCount = 0
+
+      while (hasMore && pageCount < 50) {
+        const page = await budgetsAPI.getBudgets({
+          limit: 100,
+          cursor: cursor || undefined
+        })
+        budgetsData.push(...page.items)
+        cursor = page.nextCursor || null
+        hasMore = page.hasMore
+        pageCount += 1
       }
 
-      setLoading(true)
+      setBudgets(budgetsData.filter((budget) => budget.amount > 0))
+    } catch (error) {
+      import('@/lib/logger').then(({ logger }) => {
+        logger.error('Error fetching budget progress', { error: error instanceof Error ? error.message : String(error) })
+      })
+      setError("Failed to load budget data")
+      setBudgets([])
+    }
+  }, [user])
+
+  useEffect(() => {
+    if (!user) {
+      setLoading(false)
+      setData([])
       setError(null)
+      return
+    }
+
+    setLoading(true)
+    setError(null)
+    fetchBudgets().finally(() => setLoading(false))
+  }, [user, refreshTrigger, fetchBudgets])
+
+  useEffect(() => {
+    if (!user || expensesLoading || budgets.length === 0) {
+      return
+    }
+
+    const safeParseDate = (dateValue: unknown): Date | null => {
       try {
-        // Fetch active budgets (all periods, not just monthly)
-        const budgetsRef = collection(db, "budgets")
-        const budgetsQuery = query(
-          budgetsRef,
-          where("userId", "==", user.uid),
-          // Remove period filter to show all budgets
-        )
-        const budgetsSnapshot = await getDocs(budgetsQuery)
-
-        if (budgetsSnapshot.empty) {
-          setData([])
-          setLoading(false)
-          return
+        if (!dateValue) return null
+        if (dateValue instanceof Date) return dateValue
+        if (typeof dateValue === 'number') return new Date(dateValue)
+        if (typeof dateValue === 'string') {
+          const parsed = new Date(dateValue)
+          return isNaN(parsed.getTime()) ? null : parsed
         }
-
-        // Parse budget data with robust error handling
-        const budgets = budgetsSnapshot.docs.map((doc) => {
-          const data = doc.data()
-          return {
-            id: doc.id,
-            userId: data.userId || "",
-            category: data.category || "Unknown",
-            amount: typeof data.amount === 'number' ? data.amount : parseFloat(data.amount) || 0,
-            period: data.period || "monthly",
-            startDate: data.startDate || new Date().toISOString(),
-            endDate: data.endDate || null,
-            createdAt: data.createdAt || new Date().toISOString(),
-            updatedAt: data.updatedAt || new Date().toISOString(),
-            notes: data.notes || null,
-          }
-        }).filter(budget => budget.amount > 0) // Filter out invalid budgets
-
-        // Fetch all expenses for budget calculations
-        const expensesRef = collection(db, "expenses")
-        const expensesQuery = query(
-          expensesRef,
-          where("userId", "==", user.uid),
-        )
-        const expensesSnapshot = await getDocs(expensesQuery)
-
-        // Parse expense data with robust error handling
-        const expenses = expensesSnapshot.docs.map((doc) => {
-          const data = doc.data()
-          return {
-            id: doc.id,
-            userId: data.userId || "",
-            name: data.name || data.description || "Unknown",
-            amount: typeof data.amount === 'number' ? data.amount : parseFloat(data.amount) || 0,
-            date: data.date || new Date().toISOString(),
-            category: data.category || "Other",
-            description: data.description || "",
-            tags: Array.isArray(data.tags) ? data.tags : [],
-            createdAt: data.createdAt || new Date().toISOString(),
-            updatedAt: data.updatedAt || new Date().toISOString(),
-          }
-        }).filter(expense => expense.amount > 0) // Filter out invalid expenses
-
-        // Helper function to safely parse dates
-        const safeParseDate = (dateValue: unknown): Date | null => {
-          try {
-            if (!dateValue) return null
-            if (dateValue instanceof Date) return dateValue
-            if (typeof dateValue === 'object' && 'toDate' in dateValue) {
-              return (dateValue as any).toDate()
-            }
-            if (typeof dateValue === 'number') return new Date(dateValue)
-            if (typeof dateValue === 'string') {
-              const parsed = new Date(dateValue)
-              return isNaN(parsed.getTime()) ? null : parsed
-            }
-            return null
-          } catch {
-            return null
-          }
-        }
-
-        // Create budget progress data with better date handling
-        const progressData = budgets.map((budget) => {
-          const budgetStartDate = safeParseDate(budget.startDate) || new Date()
-          let budgetEndDate = budget.endDate ? safeParseDate(budget.endDate) : null
-
-          // Calculate effective end date based on period (exclusive)
-          if (!budgetEndDate) {
-            const startDate = new Date(budgetStartDate)
-            switch (budget.period) {
-              case "monthly":
-                budgetEndDate = addMonthsClamp(startDate, 1)
-                break
-              case "yearly":
-                budgetEndDate = addYearsClamp(startDate, 1)
-                break
-              case "weekly":
-                budgetEndDate = new Date(startDate.getTime() + 7 * 24 * 60 * 60 * 1000)
-                break
-              case "daily":
-                budgetEndDate = new Date(startDate.getTime() + 24 * 60 * 60 * 1000)
-                break
-              default:
-                // For custom periods, use current date if no end date
-                budgetEndDate = new Date()
-                break
-            }
-          }
-
-          // Filter expenses for this budget's category and date range
-          const relevantExpenses = expenses.filter((expense) => {
-            const expenseDate = safeParseDate(expense.date)
-            if (!expenseDate) return false
-
-            const matchesCategory = expense.category === budget.category
-            const isInDateRange = expenseDate >= budgetStartDate && 
-                                  (budgetEndDate ? expenseDate < budgetEndDate : true)
-
-            return matchesCategory && isInDateRange
-          })
-
-          // Calculate total spent
-          const spent = relevantExpenses.reduce((total, expense) => total + expense.amount, 0)
-          const percentage = budget.amount > 0 ? Math.round((spent / budget.amount) * 100) : 0
-
-          return {
-            category: budget.category,
-            budget: budget.amount,
-            spent,
-            percentage: Math.max(0, percentage), // Ensure non-negative percentage
-          }
-        })
-
-        // Sort by percentage descending to show highest usage first
-        progressData.sort((a, b) => b.percentage - a.percentage)
-
-        setData(progressData)
-      } catch (error) {
-        // Log error to Sentry instead of console
-        import('@/lib/logger').then(({ logger }) => {
-          logger.error('Error fetching budget progress', { error: error instanceof Error ? error.message : String(error) })
-        })
-        setError("Failed to load budget data")
-        setData([])
-      } finally {
-        setLoading(false)
+        return null
+      } catch {
+        return null
       }
     }
 
-    fetchBudgetProgress()
-  }, [user, refreshTrigger])
+    const progressData = budgets.map((budget) => {
+      const budgetStartDate = safeParseDate(budget.startDate) || new Date()
+      let budgetEndDate = budget.endDate ? safeParseDate(budget.endDate) : null
+
+      if (!budgetEndDate) {
+        const startDate = new Date(budgetStartDate)
+        switch (budget.period) {
+          case "monthly":
+            budgetEndDate = addMonthsClamp(startDate, 1)
+            break
+          case "yearly":
+            budgetEndDate = addYearsClamp(startDate, 1)
+            break
+          case "weekly":
+            budgetEndDate = new Date(startDate.getTime() + 7 * 24 * 60 * 60 * 1000)
+            break
+          case "daily":
+            budgetEndDate = new Date(startDate.getTime() + 24 * 60 * 60 * 1000)
+            break
+          default:
+            budgetEndDate = new Date()
+            break
+        }
+      }
+
+      const relevantExpenses = expenses.filter((expense) => {
+        const expenseDate = safeParseDate(expense.date)
+        if (!expenseDate) return false
+
+        const matchesCategory = expense.category === budget.category
+        const isInDateRange = expenseDate >= budgetStartDate &&
+          (budgetEndDate ? expenseDate < budgetEndDate : true)
+
+        return matchesCategory && isInDateRange
+      })
+
+      const spent = relevantExpenses.reduce((total, expense) => total + expense.amount, 0)
+      const percentage = budget.amount > 0 ? Math.round((spent / budget.amount) * 100) : 0
+
+      return {
+        category: budget.category || "Other",
+        budget: budget.amount,
+        spent,
+        percentage: Math.max(0, percentage),
+      }
+    })
+
+    progressData.sort((a, b) => b.percentage - a.percentage)
+    setData(progressData)
+  }, [budgets, expenses, expensesLoading, user])
 
   // Get color based on percentage
   const getColor = (percentage: number) => {
@@ -253,7 +209,7 @@ export function BudgetProgressCard({ refreshTrigger }: BudgetProgressCardProps) 
     return "rgba(255, 99, 71, 0.8)" // Tomato color for over budget
   }
 
-  if (loading) {
+  if (loading || expensesLoading) {
     return (
       <div className="h-[300px] flex items-center justify-center">
         <LoadingSpinner />

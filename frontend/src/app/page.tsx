@@ -5,19 +5,19 @@ import Image from "next/image"
 import { useEffect, useState } from "react"
 import { ArrowRight, Menu, X, ArrowDown, BarChart3, PieChart, Target, Wallet } from "lucide-react"
 import { motion, useScroll, useTransform } from "framer-motion"
-import { useAuth } from "../contexts/auth-context"
+import { useAuth } from "@/contexts/auth-context"
 import dynamic from "next/dynamic"
 
 // Lazy load 3D components only when needed on landing page
-const ScrollTriggered3DScene = dynamic(() => import("../components/ui/scroll-triggered-3d-scene").then(mod => ({ default: mod.default })), {
+const ScrollTriggered3DScene = dynamic(() => import("@/components/ui/scroll-triggered-3d-scene").then(mod => ({ default: mod.default })), {
   ssr: false,
   loading: () => null
 })
-const MobileHero3DScene = dynamic(() => import("../components/ui/mobile-hero-3d-scene").then(mod => ({ default: mod.default })), {
+const MobileHero3DScene = dynamic(() => import("@/components/ui/mobile-hero-3d-scene").then(mod => ({ default: mod.default })), {
   ssr: false,
   loading: () => null
 })
-import { useIsMobile } from "../hooks/use-mobile"
+import { useIsMobile } from "@/hooks/use-mobile"
 
 // Core features data - moved to top to prevent module loading issues
 const coreFeatures = [
@@ -658,4 +658,3 @@ export default function LandingPage() {
     </div>
   )
 }
-

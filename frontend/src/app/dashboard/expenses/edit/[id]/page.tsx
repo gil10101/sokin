@@ -4,21 +4,20 @@ import type React from "react"
 
 import { useState, useEffect, useCallback } from "react"
 import { useRouter, useParams } from "next/navigation"
-import { doc, getDoc, updateDoc } from "firebase/firestore"
-import { db } from "../../../../../lib/firebase"
-import { useAuth } from "../../../../../contexts/auth-context"
+import { useAuth } from "@/contexts/auth-context"
 import { format, parseISO } from "date-fns"
 import { CalendarIcon, Check, ChevronsUpDown } from "lucide-react"
-import { DashboardSidebar } from "../../../../../components/dashboard/sidebar"
-import { Input } from "../../../../../components/ui/input"
-import { Button } from "../../../../../components/ui/button"
-import { Textarea } from "../../../../../components/ui/textarea"
-import { Calendar } from "../../../../../components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "../../../../../components/ui/popover"
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "../../../../../components/ui/command"
-import { useToast } from "../../../../../hooks/use-toast"
-import { LoadingSpinner } from "../../../../../components/ui/loading-spinner"
-import { useNotifications } from "../../../../../contexts/notifications-context"
+import { DashboardSidebar } from "@/components/dashboard/sidebar"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { Textarea } from "@/components/ui/textarea"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
+import { useToast } from "@/hooks/use-toast"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { useNotifications } from "@/contexts/notifications-context"
+import { expensesAPI, userProfileAPI } from "@/lib/api"
 
 // Default categories if we can't fetch from Firestore
 const DEFAULT_CATEGORIES = [
@@ -34,7 +33,12 @@ const DEFAULT_CATEGORIES = [
   "Other",
 ]
 
-export default function EditExpensePage() {
+interface EditExpensePageProps {
+  params?: Promise<{ id: string }>;
+  searchParams?: Promise<Record<string, string>>;
+}
+
+export default function EditExpensePage(props: EditExpensePageProps) {
   const [collapsed, setCollapsed] = useState(false)
   const { user } = useAuth()
   const router = useRouter()
@@ -63,18 +67,11 @@ export default function EditExpensePage() {
     if (!user) return
 
     try {
-      // Try to fetch user-specific categories first
-      const userCategoriesDoc = await getDoc(doc(db, "users", user.uid, "categories", "default"))
-
-      if (userCategoriesDoc.exists()) {
-        const userCategories = userCategoriesDoc.data().categories
-        if (userCategories && userCategories.length > 0) {
-          setCategories(userCategories)
-          return
-        }
+      const userCategories = await userProfileAPI.getCategories(user.uid)
+      if (userCategories.length > 0) {
+        setCategories(userCategories)
+        return
       }
-
-      // Use default categories if user doesn't have any
       setCategories(DEFAULT_CATEGORIES)
     } catch (error) {
       // Use default categories if there's an error
@@ -86,30 +83,7 @@ export default function EditExpensePage() {
     if (!user || !expenseId) return
 
     try {
-      const expenseDoc = await getDoc(doc(db, "expenses", expenseId))
-
-      if (!expenseDoc.exists()) {
-        toast({
-          title: "Expense not found",
-          description: "The expense you're trying to edit doesn't exist",
-          variant: "destructive",
-        })
-        router.push("/dashboard/expenses")
-        return
-      }
-
-      const expenseData = expenseDoc.data()
-
-      // Check if this expense belongs to the current user
-      if (expenseData.userId !== user.uid) {
-        toast({
-          title: "Unauthorized",
-          description: "You don't have permission to edit this expense",
-          variant: "destructive",
-        })
-        router.push("/dashboard/expenses")
-        return
-      }
+      const expenseData = await expensesAPI.getExpenseById(expenseId)
 
       // Set form data
       setName(expenseData.name || "")
@@ -120,38 +94,8 @@ export default function EditExpensePage() {
       // Parse date with robust handling
       if (expenseData.date) {
         try {
-          let parsedDate: Date | null = null
-
-          // Handle different date formats
-          if (expenseData.date instanceof Date) {
-            parsedDate = expenseData.date
-          }
-          // If it's a Firebase Timestamp object
-          else if (expenseData.date && typeof expenseData.date === 'object' && 'toDate' in expenseData.date) {
-            const timestampObj = expenseData.date as { toDate: () => Date }
-            parsedDate = timestampObj.toDate()
-          }
-          // If it's a numeric timestamp (milliseconds)
-          else if (typeof expenseData.date === 'number') {
-            parsedDate = new Date(expenseData.date)
-          }
-          // If it's a string
-          else if (typeof expenseData.date === 'string') {
-            // Try parsing as ISO string first
-            parsedDate = parseISO(expenseData.date)
-
-            // If parseISO fails, try native Date constructor
-            if (!parsedDate || isNaN(parsedDate.getTime())) {
-              parsedDate = new Date(expenseData.date)
-            }
-          }
-
-          // Validate and set the date
-          if (parsedDate && !isNaN(parsedDate.getTime())) {
-            setDate(parsedDate)
-          } else {
-            setDate(new Date())
-          }
+          const parsedDate = parseISO(String(expenseData.date))
+          setDate(isNaN(parsedDate.getTime()) ? new Date() : parsedDate)
         } catch (error) {
           setDate(new Date())
         }
@@ -200,14 +144,12 @@ export default function EditExpensePage() {
     setSaving(true)
 
     try {
-      // Update expense in Firestore
-      await updateDoc(doc(db, "expenses", expenseId), {
+      await expensesAPI.updateExpense(expenseId, {
         name,
         amount: Number.parseFloat(amount),
-        description: description || null,
+        description: description || "",
         category,
         date: date.toISOString(),
-        updatedAt: new Date().toISOString(),
       })
 
       // Add notification

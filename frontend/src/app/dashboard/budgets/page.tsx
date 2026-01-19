@@ -4,24 +4,22 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 
-import { collection, query, where, orderBy, getDocs, addDoc, doc, updateDoc, deleteDoc } from "firebase/firestore"
-import { db } from "../../../lib/firebase"
-import { useAuth } from "../../../contexts/auth-context"
+import { useAuth } from "@/contexts/auth-context"
 import { format } from "date-fns"
-import { logger } from "../../../lib/logger"
-import { DashboardSidebar } from "../../../components/dashboard/sidebar"
-import { PageHeader } from "../../../components/dashboard/page-header"
-import { Button } from "../../../components/ui/button"
-import { AddButton } from "../../../components/ui/add-button"
-import { Input } from "../../../components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/select"
-import { Calendar } from "../../../components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "../../../components/ui/popover"
+import { logger } from "@/lib/logger"
+import { DashboardSidebar } from "@/components/dashboard/sidebar"
+import { PageHeader } from "@/components/dashboard/page-header"
+import { Button } from "@/components/ui/button"
+import { AddButton } from "@/components/ui/add-button"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { CalendarIcon, Plus, Pencil, Trash2, AlertCircle } from "lucide-react"
-import { useToast } from "../../../hooks/use-toast"
-import { MotionContainer } from "../../../components/ui/motion-container"
-import { BudgetProgressCard } from "../../../components/dashboard/budget-progress-card"
-import { Textarea } from "../../../components/ui/textarea"
+import { useToast } from "@/hooks/use-toast"
+import { MotionContainer } from "@/components/ui/motion-container"
+import { BudgetProgressCard } from "@/components/dashboard/budget-progress-card"
+import { Textarea } from "@/components/ui/textarea"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,7 +29,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "../../../components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog"
 import {
   Dialog,
   DialogContent,
@@ -39,8 +37,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "../../../components/ui/dialog"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../components/ui/tabs"
+} from "@/components/ui/dialog"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { budgetsAPI, expensesAPI, userProfileAPI } from "@/lib/api"
 
 // Default categories
 const DEFAULT_CATEGORIES = [
@@ -123,7 +122,12 @@ const safeParseDate = (dateValue: unknown): Date | null => {
   }
 }
 
-export default function BudgetsPage() {
+interface BudgetsPageProps {
+  params?: Promise<Record<string, string>>;
+  searchParams?: Promise<Record<string, string>>;
+}
+
+export default function BudgetsPage(props: BudgetsPageProps) {
   const [collapsed, setCollapsed] = useState(false)
   const { user } = useAuth()
 
@@ -161,14 +165,21 @@ export default function BudgetsPage() {
 
     setLoading(true)
     try {
-      const budgetsRef = collection(db, "budgets")
-      const q = query(budgetsRef, where("userId", "==", user.uid), orderBy("createdAt", "desc"))
+      const budgetsData: Budget[] = []
+      let cursor: string | null = null
+      let hasMore = true
+      let pageCount = 0
 
-      const querySnapshot = await getDocs(q)
-      const budgetsData = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Budget[]
+      while (hasMore && pageCount < 50) {
+        const page = await budgetsAPI.getBudgets({
+          limit: 100,
+          cursor: cursor || undefined
+        })
+        budgetsData.push(...page.items)
+        cursor = page.nextCursor || null
+        hasMore = page.hasMore
+        pageCount += 1
+      }
 
       setBudgets(budgetsData)
     } catch (error: unknown) {
@@ -187,14 +198,23 @@ export default function BudgetsPage() {
     if (!user) return
 
     try {
-      const expensesRef = collection(db, "expenses")
-      const q = query(expensesRef, where("userId", "==", user.uid), orderBy("date", "desc"))
+      const expensesData: Expense[] = []
+      let cursor: string | null = null
+      let hasMore = true
+      let pageCount = 0
 
-      const querySnapshot = await getDocs(q)
-      const expensesData = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Expense[]
+      while (hasMore && pageCount < 50) {
+        const page = await expensesAPI.getExpenses({
+          limit: 100,
+          cursor: cursor || undefined,
+          sortBy: "date",
+          sortOrder: "desc"
+        })
+        expensesData.push(...page.items)
+        cursor = page.nextCursor || null
+        hasMore = page.hasMore
+        pageCount += 1
+      }
 
       setExpenses(expensesData)
     } catch (error: unknown) {
@@ -206,31 +226,14 @@ export default function BudgetsPage() {
     if (!user) return
 
     try {
-      // Try to fetch user-specific categories first
-      const userCategoriesDoc = await getDocs(collection(db, "users", user.uid, "categories"))
-
-      if (!userCategoriesDoc.empty) {
-        const userCategories = userCategoriesDoc.docs[0].data().categories
-        if (userCategories && userCategories.length > 0) {
-          setCategories(userCategories)
-          return
-        }
-      }
-
-      // Fallback to global categories if user doesn't have any
-      const categoriesSnapshot = await getDocs(collection(db, "categories"))
-      if (!categoriesSnapshot.empty) {
-        const categoriesList = categoriesSnapshot.docs.map((doc) => doc.data().name)
-        if (categoriesList.length > 0) {
-          setCategories([...DEFAULT_CATEGORIES, ...categoriesList])
-          return
-        }
-      }
+      const userCategories = await userProfileAPI.getCategories(user.uid)
+      setCategories(userCategories.length > 0 ? userCategories : DEFAULT_CATEGORIES)
     } catch (error) {
       logger.error("Error fetching budget categories", {
         userId: user?.uid,
         error: error instanceof Error ? error.message : 'Unknown error'
       })
+      setCategories(DEFAULT_CATEGORIES)
     }
   }
 
@@ -267,7 +270,7 @@ export default function BudgetsPage() {
     setEditingBudget(budget)
     setFormData({
       amount: budget.amount.toString(),
-      category: budget.category,
+      category: budget.category || "",
       period: budget.period,
       startDate: safeParseDate(budget.startDate) || new Date(),
       endDate: budget.endDate ? safeParseDate(budget.endDate) : null,
@@ -364,21 +367,18 @@ export default function BudgetsPage() {
 
     try {
       const budgetData = {
+        name: formData.category,
         amount: Number(formData.amount),
         category: formData.category,
         period: formData.period,
         startDate: formData.startDate.toISOString(),
         endDate: formData.endDate ? formData.endDate.toISOString() : null,
         notes: formData.notes || null,
-        userId: user.uid,
-        updatedAt: new Date().toISOString(),
       }
 
       if (editingBudget) {
         // Update existing budget
-        await updateDoc(doc(db, "budgets", editingBudget.id), {
-          ...budgetData,
-        })
+        await budgetsAPI.updateBudget(editingBudget.id, budgetData)
 
         toast({
           title: "Budget updated",
@@ -386,10 +386,7 @@ export default function BudgetsPage() {
         })
       } else {
         // Add new budget
-        await addDoc(collection(db, "budgets"), {
-          ...budgetData,
-          createdAt: new Date().toISOString(),
-        })
+        await budgetsAPI.createBudget(budgetData)
 
         toast({
           title: "Budget added",
@@ -419,7 +416,7 @@ export default function BudgetsPage() {
     if (!budgetToDelete) return
 
     try {
-      await deleteDoc(doc(db, "budgets", budgetToDelete))
+      await budgetsAPI.deleteBudget(budgetToDelete)
 
       // Update local state
       setBudgets(budgets.filter((budget) => budget.id !== budgetToDelete))

@@ -1,10 +1,10 @@
 'use client'
 
 import { useEffect } from 'react'
-import { setupConnectivityMonitoring } from '../lib/api-utils'
-import { identifyUser, clearUserIdentity } from '../lib/sentry'
-import { initializeMessaging } from '../lib/firebase-messaging'
-import { useAuth } from '../contexts/auth-context'
+import { setupConnectivityMonitoring } from '@/lib/api-utils'
+import { identifyUser, clearUserIdentity } from '@/lib/sentry'
+import { initializeMessaging } from '@/lib/firebase-messaging'
+import { useAuth } from '@/contexts/auth-context'
 
 /**
  * AppInitializer component handles initialization tasks:
@@ -32,13 +32,19 @@ export function AppInitializer() {
 
   // Setup backend connectivity monitoring with lazy initialization
   useEffect(() => {
+    let cleanupConnectivityMonitoring: (() => void) | null = null
+    
     // Delay connectivity monitoring by 5 seconds to prioritize initial page load
     const timeoutId = setTimeout(() => {
-      const cleanupConnectivityMonitoring = setupConnectivityMonitoring(300000) // 5 minutes instead of 2
-      return () => cleanupConnectivityMonitoring()
+      cleanupConnectivityMonitoring = setupConnectivityMonitoring(300000) // 5 minutes instead of 2
     }, 5000)
 
-    return () => clearTimeout(timeoutId)
+    return () => {
+      clearTimeout(timeoutId)
+      if (cleanupConnectivityMonitoring) {
+        cleanupConnectivityMonitoring()
+      }
+    }
   }, [])
 
   // Register service worker with lazy loading

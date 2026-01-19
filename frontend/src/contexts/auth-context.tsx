@@ -9,12 +9,9 @@ import {
   signInWithEmailAndPassword,
   updateProfile,
 } from "firebase/auth"
-import { doc, setDoc, getDoc } from "firebase/firestore"
-import { auth, db } from "../../../lib/firebase"
-import { logger } from "../lib/logger"
+import { auth } from "@/lib/firebase"
+import { logger } from "@/lib/logger"
 import { useRouter } from "next/navigation"
-// Import the NotificationsProvider
-import { NotificationsProvider } from "./notifications-context"
 
 interface UserData {
   name: string
@@ -28,6 +25,7 @@ interface UserData {
       push: boolean
       monthlyReport: boolean
       budgetAlerts: boolean
+      expenseNotifications?: boolean
     }
   }
 }
@@ -39,9 +37,10 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<void>
   signOut: () => Promise<void>
   userData: UserData | null
+  refreshUserData: () => Promise<void>
+  updateUserSettings: (settings: Partial<UserData['settings']>) => Promise<void>
 }
 
-// Create context with a default value
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
@@ -49,11 +48,62 @@ const AuthContext = createContext<AuthContextType>({
   signIn: async () => {},
   signOut: async () => {},
   userData: null,
+  refreshUserData: async () => {},
+  updateUserSettings: async () => {},
 })
 
-// Export the useAuth hook
 export function useAuth() {
   return useContext(AuthContext)
+}
+
+const getApiBaseUrl = (): string => {
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL
+  if (!baseUrl) {
+    throw new Error('NEXT_PUBLIC_API_URL environment variable is not configured')
+  }
+  const normalized = baseUrl.replace(/\/+$/, '')
+  return normalized.endsWith('/api') ? normalized : `${normalized}/api`
+}
+
+const apiRequest = async <T,>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<T> => {
+  const currentUser = auth.currentUser
+  if (!currentUser) {
+    throw new Error('User not authenticated')
+  }
+
+  const token = await currentUser.getIdToken()
+  const baseUrl = getApiBaseUrl()
+
+  const response = await fetch(`${baseUrl}${endpoint}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+      ...options.headers,
+    },
+  })
+
+  if (!response.ok) {
+    let errorMessage = `API request failed: ${response.status}`
+    try {
+      const data = await response.json()
+      errorMessage = data.error || errorMessage
+    } catch {
+    }
+    throw new Error(errorMessage)
+  }
+
+  const contentType = response.headers.get('content-type')
+  if (response.status === 204 || 
+      response.headers.get('content-length') === '0' ||
+      !contentType?.includes('application/json')) {
+    return null as T
+  }
+
+  return await response.json()
 }
 
 // AuthProvider component
@@ -65,13 +115,76 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const unsubscribeRef = useRef<(() => void) | null>(null)
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
 
+  const fetchUserProfile = async (userId: string): Promise<UserData | null> => {
+    try {
+      const response = await apiRequest<{ success: boolean; data: UserData }>(
+        `/users/${userId}`
+      )
+      return response.data
+    } catch (error) {
+      logger.warn("Profile fetch failed", {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userId
+      })
+      return null
+    }
+  }
+
+  const createUserProfile = async (userId: string, name: string, email: string): Promise<UserData | null> => {
+    try {
+      const response = await apiRequest<{ success: boolean; data: UserData }>(
+        '/users',
+        {
+          method: 'POST',
+          body: JSON.stringify({ name, email }),
+        }
+      )
+      return response.data
+    } catch (error) {
+      logger.error("Profile create failed", {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userId
+      })
+      throw error
+    }
+  }
+
+  const refreshUserData = async (): Promise<void> => {
+    if (!user) return
+
+    const profile = await fetchUserProfile(user.uid)
+    if (profile) {
+      setUserData(profile)
+    }
+  }
+
+  const updateUserSettings = async (settings: Partial<UserData['settings']>): Promise<void> => {
+    if (!user) {
+      throw new Error('User not authenticated')
+    }
+
+    try {
+      const response = await apiRequest<{ success: boolean; data: UserData }>(
+        `/users/${user.uid}`,
+        {
+          method: 'PUT',
+          body: JSON.stringify({ settings }),
+        }
+      )
+      setUserData(response.data)
+    } catch (error) {
+      logger.error("Settings update failed", {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userId: user.uid
+      })
+      throw error
+    }
+  }
+
   useEffect(() => {
     // Set a timeout to prevent infinite loading
     timeoutRef.current = setTimeout(() => {
-      if (loading) {
-
-        setLoading(false)
-      }
+      setLoading(false)
     }, 5000) // 5 second timeout
 
     // Only set up the listener once
@@ -79,17 +192,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(currentUser)
 
       if (currentUser) {
-        try {
-          const userDoc = await getDoc(doc(db, "users", currentUser.uid))
-          if (userDoc.exists()) {
-            setUserData(userDoc.data() as UserData)
-          }
-        } catch (error) {
-          logger.warn("Failed to fetch user data", {
-            error: error instanceof Error ? error.message : 'Unknown error',
-            userId: currentUser.uid
-          })
-          // Don't throw the error to prevent auth state issues
+        // Fetch user profile from backend API
+        const profile = await fetchUserProfile(currentUser.uid)
+        if (profile) {
+          setUserData(profile)
         }
       } else {
         setUserData(null)
@@ -107,39 +213,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         clearTimeout(timeoutRef.current)
       }
     }
-  }, [loading])
+  }, [])
 
   const signUp = async (name: string, email: string, password: string) => {
     try {
+      // Create Firebase auth user
       const userCredential = await createUserWithEmailAndPassword(auth, email, password)
-      const user = userCredential.user
+      const firebaseUser = userCredential.user
 
-      // Update profile with name
-      await updateProfile(user, {
+      // Update Firebase profile with display name
+      await updateProfile(firebaseUser, {
         displayName: name,
       })
 
-      // Create user document in Firestore
-      await setDoc(doc(db, "users", user.uid), {
-        name,
-        email,
-        createdAt: new Date().toISOString(),
-        settings: {
-          currency: "USD",
-          theme: "dark",
-          notifications: {
-            email: true,
-            push: true,
-            monthlyReport: true,
-            budgetAlerts: true,
-          },
-        },
-      })
-
-      // Also create a default categories collection for this user
-      await setDoc(doc(db, "users", user.uid, "categories", "default"), {
-        categories: ["Dining", "Shopping", "Transport", "Utilities", "Entertainment", "Health", "Travel", "Other"],
-      })
+      // Create user profile via backend API
+      // This ensures all user data goes through the backend
+      const profile = await createUserProfile(firebaseUser.uid, name, email)
+      if (profile) {
+        setUserData(profile)
+      }
 
       router.push("/dashboard")
     } catch (error) {
@@ -167,6 +259,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     try {
       await firebaseSignOut(auth)
+      setUserData(null)
       router.push("/")
     } catch (error) {
       logger.error("Sign out error", {
@@ -184,12 +277,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signIn,
     signOut,
     userData,
+    refreshUserData,
+    updateUserSettings,
   }
 
   return (
     <AuthContext.Provider value={value}>
-      <NotificationsProvider>{children}</NotificationsProvider>
+      {children}
     </AuthContext.Provider>
   )
 }
-

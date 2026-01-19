@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { useAuth } from "@/contexts/auth-context"
 import { StockAPI, UserPortfolioStock } from "@/lib/stock-api"
+import { logger } from "@/lib/logger"
 
 export interface PortfolioState {
   isEmpty: boolean
@@ -52,7 +53,7 @@ export function usePortfolioState(): PortfolioState {
           totalValue,
         })
       } catch (error) {
-        console.error('Error checking portfolio state:', error)
+        logger.error('Error checking portfolio state', error instanceof Error ? error : { error })
         setPortfolioState(prev => ({
           ...prev,
           isLoading: false,

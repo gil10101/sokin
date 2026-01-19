@@ -1,9 +1,3 @@
-import { toast } from '../components/ui/use-toast';
-
-/**
- * Check if the backend API is reachable
- * @returns Promise<boolean> True if backend is reachable, false otherwise
- */
 export async function checkBackendConnectivity(): Promise<boolean> {
   try {
     const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
@@ -17,7 +11,6 @@ export async function checkBackendConnectivity(): Promise<boolean> {
       headers: {
         'Content-Type': 'application/json',
       },
-      // Use a short timeout to prevent long waits
       signal: AbortSignal.timeout(5000),
     });
 
@@ -28,47 +21,46 @@ export async function checkBackendConnectivity(): Promise<boolean> {
     const data = await response.json();
     return data.status === 'ok';
   } catch (error) {
-    // Backend connectivity check failed
     return false;
   }
 }
 
-/**
- * Monitor backend connectivity and show toast alerts when there are issues
- */
 export function setupConnectivityMonitoring(intervalMs = 30000): () => void {
   let lastStatus = true;
   
   const checkInterval = setInterval(async () => {
     const isConnected = await checkBackendConnectivity();
     
-    // Only show notifications when the status changes
+    // Only on status change
     if (lastStatus && !isConnected) {
-      // Backend became unavailable
-      toast({
-        variant: 'destructive',
-        title: 'Connection Issue',
-        description: 'The server is currently unavailable. Some features may not work.',
-      });
+      try {
+        const { toast } = await import('../hooks/use-toast');
+        toast({
+          variant: 'destructive',
+          title: 'Connection Issue',
+          description: 'The server is currently unavailable. Some features may not work.',
+        });
+      } catch (error) {
+        console.warn('Toast failed to load:', error);
+      }
     } else if (!lastStatus && isConnected) {
-      // Backend is available again
-      toast({
-        title: 'Connection Restored',
-        description: 'The server connection has been restored.',
-      });
+      try {
+        const { toast } = await import('../hooks/use-toast');
+        toast({
+          title: 'Connection Restored',
+          description: 'The server connection has been restored.',
+        });
+      } catch (error) {
+        console.warn('Toast failed to load:', error);
+      }
     }
     
     lastStatus = isConnected;
   }, intervalMs);
   
-  // Return a cleanup function
   return () => clearInterval(checkInterval);
 }
 
-/**
- * Validate that all required environment variables are set
- * @returns An array of missing environment variables
- */
 export function validateEnvironmentVariables(): string[] {
   const requiredVars = [
     'NEXT_PUBLIC_FIREBASE_API_KEY',
@@ -80,9 +72,6 @@ export function validateEnvironmentVariables(): string[] {
   return requiredVars.filter(varName => !process.env[varName]);
 }
 
-/**
- * Check if the application has a valid configuration
- */
 export function checkApplicationConfiguration(): { valid: boolean; missingVars: string[] } {
   const missingVars = validateEnvironmentVariables();
   

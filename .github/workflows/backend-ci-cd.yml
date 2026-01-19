@@ -1,0 +1,466 @@
+# Backend CI/CD Pipeline
+# 
+# Automated testing, linting, and deployment for the Sokin backend.
+# Triggers on pushes and pull requests to main/develop branches.
+#
+# Features:
+# - Comprehensive Jest testing with coverage
+# - TypeScript type checking
+# - ESLint code quality checks
+# - Security auditing
+# - Deployment with health check verification
+# - Automatic rollback on deployment failure
+
+name: Backend CI/CD
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-ci-cd.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-ci-cd.yml'
+
+env:
+  NODE_VERSION: '20.x'
+  # Maximum time to wait for health check (in seconds)
+  HEALTH_CHECK_TIMEOUT: 120
+  # Number of health check retries
+  HEALTH_CHECK_RETRIES: 5
+
+jobs:
+  # ====================
+  # Lint and Type Check
+  # ====================
+  lint:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: TypeScript type check
+        run: npx tsc --noEmit
+
+  # ====================
+  # Unit Tests
+  # ====================
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: lint
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests with coverage
+        run: npm run test:ci
+        env:
+          NODE_ENV: test
+          FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
+          UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: backend/coverage/lcov.info
+          flags: backend
+          fail_ci_if_error: false
+          verbose: true
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: backend/coverage/
+          retention-days: 30
+
+      - name: Check coverage threshold
+        run: |
+          COVERAGE=$(cat coverage/coverage-summary.json | jq '.total.lines.pct')
+          echo "Line coverage: $COVERAGE%"
+          COVERAGE_INT=${COVERAGE%.*}
+          COVERAGE_INT=${COVERAGE_INT:-0}
+          if [ "$COVERAGE_INT" -lt 70 ]; then
+            echo "::warning::Coverage is below 70% threshold"
+          fi
+
+  # ====================
+  # Build Check
+  # ====================
+  build:
+    name: Build Check
+    runs-on: ubuntu-latest
+    needs: lint
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build TypeScript
+        run: npm run build
+
+      - name: Verify build output
+        run: |
+          if [ ! -f "dist/index.js" ]; then
+            echo "Build failed: dist/index.js not found"
+            exit 1
+          fi
+          echo "Build successful: dist/index.js exists"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-build
+          path: backend/dist/
+          retention-days: 7
+
+  # ====================
+  # Security Audit
+  # ====================
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    needs: lint
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run npm audit
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
+      - name: Check for known vulnerabilities
+        run: |
+          AUDIT_RESULT=$(npm audit --json 2>/dev/null || true)
+          HIGH_VULNS=$(echo $AUDIT_RESULT | jq '.metadata.vulnerabilities.high // 0')
+          CRITICAL_VULNS=$(echo $AUDIT_RESULT | jq '.metadata.vulnerabilities.critical // 0')
+          
+          if [ "$CRITICAL_VULNS" -gt 0 ]; then
+            echo "::error::$CRITICAL_VULNS critical vulnerabilities found"
+            exit 1
+          fi
+          
+          if [ "$HIGH_VULNS" -gt 0 ]; then
+            echo "::warning::$HIGH_VULNS high severity vulnerabilities found"
+          fi
+          
+          echo "Security audit passed"
+
+  # ====================
+  # Deploy to Vercel (Production)
+  # ====================
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [test, build, security]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
+    outputs:
+      deployment_url: ${{ steps.deploy.outputs.url }}
+      deployment_id: ${{ steps.get-deployment-id.outputs.deployment_id }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get current deployment for rollback
+        id: current-deployment
+        run: |
+          # Store current production deployment ID for potential rollback
+          DEPLOYMENT_ID=$(curl -s "https://api.vercel.com/v13/deployments?teamId=${{ secrets.VERCEL_ORG_ID }}&projectId=${{ secrets.VERCEL_PROJECT_ID }}&target=production&limit=1" \
+            -H "Authorization: Bearer ${{ secrets.VERCEL_TOKEN }}" | jq -r '.deployments[0].uid // empty')
+          echo "previous_deployment_id=$DEPLOYMENT_ID" >> $GITHUB_OUTPUT
+          if [ -n "$DEPLOYMENT_ID" ]; then
+            echo "Found previous deployment: $DEPLOYMENT_ID"
+          else
+            echo "No previous deployment found"
+          fi
+        continue-on-error: true
+
+      - name: Deploy to Vercel
+        id: deploy
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          working-directory: backend
+          vercel-args: '--prod'
+
+      - name: Get deployment ID
+        id: get-deployment-id
+        run: |
+          DEPLOY_URL="${{ steps.deploy.outputs.url }}"
+          # Extract deployment ID from URL
+          DEPLOYMENT_ID=$(echo $DEPLOY_URL | sed 's/https:\/\///' | cut -d'.' -f1)
+          echo "deployment_id=$DEPLOYMENT_ID" >> $GITHUB_OUTPUT
+
+      - name: Wait for deployment to be ready
+        run: |
+          echo "Waiting for deployment to be ready..."
+          sleep 30
+
+      - name: Health check
+        id: health-check
+        run: |
+          DEPLOY_URL="${{ steps.deploy.outputs.url }}"
+          HEALTH_URL="${DEPLOY_URL}/health"
+          
+          echo "Checking health at: $HEALTH_URL"
+          
+          for i in $(seq 1 ${{ env.HEALTH_CHECK_RETRIES }}); do
+            echo "Health check attempt $i of ${{ env.HEALTH_CHECK_RETRIES }}"
+            
+            RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_URL" --max-time ${{ env.HEALTH_CHECK_TIMEOUT }} || echo "000")
+            
+            if [ "$RESPONSE" = "200" ]; then
+              echo "Health check passed!"
+              echo "healthy=true" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+            
+            echo "Health check failed with status: $RESPONSE"
+            
+            if [ $i -lt ${{ env.HEALTH_CHECK_RETRIES }} ]; then
+              echo "Waiting 20 seconds before retry..."
+              sleep 20
+            fi
+          done
+          
+          echo "Health check failed after ${{ env.HEALTH_CHECK_RETRIES }} attempts"
+          echo "healthy=false" >> $GITHUB_OUTPUT
+          exit 1
+
+      - name: Rollback on failure
+        if: failure() && steps.current-deployment.outputs.previous_deployment_id != ''
+        run: |
+          echo "::error::Deployment health check failed. Initiating rollback..."
+          
+          DEPLOYMENT_ID="${{ steps.current-deployment.outputs.previous_deployment_id }}"
+          if [ -n "$DEPLOYMENT_ID" ]; then
+            echo "Rolling back to deployment ID: $DEPLOYMENT_ID"
+            
+            # Promote previous deployment to production using the alias endpoint
+            RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "https://api.vercel.com/v13/deployments/$DEPLOYMENT_ID/alias" \
+              -H "Authorization: Bearer ${{ secrets.VERCEL_TOKEN }}" \
+              -H "Content-Type: application/json" \
+              -d "{\"alias\": \"${{ secrets.PRODUCTION_DOMAIN }}\"}")
+            
+            HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+            BODY=$(echo "$RESPONSE" | sed '$d')
+            
+            if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
+              echo "Rollback completed successfully"
+            else
+              echo "::error::Rollback failed with HTTP $HTTP_CODE: $BODY"
+              exit 1
+            fi
+          else
+            echo "::warning::No previous deployment found for rollback"
+          fi
+
+      - name: Verify API endpoints
+        if: success()
+        run: |
+          DEPLOY_URL="${{ steps.deploy.outputs.url }}"
+          
+          # Test critical endpoints
+          echo "Testing critical API endpoints..."
+          
+          # Health endpoint
+          curl -f "$DEPLOY_URL/health" || echo "::warning::Health endpoint test failed"
+          
+          echo "API verification completed"
+
+      - name: Deployment summary
+        if: always()
+        run: |
+          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment:** Production" >> $GITHUB_STEP_SUMMARY
+          echo "- **URL:** ${{ steps.deploy.outputs.url }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          HEALTH_STATUS="${{ steps.health-check.outputs.healthy == 'true' && 'Passed' || 'Failed' }}"
+          echo "- **Health Check:** ${HEALTH_STATUS}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Triggered by:** @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+
+  # ====================
+  # Deploy Preview (Pull Requests)
+  # ====================
+  deploy-preview:
+    name: Deploy Preview
+    runs-on: ubuntu-latest
+    needs: [test, build]
+    if: github.event_name == 'pull_request'
+    environment:
+      name: preview
+      url: ${{ steps.deploy.outputs.url }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Deploy Preview to Vercel
+        id: deploy
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          working-directory: backend
+
+      - name: Wait for preview deployment
+        run: sleep 20
+
+      - name: Preview health check
+        id: preview-health
+        run: |
+          DEPLOY_URL="${{ steps.deploy.outputs.url }}"
+          HEALTH_URL="${DEPLOY_URL}/health"
+          
+          for i in $(seq 1 ${{ env.HEALTH_CHECK_RETRIES }}); do
+            RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_URL" --max-time ${{ env.HEALTH_CHECK_TIMEOUT }} || echo "000")
+            
+            if [ "$RESPONSE" = "200" ]; then
+              echo "Preview health check passed!"
+              exit 0
+            fi
+            
+            sleep 10
+          done
+          
+          echo "::warning::Preview health check failed"
+        continue-on-error: true
+
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const healthStatus = '${{ steps.preview-health.outcome }}' === 'success' ? 'Yes' : 'No';
+            const body = [
+              '## 🚀 Backend Preview Deployment',
+              '',
+              `**Preview URL:** ${{ steps.deploy.outputs.url }}`,
+              `**Health Check:** ${healthStatus}`,
+              `**Commit:** \`${{ github.sha }}\``,
+              '',
+              '### Test the deployment:',
+              '```bash',
+              'curl ${{ steps.deploy.outputs.url }}/health',
+              '```'
+            ].join('\n');
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            })
+
+  # ====================
+  # Notify on Failure
+  # ====================
+  notify-failure:
+    name: Notify on Failure
+    runs-on: ubuntu-latest
+    needs: [deploy-production]
+    if: failure() && github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Create failure issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `🚨 Production Deployment Failed - ${new Date().toISOString().split('T')[0]}`;
+            const body = [
+              '## Deployment Failure Alert',
+              '',
+              `**Workflow:** ${context.workflow}`,
+              `**Run:** [#${context.runNumber}](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`,
+              `**Commit:** \`${context.sha}\``,
+              `**Actor:** @${context.actor}`,
+              '',
+              '### Action Required',
+              'Please investigate the deployment failure and take appropriate action.',
+              '',
+              '### Rollback Information',
+              'If automatic rollback was triggered, verify the production environment is stable.'
+            ].join('\n');
+            
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['deployment', 'production', 'urgent']
+            });

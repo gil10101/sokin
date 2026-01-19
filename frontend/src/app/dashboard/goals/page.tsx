@@ -2,26 +2,23 @@
 
 import React from "react"
 import { useState, useEffect, useCallback } from "react"
-import { useRouter } from "next/navigation"
-import { collection, query, where, orderBy, getDocs, addDoc, doc, updateDoc, deleteDoc } from "firebase/firestore"
-import { db } from "../../../lib/firebase"
-import { useAuth } from "../../../contexts/auth-context"
+import { useAuth } from "@/contexts/auth-context"
 import { format, differenceInDays, isAfter, isBefore, addMonths, addYears } from "date-fns"
-import { DashboardSidebar } from "../../../components/dashboard/sidebar"
-import { AddButton } from "../../../components/ui/add-button"
-import { MetricCard } from "../../../components/dashboard/metric-card"
-import { Button } from "../../../components/ui/button"
-import { Input } from "../../../components/ui/input"
-import { Label } from "../../../components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/select"
-import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../../../components/ui/dialog"
-import { Textarea } from "../../../components/ui/textarea"
-import { Calendar } from "../../../components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "../../../components/ui/popover"
-import { Progress } from "../../../components/ui/progress"
-import { Badge } from "../../../components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../components/ui/tabs"
+import { DashboardSidebar } from "@/components/dashboard/sidebar"
+import { AddButton } from "@/components/ui/add-button"
+import { MetricCard } from "@/components/dashboard/metric-card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Textarea } from "@/components/ui/textarea"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Progress } from "@/components/ui/progress"
+import { Badge } from "@/components/ui/badge"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,7 +28,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "../../../components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog"
 import { 
   Plus, 
   Target, 
@@ -56,12 +53,13 @@ import {
   MoreHorizontal,
   ChevronRight
 } from "lucide-react"
-import { useToast } from "../../../hooks/use-toast"
-import { MotionContainer } from "../../../components/ui/motion-container"
-import { LoadingSpinner } from "../../../components/ui/loading-spinner"
-import { MotionDiv, MotionMain, MotionSection, AnimatePresence } from '../../../components/ui/dynamic-motion'
-import { cn } from "../../../lib/utils"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../../../components/ui/dropdown-menu"
+import { useToast } from "@/hooks/use-toast"
+import { MotionContainer } from "@/components/ui/motion-container"
+import { goalsAPI } from "@/lib/api"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { MotionDiv, MotionMain, MotionSection, AnimatePresence } from "@/components/ui/dynamic-motion"
+import { cn } from "@/lib/utils"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
 interface SavingsGoal {
   id: string
@@ -119,13 +117,17 @@ const categories = [
 const priorityConfig = {
   low: { label: 'Low', color: 'bg-gray-100 text-gray-800' },
   medium: { label: 'Medium', color: 'bg-yellow-100 text-yellow-800' },
-  high: { label: 'High', color: 'bg-red-100 text-red-800' }
+  high: { label: 'High', color: 'bg-red-100 text-red-800'   }
 }
 
-export default function GoalsPage() {
+interface GoalsPageProps {
+  params?: Promise<Record<string, string>>;
+  searchParams?: Promise<Record<string, string>>;
+}
+
+export default function GoalsPage(props: GoalsPageProps) {
   const [collapsed, setCollapsed] = useState(false)
   const { user } = useAuth()
-  const router = useRouter()
   const { toast } = useToast()
 
   const [goals, setGoals] = useState<SavingsGoal[]>([])
@@ -158,18 +160,7 @@ export default function GoalsPage() {
 
     setLoading(true)
     try {
-      const goalsRef = collection(db, "goals")
-      const q = query(
-        goalsRef, 
-        where("userId", "==", user.uid), 
-        orderBy("createdAt", "desc")
-      )
-
-      const querySnapshot = await getDocs(q)
-      const goalsData = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as SavingsGoal[]
+      const goalsData = await goalsAPI.getGoals()
 
       setGoals(goalsData)
     } catch (error: unknown) {
@@ -242,32 +233,26 @@ export default function GoalsPage() {
     }
 
     try {
-      const goalData = {
-        userId: user.uid,
+      const goalPayload = {
         name: formData.name,
         description: formData.description,
         targetAmount: parseFloat(formData.targetAmount),
-        currentAmount: editingGoal?.currentAmount || 0,
         targetDate: formData.targetDate.toISOString(),
         category: formData.category,
-        priority: formData.priority,
-        isCompleted: editingGoal?.isCompleted || false,
-        createdAt: editingGoal?.createdAt || new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        priority: formData.priority
       }
 
       if (editingGoal) {
-        const goalRef = doc(db, "goals", editingGoal.id)
-        await updateDoc(goalRef, goalData)
+        await goalsAPI.updateGoal(editingGoal.id, goalPayload)
         toast({
           title: "Goal Updated",
-          description: `Your goal "${goalData.name}" has been updated successfully.`
+          description: `Your goal "${goalPayload.name}" has been updated successfully.`
         })
       } else {
-        await addDoc(collection(db, "goals"), goalData)
+        await goalsAPI.createGoal(goalPayload)
         toast({
           title: "Goal Created",
-          description: `Your goal "${goalData.name}" has been created successfully.`
+          description: `Your goal "${goalPayload.name}" has been created successfully.`
         })
       }
 
@@ -289,7 +274,7 @@ export default function GoalsPage() {
     if (!goalToDelete) return
 
     try {
-      await deleteDoc(doc(db, "goals", goalToDelete))
+      await goalsAPI.deleteGoal(goalToDelete)
       setGoals(goals.filter(g => g.id !== goalToDelete))
       toast({
         title: "Goal Deleted",
@@ -322,26 +307,12 @@ export default function GoalsPage() {
 
     try {
       const newCurrentAmount = selectedGoal.currentAmount + amount
-      const goalRef = doc(db, "goals", selectedGoal.id)
       
-      // Create new contribution record
-      const newContribution: GoalContribution = {
-        id: `contrib_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      await goalsAPI.addContribution(selectedGoal.id, {
         amount,
-        date: new Date().toISOString(),
-        method: 'manual',
-        source: 'Manual Entry',
+        method: "manual",
+        source: "Manual Entry",
         note: contributionNote || undefined
-      }
-
-      // Update goal with new contribution
-      const updatedContributions = [...(selectedGoal.contributions || []), newContribution]
-      
-      await updateDoc(goalRef, {
-        currentAmount: newCurrentAmount,
-        contributions: updatedContributions,
-        updatedAt: new Date().toISOString(),
-        isCompleted: newCurrentAmount >= selectedGoal.targetAmount
       })
 
       // Check for milestones

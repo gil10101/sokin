@@ -17,9 +17,9 @@ import {
   Building,
 } from "lucide-react"
 import { useState, useEffect } from "react"
-import { Avatar, AvatarImage, AvatarFallback } from "../../components/ui/avatar"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../../components/ui/tooltip"
-import { useAuth } from "../../contexts/auth-context"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { useAuth } from "@/contexts/auth-context"
 import { usePathname } from "next/navigation"
 
 interface DashboardSidebarProps {

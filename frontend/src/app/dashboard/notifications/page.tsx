@@ -1,19 +1,24 @@
 "use client"
 
 import React, { useState } from "react"
-import { DashboardSidebar } from "../../../components/dashboard/sidebar"
-import { PageHeader } from "../../../components/dashboard/page-header"
-import { useNotifications, type NotificationType } from "../../../contexts/notifications-context"
+import { DashboardSidebar } from "@/components/dashboard/sidebar"
+import { PageHeader } from "@/components/dashboard/page-header"
+import { useNotifications, type NotificationType } from "@/contexts/notifications-context"
 import { format } from "date-fns"
-import { Button } from "../../../components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../components/ui/tabs"
+import { Button } from "@/components/ui/button"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Info, AlertTriangle, CheckCircle, AlertCircle, Trash2, Check, X } from "lucide-react"
-import { MotionDiv, AnimatePresence } from "../../../components/ui/dynamic-motion"
+import { MotionDiv, AnimatePresence } from "@/components/ui/dynamic-motion"
 import Link from "next/link"
-import { cn } from "../../../lib/utils"
-import { LoadingSpinner } from "../../../components/ui/loading-spinner"
+import { cn } from "@/lib/utils"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
 
-export default function NotificationsPage() {
+interface NotificationsPageProps {
+  params?: Promise<Record<string, string>>;
+  searchParams?: Promise<Record<string, string>>;
+}
+
+export default function NotificationsPage(props: NotificationsPageProps) {
   const [collapsed, setCollapsed] = useState(false)
   const { notifications, markAsRead, markAllAsRead, dismissNotification, dismissAllNotifications, deleteNotification } =
     useNotifications()

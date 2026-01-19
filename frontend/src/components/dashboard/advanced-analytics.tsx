@@ -1,19 +1,18 @@
 "use client"
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
-import { useIsMobile } from '../../hooks/use-mobile'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs'
 import { TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react'
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns'
-import { collection, query, where, getDocs } from "firebase/firestore"
-import { db } from "../../lib/firebase"
-import { useAuth } from "../../contexts/auth-context"
+import { useAuth } from "@/contexts/auth-context"
 import { OverviewAnalytics } from './overview-analytics'
 import { TrendsAnalytics } from './trends-analytics'
 import { SpendingHeatmapAnalytics } from './spending-heatmap-analytics'
 import { CategoryComparisonChart } from './category-comparison-chart'
 import { StackedBarChart } from './stacked-bar-chart'
+import { useExpensesData } from "@/hooks/use-expenses-data"
 
 interface AdvancedAnalyticsProps {
   budgets: Budget[]
@@ -85,44 +84,18 @@ export function AdvancedAnalytics({ budgets, timeframe = "6months" }: AdvancedAn
   const [insights, setInsights] = useState<SpendingInsight[]>([])
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [loading, setLoading] = useState(true)
-  const [expenses, setExpenses] = useState<Expense[]>([])
   const [mounted, setMounted] = useState(false)
   const isMobile = useIsMobile()
+  const { data: expenses = [], isLoading: expensesLoading } = useExpensesData()
 
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  const fetchExpenseData = useCallback(async () => {
-    if (!user) return
-
-    setLoading(true)
-    try {
-      // Fetch expenses from Firebase
-      const expensesRef = collection(db, "expenses")
-      const q = query(expensesRef, where("userId", "==", user.uid))
-
-      const querySnapshot = await getDocs(q)
-      const allExpenses = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Expense[]
-
-      setExpenses(allExpenses)
-
-    } catch (error) {
-
-      setExpenses([])
-    } finally {
-      setLoading(false)
-    }
-  }, [user, timeframe])
-
   useEffect(() => {
-    if (user && mounted) {
-      fetchExpenseData()
-    }
-  }, [user, mounted, timeframe, fetchExpenseData])
+    if (!user || !mounted) return
+    setLoading(expensesLoading)
+  }, [user, mounted, expensesLoading])
 
   // Category comparison data - include all categories with expenses
   const categoryComparisonData = useMemo(() => {

@@ -1,34 +1,37 @@
 "use client"
 
 import React, { useState } from "react"
-import { auth } from "../../../lib/firebase"
+import { auth } from "@/lib/firebase"
 import { useAuthState } from "react-firebase-hooks/auth"
-import { useAnalyticsData } from "../../../hooks/use-analytics-data"
-import { useUpcomingBills } from "../../../hooks/use-upcoming-bills"
-import { MotionDiv, MotionMain, MotionHeader } from "../../../components/ui/dynamic-motion"
-import { DashboardSidebar } from "../../../components/dashboard/sidebar"
+import { useAnalyticsData } from "@/hooks/use-analytics-data"
+import { useUpcomingBills } from "@/hooks/use-upcoming-bills"
+import { MotionDiv, MotionMain, MotionHeader } from "@/components/ui/dynamic-motion"
+import { DashboardSidebar } from "@/components/dashboard/sidebar"
 // Lazy load heavy chart components for better performance
 import { 
   LazyMonthlyTrendsChart, 
   LazyCategoryComparisonChart, 
   LazySpendingHeatmap,
   LazyWrapper 
-} from "../../../components/ui/lazy-components"
-import { IntersectionLazy } from "../../../components/ui/intersection-lazy"
-import { ChartErrorBoundary } from "../../../components/ui/error-boundary"
-import { BudgetProgressCard } from "../../../components/dashboard/budget-progress-card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/select"
+} from "@/components/ui/lazy-components"
+import { IntersectionLazy } from "@/components/ui/intersection-lazy"
+import { ChartErrorBoundary } from "@/components/error-boundary"
+import { BudgetProgressCard } from "@/components/dashboard/budget-progress-card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 // Properly typed Select components
 const TypedSelectTrigger = SelectTrigger
 const TypedSelectContent = SelectContent
 const TypedSelectItem = SelectItem
-import { LoadingSpinner } from "../../../components/ui/loading-spinner"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { logger } from "@/lib/logger"
 
+interface AnalyticsPageProps {
+  params?: Promise<Record<string, string>>;
+  searchParams?: Promise<Record<string, string>>;
+}
 
-
-
-export default function AnalyticsPage() {
+export default function AnalyticsPage(props: AnalyticsPageProps) {
   const [collapsed, setCollapsed] = useState(false)
   const [user] = useAuthState(auth)
   const [timeframe, setTimeframe] = useState<"3months" | "6months" | "12months">("6months")
@@ -49,7 +52,7 @@ export default function AnalyticsPage() {
   // Handle errors from the analytics data hook
   React.useEffect(() => {
     if (error) {
-      console.error('Analytics data error:', error)
+      logger.error('Analytics data error', error instanceof Error ? error : { error })
     }
   }, [error])
 

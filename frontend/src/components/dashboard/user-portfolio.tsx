@@ -8,8 +8,8 @@ import { LoadingSpinner } from "../ui/loading-spinner"
 import { Button } from "../ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table"
 import { ScrollArea } from "../ui/scroll-area"
-import { useAuth } from "../../contexts/auth-context"
-import { toast } from "../ui/use-toast"
+import { useAuth } from "@/contexts/auth-context"
+import { useToast } from "@/hooks/use-toast"
 import { 
   StockAPI, 
   UserPortfolioStock,
@@ -19,7 +19,7 @@ import {
   formatChange, 
   formatPercent,
   formatVolume
-} from "../../lib/stock-api"
+} from "@/lib/stock-api"
 
 interface UserPortfolioProps {
   className?: string
@@ -37,6 +37,7 @@ interface PortfolioSummary {
 
 export const UserPortfolio: React.FC<UserPortfolioProps> = ({ className, onRefresh }) => {
   const { user } = useAuth()
+  const { toast } = useToast()
   const [userPortfolio, setUserPortfolio] = useState<UserPortfolioStock[]>([])
   const [portfolioHoldings, setPortfolioHoldings] = useState<PortfolioHolding[]>([])
   const [recentTransactions, setRecentTransactions] = useState<StockTransaction[]>([])

@@ -1,27 +1,62 @@
-import { Request, Response } from 'express';
+/**
+ * Users Controller
+ * 
+ * Handles user profile operations for the current authenticated user.
+ * Uses /profile endpoint to operate on the authenticated user's data.
+ * 
+ * @module controllers/users
+ */
+
+import { Request, Response, NextFunction } from 'express';
 import { db, auth } from '../config/firebase';
 import { AppError } from '../middleware/errorHandler';
 import logger from '../utils/logger';
-import cache from '../utils/cache';
+import cache, { CACHE_TTL } from '../utils/cache';
 
-// Get user profile
-export const getUserProfile = async (req: Request, res: Response): Promise<void> => {
+/**
+ * Build cache key for user profile
+ */
+function buildUserCacheKey(userId: string): string {
+  return `user:${userId}:profile`;
+}
+
+/**
+ * Get user profile for the authenticated user
+ * 
+ * @description Fetches the profile for the currently authenticated user.
+ * If no profile exists, creates one from Firebase Auth data.
+ * Results are cached in distributed cache.
+ * 
+ * @param req - Express request with authenticated user
+ * @param res - Express response
+ * @param next - Express next function for error propagation
+ * @returns User profile data
+ * 
+ * @example
+ * GET /api/users/profile
+ * Response: { data: { uid, email, displayName, ... } }
+ */
+export const getUserProfile = async (
+  req: Request, 
+  res: Response, 
+  next: NextFunction
+): Promise<void> => {
   try {
     if (!req.user || !req.user.uid) {
       throw new AppError('Unauthorized: User ID missing', 401, true);
     }
 
     if (!db) {
-      throw new AppError('Database not initialized', 500, true);
+      throw new AppError('Database not initialized', 500, false);
     }
 
     const userId = req.user.uid;
-    const cacheKey = `user_${userId}`;
+    const cacheKey = buildUserCacheKey(userId);
     
-    // Try to get from cache first
-    const cachedUser = cache.get(cacheKey);
+    // Try distributed cache first
+    const cachedUser = await cache.getAsync<{ success: boolean; data: Record<string, unknown> }>(cacheKey);
     if (cachedUser) {
-      res.status(200).json({ data: cachedUser });
+      res.status(200).json(cachedUser);
       return;
     }
 
@@ -31,14 +66,15 @@ export const getUserProfile = async (req: Request, res: Response): Promise<void>
     if (!userDoc.exists) {
       // User document doesn't exist yet, get information from Firebase Auth
       if (!auth) {
-        throw new AppError('Authentication service not initialized', 500, true);
+        throw new AppError('Authentication service not initialized', 500, false);
       }
       
       try {
         const userRecord = await auth.getUser(userId);
         
-        // Create minimal user object
+        // Create minimal user object with consistent id field
         const userData = {
+          id: userId, // Include id for consistent API response structure
           uid: userId,
           email: userRecord.email || '',
           displayName: userRecord.displayName || '',
@@ -49,62 +85,118 @@ export const getUserProfile = async (req: Request, res: Response): Promise<void>
         // Create the user document
         await db.collection('users').doc(userId).set(userData);
         
-        // Cache user data (60 seconds)
-        cache.set(cacheKey, userData, 60);
+        const result = { success: true, data: userData };
         
-        res.status(200).json({ data: userData });
+        // Cache user data in distributed cache
+        await cache.setAsync(cacheKey, result, CACHE_TTL.USER_SETTINGS);
+        
+        res.status(200).json(result);
+        return;
       } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         logger.error(`Error fetching user from auth: ${errorMessage}`, { userId });
         throw new AppError('User not found', 404, true);
       }
-    } else {
-      const userData = {
-        id: userDoc.id,
-        ...userDoc.data()
-      };
-      
-      // Cache user data (60 seconds)
-      cache.set(cacheKey, userData, 60);
-      
-      res.status(200).json({ data: userData });
     }
-  } catch (error: unknown) {
+
+    const userData = {
+      id: userDoc.id,
+      ...userDoc.data()
+    };
+    
+    const result = { success: true, data: userData };
+      
+    // Cache user data in distributed cache
+    await cache.setAsync(cacheKey, result, CACHE_TTL.USER_SETTINGS);
+      
+    res.status(200).json(result);
+  } catch (error) {
     if (error instanceof AppError) {
-      throw error;
+      next(error);
+      return;
     }
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    logger.error(`Error in getUserProfile: ${errorMessage}`);
-    res.status(500).json({ error: 'Failed to fetch user profile' });
+    logger.error(`Error in getUserProfile: ${errorMessage}`, { userId: req.user?.uid });
+    next(new AppError('Failed to fetch user profile', 500, false));
   }
 };
 
-// Update user profile
-export const updateUserProfile = async (req: Request, res: Response): Promise<void> => {
+/**
+ * Update user profile for the authenticated user
+ * 
+ * @description Updates the profile for the currently authenticated user.
+ * Invalidates cache after successful update.
+ * 
+ * @param req - Express request with authenticated user and update data in body
+ * @param res - Express response
+ * @param next - Express next function for error propagation
+ * @returns Updated user profile data
+ * 
+ * @example
+ * PUT /api/users/profile
+ * Body: { displayName: "New Name", settings: { theme: "dark" } }
+ * Response: { data: { ... }, message: "User profile updated successfully" }
+ */
+export const updateUserProfile = async (
+  req: Request, 
+  res: Response, 
+  next: NextFunction
+): Promise<void> => {
   try {
     if (!req.user || !req.user.uid) {
       throw new AppError('Unauthorized: User ID missing', 401, true);
     }
 
     if (!db) {
-      throw new AppError('Database not initialized', 500, true);
+      throw new AppError('Database not initialized', 500, false);
     }
 
     const userId = req.user.uid;
     const { displayName, photoURL, settings } = req.body;
     
+    // Validate input fields to prevent data corruption and DoS
+    if (displayName !== undefined) {
+      if (typeof displayName !== 'string') {
+        throw new AppError('Display name must be a string', 400, true);
+      }
+      if (displayName.length > 100) {
+        throw new AppError('Display name cannot exceed 100 characters', 400, true);
+      }
+    }
+    
+    if (photoURL !== undefined) {
+      if (typeof photoURL !== 'string') {
+        throw new AppError('Photo URL must be a string', 400, true);
+      }
+      if (photoURL.length > 500) {
+        throw new AppError('Photo URL cannot exceed 500 characters', 400, true);
+      }
+      // Basic URL validation
+      if (photoURL && !/^https?:\/\/.+/.test(photoURL)) {
+        throw new AppError('Photo URL must be a valid HTTP(S) URL', 400, true);
+      }
+    }
+    
+    if (settings !== undefined) {
+      if (typeof settings !== 'object' || settings === null || Array.isArray(settings)) {
+        throw new AppError('Settings must be an object', 400, true);
+      }
+    }
+    
     // Build update object with only provided fields
-    const updateData: Record<string, any> = {};
-    if (displayName !== undefined) updateData.displayName = displayName;
+    const updateData: Record<string, unknown> = {
+      updatedAt: new Date().toISOString()
+    };
+    
+    if (displayName !== undefined) updateData.displayName = displayName.trim();
     if (photoURL !== undefined) updateData.photoURL = photoURL;
     if (settings !== undefined) updateData.settings = settings;
-    updateData.updatedAt = new Date().toISOString();
 
     // Update the user document
     await db.collection('users').doc(userId).update(updateData);
     
-    // Clear cache
-    cache.del(`user_${userId}`);
+    // Clear cache from distributed cache
+    await cache.delAsync(buildUserCacheKey(userId));
     
     // Get updated user data
     const updatedUserDoc = await db.collection('users').doc(userId).get();
@@ -118,15 +210,17 @@ export const updateUserProfile = async (req: Request, res: Response): Promise<vo
     };
     
     res.status(200).json({ 
+      success: true,
       data: userData,
       message: 'User profile updated successfully'
     });
-  } catch (error: unknown) {
+  } catch (error) {
     if (error instanceof AppError) {
-      throw error;
+      next(error);
+      return;
     }
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    logger.error(`Error in updateUserProfile: ${errorMessage}`);
-    res.status(500).json({ error: 'Failed to update user profile' });
+    logger.error(`Error in updateUserProfile: ${errorMessage}`, { userId: req.user?.uid });
+    next(new AppError('Failed to update user profile', 500, false));
   }
-}; 
+};

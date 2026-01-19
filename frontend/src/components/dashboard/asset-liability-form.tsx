@@ -17,8 +17,8 @@ import { Input } from '../ui/input'
 import { Label } from '../ui/label'
 import { Textarea } from '../ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
-import { useAuth } from '../../contexts/auth-context'
-import { api } from '../../lib/api'
+import { useAuth } from '@/contexts/auth-context'
+import { api } from '@/lib/api'
 import { 
   Asset, 
   Liability, 
@@ -28,7 +28,7 @@ import {
   LiabilityCategory,
   AssetFormData,
   LiabilityFormData
-} from '../../lib/types'
+} from '@/lib/types'
 
 interface AssetLiabilityFormProps {
   type: 'asset' | 'liability'

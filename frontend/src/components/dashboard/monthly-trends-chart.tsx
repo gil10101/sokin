@@ -2,9 +2,9 @@
 
 import { useEffect, useState, useMemo } from "react"
 import { AreaChart, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Area } from "recharts"
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "../../components/ui/chart"
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { MotionDiv } from "../ui/dynamic-motion"
-import { useViewport } from "../../hooks/use-mobile"
+import { useViewport } from "@/hooks/use-mobile"
 
 interface MonthlyTrendsChartProps {
   data: Array<{ month: string; amount: number }>
@@ -115,7 +115,7 @@ export function MonthlyTrendsChart({ data }: MonthlyTrendsChartProps) {
             <ChartTooltip
               content={<ChartTooltipContent />}
               labelFormatter={(value) => `Month: ${value}`}
-              formatter={(value: number) => [`$${value.toLocaleString()}`]}
+              formatter={(value: number | undefined) => value !== undefined ? [`$${value.toLocaleString()}`] : ['N/A']}
             />
             <Area
               type="monotone"

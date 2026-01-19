@@ -1,6 +1,17 @@
-import { Request, Response } from 'express';
+/**
+ * Net Worth Controller
+ * 
+ * Handles asset management, liability management, net worth calculations,
+ * snapshots, and financial insights with distributed caching.
+ * 
+ * @module controllers/netWorthController
+ */
+
+import { Request, Response, NextFunction } from 'express';
 import { db } from '../config/firebase';
+import { AppError } from '../middleware/errorHandler';
 import logger from '../utils/logger';
+import cache, { CACHE_TTL } from '../utils/cache';
 import { 
   Asset, 
   Liability, 
@@ -17,19 +28,76 @@ import {
 } from '../models/types';
 
 /**
+ * Cache key builders
+ */
+function buildAssetsCacheKey(userId: string): string {
+  return `assets:${userId}:list`;
+}
+
+function buildAssetCacheKey(assetId: string): string {
+  return `asset:${assetId}`;
+}
+
+function buildLiabilitiesCacheKey(userId: string): string {
+  return `liabilities:${userId}:list`;
+}
+
+function buildLiabilityCacheKey(liabilityId: string): string {
+  return `liability:${liabilityId}`;
+}
+
+function buildNetWorthCacheKey(userId: string): string {
+  return `networth:${userId}`;
+}
+
+function buildNetWorthHistoryCacheKey(userId: string, limit: number): string {
+  return `networth:${userId}:history:${limit}`;
+}
+
+function buildNetWorthTrendsCacheKey(userId: string, months: number): string {
+  return `networth:${userId}:trends:${months}`;
+}
+
+/**
+ * Invalidate all net worth related caches for a user
+ */
+async function invalidateNetWorthCaches(userId: string): Promise<void> {
+  await Promise.all([
+    cache.invalidatePatternAsync(`assets:${userId}:*`),
+    cache.invalidatePatternAsync(`liabilities:${userId}:*`),
+    cache.invalidatePatternAsync(`networth:${userId}*`)
+  ]);
+}
+
+/**
  * Asset Management Controllers
  */
 
-// Get all assets for a user
-export const getUserAssets = async (req: Request, res: Response) => {
+/**
+ * Get all assets for a user
+ */
+export const getUserAssets = async (
+  req: Request, 
+  res: Response, 
+  next: NextFunction
+): Promise<void> => {
   try {
     const userId = req.user?.uid;
     if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      throw new AppError('Unauthorized: User ID missing', 401, true);
     }
 
     if (!db) {
-      return res.status(500).json({ error: 'Database not initialized' });
+      throw new AppError('Database not initialized', 500, false);
+    }
+
+    const cacheKey = buildAssetsCacheKey(userId);
+    
+    // Try distributed cache first
+    const cachedResult = await cache.getAsync<{ success: boolean; data: Asset[] }>(cacheKey);
+    if (cachedResult) {
+      res.json(cachedResult);
+      return;
     }
 
     const assetsRef = db.collection('assets');
@@ -43,23 +111,41 @@ export const getUserAssets = async (req: Request, res: Response) => {
       assets.push({ id: doc.id, ...doc.data() } as Asset);
     });
 
-    res.json({ data: assets });
-  } catch (error) {
+    const result = { success: true, data: assets };
+    
+    // Cache the result
+    await cache.setAsync(cacheKey, result, CACHE_TTL.LIST_QUERY);
 
-    res.status(500).json({ error: 'Failed to fetch assets' });
+    res.json(result);
+  } catch (error) {
+    if (error instanceof AppError) {
+      next(error);
+      return;
+    }
+    logger.error('Error fetching assets', { 
+      error: error instanceof Error ? error.message : 'Unknown error',
+      userId: req.user?.uid
+    });
+    next(new AppError('Failed to fetch assets', 500, false));
   }
 };
 
-// Create a new asset
-export const createAsset = async (req: Request, res: Response) => {
+/**
+ * Create a new asset
+ */
+export const createAsset = async (
+  req: Request, 
+  res: Response, 
+  next: NextFunction
+): Promise<void> => {
   try {
     const userId = req.user?.uid;
     if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      throw new AppError('Unauthorized: User ID missing', 401, true);
     }
 
     if (!db) {
-      return res.status(500).json({ error: 'Database not initialized' });
+      throw new AppError('Database not initialized', 500, false);
     }
 
     const assetData: CreateAssetRequest = req.body;
@@ -80,38 +166,53 @@ export const createAsset = async (req: Request, res: Response) => {
     const docRef = await db.collection('assets').add(newAsset);
     const createdAsset = { id: docRef.id, ...newAsset };
 
-    // Trigger net worth recalculation
+    // Invalidate caches and trigger net worth recalculation
+    await invalidateNetWorthCaches(userId);
     await updateNetWorthSnapshot(userId);
 
-    res.status(201).json({ data: createdAsset });
+    res.status(201).json({ success: true, data: createdAsset, message: 'Asset created successfully' });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to create asset' });
+    if (error instanceof AppError) {
+      next(error);
+      return;
+    }
+    logger.error('Error creating asset', { 
+      error: error instanceof Error ? error.message : 'Unknown error',
+      userId: req.user?.uid
+    });
+    next(new AppError('Failed to create asset', 500, false));
   }
 };
 
-// Update an asset
-export const updateAsset = async (req: Request, res: Response) => {
+/**
+ * Update an asset
+ */
+export const updateAsset = async (
+  req: Request, 
+  res: Response, 
+  next: NextFunction
+): Promise<void> => {
   try {
     const userId = req.user?.uid;
     const assetId = req.params.id;
     if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      throw new AppError('Unauthorized: User ID missing', 401, true);
     }
 
     if (!db) {
-      return res.status(500).json({ error: 'Database not initialized' });
+      throw new AppError('Database not initialized', 500, false);
     }
 
     const assetRef = db.collection('assets').doc(assetId);
     const assetDoc = await assetRef.get();
 
     if (!assetDoc.exists) {
-      return res.status(404).json({ error: 'Asset not found' });
+      throw new AppError('Asset not found', 404, true);
     }
 
     const assetData = assetDoc.data() as Asset;
     if (assetData.userId !== userId) {
-      return res.status(403).json({ error: 'Forbidden: Not your asset' });
+      throw new AppError('Forbidden: Not your asset', 403, true);
     }
 
     const updateData: UpdateAssetRequest = req.body;
@@ -125,49 +226,79 @@ export const updateAsset = async (req: Request, res: Response) => {
 
     await assetRef.update(updatedFields);
 
-    // Trigger net worth recalculation
+    // Invalidate caches and trigger net worth recalculation
+    await Promise.all([
+      invalidateNetWorthCaches(userId),
+      cache.delAsync(buildAssetCacheKey(assetId))
+    ]);
     await updateNetWorthSnapshot(userId);
 
     const updatedAsset = { id: assetId, ...assetData, ...updatedFields };
-    res.json({ data: updatedAsset });
+    res.json({ success: true, data: updatedAsset, message: 'Asset updated successfully' });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to update asset' });
+    if (error instanceof AppError) {
+      next(error);
+      return;
+    }
+    logger.error('Error updating asset', { 
+      error: error instanceof Error ? error.message : 'Unknown error',
+      userId: req.user?.uid
+    });
+    next(new AppError('Failed to update asset', 500, false));
   }
 };
 
-// Delete an asset
-export const deleteAsset = async (req: Request, res: Response) => {
+/**
+ * Delete an asset
+ */
+export const deleteAsset = async (
+  req: Request, 
+  res: Response, 
+  next: NextFunction
+): Promise<void> => {
   try {
     const userId = req.user?.uid;
     const assetId = req.params.id;
     if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      throw new AppError('Unauthorized: User ID missing', 401, true);
     }
 
     if (!db) {
-      return res.status(500).json({ error: 'Database not initialized' });
+      throw new AppError('Database not initialized', 500, false);
     }
 
     const assetRef = db.collection('assets').doc(assetId);
     const assetDoc = await assetRef.get();
 
     if (!assetDoc.exists) {
-      return res.status(404).json({ error: 'Asset not found' });
+      throw new AppError('Asset not found', 404, true);
     }
 
     const assetData = assetDoc.data() as Asset;
     if (assetData.userId !== userId) {
-      return res.status(403).json({ error: 'Forbidden: Not your asset' });
+      throw new AppError('Forbidden: Not your asset', 403, true);
     }
 
     await assetRef.delete();
 
-    // Trigger net worth recalculation
+    // Invalidate caches and trigger net worth recalculation
+    await Promise.all([
+      invalidateNetWorthCaches(userId),
+      cache.delAsync(buildAssetCacheKey(assetId))
+    ]);
     await updateNetWorthSnapshot(userId);
 
-    res.json({ message: 'Asset deleted successfully' });
+    res.json({ success: true, message: 'Asset deleted successfully' });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to delete asset' });
+    if (error instanceof AppError) {
+      next(error);
+      return;
+    }
+    logger.error('Error deleting asset', { 
+      error: error instanceof Error ? error.message : 'Unknown error',
+      userId: req.user?.uid
+    });
+    next(new AppError('Failed to delete asset', 500, false));
   }
 };
 
@@ -175,16 +306,31 @@ export const deleteAsset = async (req: Request, res: Response) => {
  * Liability Management Controllers
  */
 
-// Get all liabilities for a user
-export const getUserLiabilities = async (req: Request, res: Response) => {
+/**
+ * Get all liabilities for a user
+ */
+export const getUserLiabilities = async (
+  req: Request, 
+  res: Response, 
+  next: NextFunction
+): Promise<void> => {
   try {
     const userId = req.user?.uid;
     if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      throw new AppError('Unauthorized: User ID missing', 401, true);
     }
 
     if (!db) {
-      return res.status(500).json({ error: 'Database not initialized' });
+      throw new AppError('Database not initialized', 500, false);
+    }
+
+    const cacheKey = buildLiabilitiesCacheKey(userId);
+    
+    // Try distributed cache first
+    const cachedResult = await cache.getAsync<{ success: boolean; data: Liability[] }>(cacheKey);
+    if (cachedResult) {
+      res.json(cachedResult);
+      return;
     }
 
     const liabilitiesRef = db.collection('liabilities');
@@ -198,22 +344,41 @@ export const getUserLiabilities = async (req: Request, res: Response) => {
       liabilities.push({ id: doc.id, ...doc.data() } as Liability);
     });
 
-    res.json({ data: liabilities });
+    const result = { success: true, data: liabilities };
+    
+    // Cache the result
+    await cache.setAsync(cacheKey, result, CACHE_TTL.LIST_QUERY);
+
+    res.json(result);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch liabilities' });
+    if (error instanceof AppError) {
+      next(error);
+      return;
+    }
+    logger.error('Error fetching liabilities', { 
+      error: error instanceof Error ? error.message : 'Unknown error',
+      userId: req.user?.uid
+    });
+    next(new AppError('Failed to fetch liabilities', 500, false));
   }
 };
 
-// Create a new liability
-export const createLiability = async (req: Request, res: Response) => {
+/**
+ * Create a new liability
+ */
+export const createLiability = async (
+  req: Request, 
+  res: Response, 
+  next: NextFunction
+): Promise<void> => {
   try {
     const userId = req.user?.uid;
     if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      throw new AppError('Unauthorized: User ID missing', 401, true);
     }
 
     if (!db) {
-      return res.status(500).json({ error: 'Database not initialized' });
+      throw new AppError('Database not initialized', 500, false);
     }
 
     const liabilityData: CreateLiabilityRequest = req.body;
@@ -236,38 +401,53 @@ export const createLiability = async (req: Request, res: Response) => {
     const docRef = await db.collection('liabilities').add(newLiability);
     const createdLiability = { id: docRef.id, ...newLiability };
 
-    // Trigger net worth recalculation
+    // Invalidate caches and trigger net worth recalculation
+    await invalidateNetWorthCaches(userId);
     await updateNetWorthSnapshot(userId);
 
-    res.status(201).json({ data: createdLiability });
+    res.status(201).json({ success: true, data: createdLiability, message: 'Liability created successfully' });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to create liability' });
+    if (error instanceof AppError) {
+      next(error);
+      return;
+    }
+    logger.error('Error creating liability', { 
+      error: error instanceof Error ? error.message : 'Unknown error',
+      userId: req.user?.uid
+    });
+    next(new AppError('Failed to create liability', 500, false));
   }
 };
 
-// Update a liability
-export const updateLiability = async (req: Request, res: Response) => {
+/**
+ * Update a liability
+ */
+export const updateLiability = async (
+  req: Request, 
+  res: Response, 
+  next: NextFunction
+): Promise<void> => {
   try {
     const userId = req.user?.uid;
     const liabilityId = req.params.id;
     if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      throw new AppError('Unauthorized: User ID missing', 401, true);
     }
 
     if (!db) {
-      return res.status(500).json({ error: 'Database not initialized' });
+      throw new AppError('Database not initialized', 500, false);
     }
 
     const liabilityRef = db.collection('liabilities').doc(liabilityId);
     const liabilityDoc = await liabilityRef.get();
 
     if (!liabilityDoc.exists) {
-      return res.status(404).json({ error: 'Liability not found' });
+      throw new AppError('Liability not found', 404, true);
     }
 
     const liabilityData = liabilityDoc.data() as Liability;
     if (liabilityData.userId !== userId) {
-      return res.status(403).json({ error: 'Forbidden: Not your liability' });
+      throw new AppError('Forbidden: Not your liability', 403, true);
     }
 
     const updateData: UpdateLiabilityRequest = req.body;
@@ -280,49 +460,79 @@ export const updateLiability = async (req: Request, res: Response) => {
 
     await liabilityRef.update(updatedFields);
 
-    // Trigger net worth recalculation
+    // Invalidate caches and trigger net worth recalculation
+    await Promise.all([
+      invalidateNetWorthCaches(userId),
+      cache.delAsync(buildLiabilityCacheKey(liabilityId))
+    ]);
     await updateNetWorthSnapshot(userId);
 
     const updatedLiability = { id: liabilityId, ...liabilityData, ...updatedFields };
-    res.json({ data: updatedLiability });
+    res.json({ success: true, data: updatedLiability, message: 'Liability updated successfully' });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to update liability' });
+    if (error instanceof AppError) {
+      next(error);
+      return;
+    }
+    logger.error('Error updating liability', { 
+      error: error instanceof Error ? error.message : 'Unknown error',
+      userId: req.user?.uid
+    });
+    next(new AppError('Failed to update liability', 500, false));
   }
 };
 
-// Delete a liability
-export const deleteLiability = async (req: Request, res: Response) => {
+/**
+ * Delete a liability
+ */
+export const deleteLiability = async (
+  req: Request, 
+  res: Response, 
+  next: NextFunction
+): Promise<void> => {
   try {
     const userId = req.user?.uid;
     const liabilityId = req.params.id;
     if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      throw new AppError('Unauthorized: User ID missing', 401, true);
     }
 
     if (!db) {
-      return res.status(500).json({ error: 'Database not initialized' });
+      throw new AppError('Database not initialized', 500, false);
     }
 
     const liabilityRef = db.collection('liabilities').doc(liabilityId);
     const liabilityDoc = await liabilityRef.get();
 
     if (!liabilityDoc.exists) {
-      return res.status(404).json({ error: 'Liability not found' });
+      throw new AppError('Liability not found', 404, true);
     }
 
     const liabilityData = liabilityDoc.data() as Liability;
     if (liabilityData.userId !== userId) {
-      return res.status(403).json({ error: 'Forbidden: Not your liability' });
+      throw new AppError('Forbidden: Not your liability', 403, true);
     }
 
     await liabilityRef.delete();
 
-    // Trigger net worth recalculation
+    // Invalidate caches and trigger net worth recalculation
+    await Promise.all([
+      invalidateNetWorthCaches(userId),
+      cache.delAsync(buildLiabilityCacheKey(liabilityId))
+    ]);
     await updateNetWorthSnapshot(userId);
 
-    res.json({ message: 'Liability deleted successfully' });
+    res.json({ success: true, message: 'Liability deleted successfully' });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to delete liability' });
+    if (error instanceof AppError) {
+      next(error);
+      return;
+    }
+    logger.error('Error deleting liability', { 
+      error: error instanceof Error ? error.message : 'Unknown error',
+      userId: req.user?.uid
+    });
+    next(new AppError('Failed to delete liability', 500, false));
   }
 };
 
@@ -330,17 +540,30 @@ export const deleteLiability = async (req: Request, res: Response) => {
  * Net Worth Calculation and Snapshot Controllers
  */
 
-// Calculate current net worth
-export const calculateNetWorth = async (req: Request, res: Response) => {
+/**
+ * Calculate current net worth
+ */
+export const calculateNetWorth = async (
+  req: Request, 
+  res: Response, 
+  next: NextFunction
+): Promise<void> => {
   try {
     const userId = req.user?.uid;
     if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      throw new AppError('Unauthorized: User ID missing', 401, true);
     }
 
+    const cacheKey = buildNetWorthCacheKey(userId);
+    
+    // Try distributed cache first
+    const cachedResult = await cache.getAsync<{ success: boolean; data: NetWorthCalculation }>(cacheKey);
+    if (cachedResult) {
+      res.json(cachedResult);
+      return;
+    }
 
     if (!db) {
-      ('Database not initialized, returning empty calculation');
       // Return empty calculation for development mode
       const emptyCalculation: NetWorthCalculation = {
         userId,
@@ -368,29 +591,57 @@ export const calculateNetWorth = async (req: Request, res: Response) => {
         monthlyChange: 0,
         monthlyChangePercent: 0,
       };
-      return res.json({ data: emptyCalculation });
+      res.json({ success: true, data: emptyCalculation });
+      return;
     }
 
     const calculation = await calculateUserNetWorth(userId);
-    res.json({ data: calculation });
+    const result = { success: true, data: calculation };
+    
+    // Cache the result
+    await cache.setAsync(cacheKey, result, CACHE_TTL.SINGLE_ITEM);
+    
+    res.json(result);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to calculate net worth' });
+    if (error instanceof AppError) {
+      next(error);
+      return;
+    }
+    logger.error('Error calculating net worth', { 
+      error: error instanceof Error ? error.message : 'Unknown error',
+      userId: req.user?.uid
+    });
+    next(new AppError('Failed to calculate net worth', 500, false));
   }
 };
 
-// Get net worth history/snapshots
-export const getNetWorthHistory = async (req: Request, res: Response) => {
+/**
+ * Get net worth history/snapshots
+ */
+export const getNetWorthHistory = async (
+  req: Request, 
+  res: Response, 
+  next: NextFunction
+): Promise<void> => {
   try {
     const userId = req.user?.uid;
     if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      throw new AppError('Unauthorized: User ID missing', 401, true);
     }
 
     if (!db) {
-      return res.status(500).json({ error: 'Database not initialized' });
+      throw new AppError('Database not initialized', 500, false);
     }
 
     const limit = parseInt(req.query.limit as string) || 12; // Default 12 months
+    const cacheKey = buildNetWorthHistoryCacheKey(userId, limit);
+    
+    // Try distributed cache first
+    const cachedResult = await cache.getAsync<{ success: boolean; data: NetWorthSnapshot[] }>(cacheKey);
+    if (cachedResult) {
+      res.json(cachedResult);
+      return;
+    }
     
     const snapshotsRef = db.collection('netWorthSnapshots');
     const snapshot = await snapshotsRef
@@ -404,27 +655,54 @@ export const getNetWorthHistory = async (req: Request, res: Response) => {
       snapshots.push({ id: doc.id, ...doc.data() } as NetWorthSnapshot);
     });
 
-    res.json({ data: snapshots.reverse() }); // Return in chronological order
+    const result = { success: true, data: snapshots.reverse() }; // Return in chronological order
+    
+    // Cache the result
+    await cache.setAsync(cacheKey, result, CACHE_TTL.LIST_QUERY);
+    
+    res.json(result);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch net worth history' });
+    if (error instanceof AppError) {
+      next(error);
+      return;
+    }
+    logger.error('Error fetching net worth history', { 
+      error: error instanceof Error ? error.message : 'Unknown error',
+      userId: req.user?.uid
+    });
+    next(new AppError('Failed to fetch net worth history', 500, false));
   }
 };
 
-// Get net worth trends
-export const getNetWorthTrends = async (req: Request, res: Response) => {
+/**
+ * Get net worth trends
+ */
+export const getNetWorthTrends = async (
+  req: Request, 
+  res: Response, 
+  next: NextFunction
+): Promise<void> => {
   try {
     const userId = req.user?.uid;
     if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      throw new AppError('Unauthorized: User ID missing', 401, true);
     }
-
 
     if (!db) {
       // Return empty trends for development mode
-      return res.json({ data: [] });
+      res.json({ success: true, data: [] });
+      return;
     }
 
     const months = parseInt(req.query.months as string) || 12;
+    const cacheKey = buildNetWorthTrendsCacheKey(userId, months);
+    
+    // Try distributed cache first
+    const cachedResult = await cache.getAsync<{ success: boolean; data: NetWorthTrend[] }>(cacheKey);
+    if (cachedResult) {
+      res.json(cachedResult);
+      return;
+    }
     
     try {
       const snapshotsRef = db.collection('netWorthSnapshots');
@@ -435,22 +713,20 @@ export const getNetWorthTrends = async (req: Request, res: Response) => {
         .limit(months)
         .get();
 
-
       const snapshots: NetWorthSnapshot[] = [];
       snapshot.forEach(doc => {
         const data = doc.data() as NetWorthSnapshot;
         snapshots.push(data);
       });
 
-
       if (snapshots.length === 0) {
-        return res.json({ data: [] });
+        res.json({ success: true, data: [] });
+        return;
       }
 
       snapshots.reverse(); // Chronological order
 
       const trends: NetWorthTrend[] = snapshots.map((snap, index) => {
-        try {
           const prevSnap = index > 0 ? snapshots[index - 1] : null;
           const monthlyChange = prevSnap ? snap.netWorth - prevSnap.netWorth : 0;
           const monthlyChangePercent = prevSnap && prevSnap.netWorth !== 0 
@@ -468,50 +744,72 @@ export const getNetWorthTrends = async (req: Request, res: Response) => {
             monthlyChange,
             monthlyChangePercent,
           };
-        } catch (mapError) {
-          throw mapError;
-        }
       });
 
-      res.json({ data: trends });
+      const result = { success: true, data: trends };
+      
+      // Cache the result
+      await cache.setAsync(cacheKey, result, CACHE_TTL.LIST_QUERY);
+      
+      res.json(result);
       
     } catch (queryError) {
-      
       const error = queryError as Error;
       
       // If it's a missing index error, return empty data
       if (error.message && error.message.includes('index')) {
-        return res.json({ data: [] });
+        res.json({ success: true, data: [] });
+        return;
       }
       
       throw queryError;
     }
     
-  } catch (err) {
-    
-    const error = err as Error;
-    res.status(500).json({ error: 'Failed to fetch net worth trends' });
+  } catch (error) {
+    if (error instanceof AppError) {
+      next(error);
+      return;
+    }
+    logger.error('Error fetching net worth trends', { 
+      error: error instanceof Error ? error.message : 'Unknown error',
+      userId: req.user?.uid
+    });
+    next(new AppError('Failed to fetch net worth trends', 500, false));
   }
 };
 
-// Get net worth insights
-export const getNetWorthInsights = async (req: Request, res: Response) => {
+/**
+ * Get net worth insights
+ */
+export const getNetWorthInsights = async (
+  req: Request, 
+  res: Response, 
+  next: NextFunction
+): Promise<void> => {
   try {
     const userId = req.user?.uid;
     if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      throw new AppError('Unauthorized: User ID missing', 401, true);
     }
 
     if (!db) {
-      return res.status(500).json({ error: 'Database not initialized' });
+      throw new AppError('Database not initialized', 500, false);
     }
 
     const calculation = await calculateUserNetWorth(userId);
     const insights = generateNetWorthInsights(calculation);
 
-    res.json({ data: insights });
+    res.json({ success: true, data: insights });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to generate insights' });
+    if (error instanceof AppError) {
+      next(error);
+      return;
+    }
+    logger.error('Error generating insights', { 
+      error: error instanceof Error ? error.message : 'Unknown error',
+      userId: req.user?.uid
+    });
+    next(new AppError('Failed to generate insights', 500, false));
   }
 };
 
@@ -519,13 +817,12 @@ export const getNetWorthInsights = async (req: Request, res: Response) => {
  * Helper Functions
  */
 
-// Calculate user's current net worth
+/**
+ * Calculate user's current net worth
+ */
 export const calculateUserNetWorth = async (userId: string): Promise<NetWorthCalculation> => {
-  
-  
   if (!db) {
-    
-    throw new Error('Database not initialized');
+    throw new AppError('Database not initialized', 500, false);
   }
 
   let assets: Asset[] = [];
@@ -533,7 +830,6 @@ export const calculateUserNetWorth = async (userId: string): Promise<NetWorthCal
 
   try {
     // Get all assets
-    
     const assetsSnapshot = await db.collection('assets')
       .where('userId', '==', userId)
       .get();
@@ -552,7 +848,10 @@ export const calculateUserNetWorth = async (userId: string): Promise<NetWorthCal
     });
 
   } catch (error) {
-
+    logger.error('Error fetching user financial data', { 
+      error: error instanceof Error ? error.message : 'Unknown error',
+      userId
+    });
     // Continue with empty arrays if database fetch fails
     assets = [];
     liabilities = [];
@@ -662,11 +961,13 @@ export const calculateUserNetWorth = async (userId: string): Promise<NetWorthCal
   };
 };
 
-// Update/create monthly net worth snapshot
+/**
+ * Update/create monthly net worth snapshot
+ */
 export const updateNetWorthSnapshot = async (userId: string): Promise<void> => {
   try {
     if (!db) {
-      throw new Error('Database not initialized');
+      throw new AppError('Database not initialized', 500, false);
     }
 
     const calculation = await calculateUserNetWorth(userId);
@@ -705,13 +1006,16 @@ export const updateNetWorthSnapshot = async (userId: string): Promise<void> => {
       await existingSnapshot.docs[0].ref.update(snapshotData);
     }
   } catch (error) {
-    logger.error("Error updating net worth snapshot", {
-      error: error instanceof Error ? error.message : 'Unknown error'
-    })
+    logger.error('Error updating net worth snapshot', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      userId
+    });
   }
 };
 
-// Generate insights based on net worth calculation
+/**
+ * Generate insights based on net worth calculation
+ */
 const generateNetWorthInsights = (calculation: NetWorthCalculation): NetWorthInsight[] => {
   const insights: NetWorthInsight[] = [];
 
@@ -779,4 +1083,4 @@ const generateNetWorthInsights = (calculation: NetWorthCalculation): NetWorthIns
   }
 
   return insights;
-}; 
+};

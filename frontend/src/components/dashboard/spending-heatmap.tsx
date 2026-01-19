@@ -2,11 +2,9 @@
 
 import { useState, useEffect, useMemo } from "react"
 import { format, startOfWeek, addDays, addWeeks, subWeeks } from "date-fns"
-import { collection, query, where, getDocs } from "firebase/firestore"
-import { db } from "../../lib/firebase"
-import { useExpensesData } from "../../hooks/use-expenses-data"
-import { useAuth } from "../../contexts/auth-context"
-import { useViewport } from "../../hooks/use-mobile"
+import { useExpensesData } from "@/hooks/use-expenses-data"
+import { useAuth } from "@/contexts/auth-context"
+import { useViewport } from "@/hooks/use-mobile"
 
 // Helper function to safely parse dates including Firebase Timestamps
 const safeParseDate = (dateValue: string | number | Date | { toDate(): Date } | null | undefined): Date => {

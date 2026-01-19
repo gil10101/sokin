@@ -55,6 +55,22 @@ const nextConfig = {
     }
   },
   webpack: (config, { dev, isServer }) => {
+    // Fix HMR instability - ignore file system noise
+    if (dev) {
+      config.watchOptions = {
+        ...config.watchOptions,
+        ignored: [
+          '**/node_modules/**',
+          '**/.git/**',
+          '**/.next/**',
+          '**/tsconfig.tsbuildinfo',
+          '**/*.log',
+        ],
+        aggregateTimeout: 300,
+        poll: false,
+      }
+    }
+
     // Optimize bundle splitting for better caching
     config.optimization.splitChunks = {
       chunks: 'all',

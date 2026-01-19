@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --webpack",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -42,7 +42,7 @@
     "@radix-ui/react-toggle-group": "^1.1.1",
     "@radix-ui/react-tooltip": "^1.1.6",
     "@react-three/fiber": "^9.3.0",
-    "@sentry/nextjs": "^9.28.1",
+    "@sentry/nextjs": "^10.29.0",
     "@tanstack/react-query": "^5.17.19",
     "@types/three": "^0.179.0",
     "autoprefixer": "^10.4.20",
@@ -58,7 +58,7 @@
     "gsap": "^3.13.0",
     "input-otp": "1.4.1",
     "lucide-react": "^0.454.0",
-    "next": "^15.2.0",
+    "next": "^16.0.7",
     "next-themes": "^0.4.4",
     "postcss": "^8.4.35",
     "react": "^19.1.0",
@@ -78,11 +78,11 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
-    "@next/bundle-analyzer": "^14.2.26",
+    "@next/bundle-analyzer": "^15.5.3",
     "@types/node": "^20.11.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "eslint-config-next": "15.5.2",
+    "eslint-config-next": "15.5.3",
     "sharp": "^0.34.1",
     "typescript": "^5.3.0"
   }

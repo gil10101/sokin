@@ -1,21 +1,21 @@
 "use client"
 
 import { useInfiniteQuery } from '@tanstack/react-query'
-import { useAuth } from '../contexts/auth-context'
-import { api } from '../lib/api'
+import { useAuth } from '@/contexts/auth-context'
+import { api } from '@/lib/api'
 
 export interface ExpenseLite {
   id: string
   name?: string
   amount: number
-  date: string | Date
+  date: string
   category: string
   userId: string
 }
 
 interface ExpensesResponse {
-  data: ExpenseLite[]
-  pagination: {
+  data?: ExpenseLite[]
+  pagination?: {
     hasMore: boolean
     nextCursor: string | null
     count: number

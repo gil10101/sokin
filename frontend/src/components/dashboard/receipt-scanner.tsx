@@ -7,9 +7,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
 import { Loader2, Camera, Upload, Check, X } from 'lucide-react'
-import { useToast } from '../../hooks/use-toast'
+import { useToast } from '@/hooks/use-toast'
 import { motion, AnimatePresence } from 'framer-motion'
-import { auth } from '../../lib/firebase'
+import { auth } from '@/lib/firebase'
 
 interface ParsedReceiptData {
   merchant?: string

@@ -1,11 +1,10 @@
 "use client"
 
 import type React from "react"
-import { createContext, useContext, useState, useEffect } from "react"
-import { collection, query, where, orderBy, doc, updateDoc, deleteDoc, addDoc, onSnapshot } from "firebase/firestore"
-import { db } from "../../../lib/firebase"
-import { useAuth } from "./auth-context"
-import { logger } from "../lib/logger"
+import { createContext, useContext, useState, useEffect, useCallback } from "react"
+import { useAuth } from "@/contexts/auth-context"
+import { logger } from "@/lib/logger"
+import { notificationsAPI } from "@/lib/api"
 
 export type NotificationType = "info" | "success" | "warning" | "error" | "budget" | "system"
 
@@ -46,6 +45,62 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
   const { user } = useAuth()
   const [unreadCount, setUnreadCount] = useState(0)
 
+  const normalizeType = (type: string): NotificationType => {
+    switch (type) {
+      case "info":
+      case "success":
+      case "warning":
+      case "error":
+      case "system":
+        return type
+      case "budget_warning":
+      case "budget_exceeded":
+      case "budget_alert":
+        return "budget"
+      case "bill_reminder":
+      case "goal_milestone":
+      case "spending_insight":
+        return "info"
+      default:
+        return "info"
+    }
+  }
+
+  const mapTypeForApi = (type: NotificationType): string => {
+    switch (type) {
+      case "budget":
+        return "budget_warning"
+      case "system":
+        return "system"
+      default:
+        return type
+    }
+  }
+
+  const refreshNotifications = useCallback(async () => {
+    if (!user) return
+    try {
+      const data = await notificationsAPI.getNotifications()
+      const normalized = data.map((notification) => ({
+        id: notification.id,
+        title: notification.title,
+        message: notification.message,
+        type: normalizeType(notification.type),
+        read: Boolean(notification.read),
+        dismissed: Boolean(notification.dismissed),
+        createdAt: notification.createdAt,
+        link: notification.link
+      }))
+      setNotifications(normalized)
+      setUnreadCount(normalized.filter((n) => !n.read).length)
+    } catch (error: unknown) {
+      logger.error("Failed to fetch notifications", {
+        error: error instanceof Error ? error.message : "Unknown error",
+        userId: user?.uid
+      })
+    }
+  }, [user])
+
   // Fetch notifications when user changes
   useEffect(() => {
     if (!user) {
@@ -54,38 +109,24 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
       return
     }
 
-    const notificationsRef = collection(db, "notifications")
-    const q = query(
-      notificationsRef,
-      where("userId", "==", user.uid),
-      where("dismissed", "==", false),
-      orderBy("createdAt", "desc"),
-    )
+    refreshNotifications()
+    const intervalId = setInterval(refreshNotifications, 30000)
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const notificationsData = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Notification[]
-
-      setNotifications(notificationsData)
-      setUnreadCount(notificationsData.filter((n) => !n.read).length)
-    })
-
-    return () => unsubscribe()
-  }, [user])
+    return () => clearInterval(intervalId)
+  }, [user, refreshNotifications])
 
   const addNotification = async (notification: Omit<Notification, "id" | "read" | "dismissed" | "createdAt">) => {
     if (!user) return
 
     try {
-      await addDoc(collection(db, "notifications"), {
-        ...notification,
-        userId: user.uid,
-        read: false,
-        dismissed: false,
-        createdAt: new Date().toISOString(),
+      await notificationsAPI.createNotification({
+        title: notification.title,
+        message: notification.message,
+        type: mapTypeForApi(notification.type),
+        data: {},
+        link: notification.link
       })
+      await refreshNotifications()
     } catch (error: unknown) {
       // Failed to add notification - user will not see this notification
       logger.error('Failed to add notification', {
@@ -99,9 +140,13 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
     if (!user) return
 
     try {
-      await updateDoc(doc(db, "notifications", id), {
-        read: true,
-      })
+      await notificationsAPI.markAsRead(id)
+      setNotifications((prev) =>
+        prev.map((notification) =>
+          notification.id === id ? { ...notification, read: true } : notification
+        )
+      )
+      setUnreadCount((prev) => Math.max(0, prev - 1))
     } catch (error: unknown) {
       // Failed to mark notification as read - will remain unread
       logger.error('Failed to mark notification as read', {
@@ -116,11 +161,11 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
     if (!user) return
 
     try {
-      const promises = notifications
-        .filter((n) => !n.read)
-        .map((n) => updateDoc(doc(db, "notifications", n.id), { read: true }))
-
-      await Promise.all(promises)
+      await notificationsAPI.markAllAsRead()
+      setNotifications((prev) =>
+        prev.map((notification) => ({ ...notification, read: true }))
+      )
+      setUnreadCount(0)
     } catch (error: unknown) {
       // Failed to mark all notifications as read - some may remain unread
       logger.error('Failed to mark all notifications as read', {
@@ -134,9 +179,8 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
     if (!user) return
 
     try {
-      await updateDoc(doc(db, "notifications", id), {
-        dismissed: true,
-      })
+      await notificationsAPI.dismissNotification(id)
+      setNotifications((prev) => prev.filter((notification) => notification.id !== id))
     } catch (error: unknown) {
       // Failed to dismiss notification - will remain visible
       logger.error('Failed to dismiss notification', {
@@ -151,9 +195,9 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
     if (!user) return
 
     try {
-      const promises = notifications.map((n) => updateDoc(doc(db, "notifications", n.id), { dismissed: true }))
-
-      await Promise.all(promises)
+      await notificationsAPI.dismissAllNotifications()
+      setNotifications([])
+      setUnreadCount(0)
     } catch (error: unknown) {
       // Failed to dismiss all notifications - some may remain visible
       logger.error('Failed to dismiss all notifications', {
@@ -167,7 +211,8 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
     if (!user) return
 
     try {
-      await deleteDoc(doc(db, "notifications", id))
+      await notificationsAPI.deleteNotification(id)
+      setNotifications((prev) => prev.filter((notification) => notification.id !== id))
     } catch (error: unknown) {
       // Failed to delete notification - will remain in system
       logger.error('Failed to delete notification', {

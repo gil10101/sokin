@@ -3,15 +3,13 @@
 import React from "react"
 
 import { useState, useEffect, useCallback } from "react"
-import { collection, query, where, orderBy, getDocs, deleteDoc, doc } from "firebase/firestore"
-import { db } from "../../../lib/firebase"
-import { useAuth } from "../../../contexts/auth-context"
+import { useAuth } from "@/contexts/auth-context"
 import { format, isValid, parseISO } from "date-fns"
-import { DashboardSidebar } from "../../../components/dashboard/sidebar"
-import { Input } from "../../../components/ui/input"
-import { Button } from "../../../components/ui/button"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../components/ui/table"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/select"
+import { DashboardSidebar } from "@/components/dashboard/sidebar"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,17 +20,18 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "../../../components/ui/alert-dialog"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../../../components/ui/dialog"
+} from "@/components/ui/alert-dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Search, Trash2, Edit, ChevronDown, ChevronRight, ChevronLeft, Receipt, ChevronsLeft, ChevronsRight } from "lucide-react"
-import { AddButton } from "../../../components/ui/add-button"
+import { AddButton } from "@/components/ui/add-button"
 import Image from "next/image"
-import { useToast } from "../../../hooks/use-toast"
+import { useToast } from "@/hooks/use-toast"
+import { expensesAPI } from "@/lib/api"
 import { useRouter } from "next/navigation"
-import { MotionContainer } from "../../../components/ui/motion-container"
-import { LoadingSpinner } from "../../../components/ui/loading-spinner"
+import { MotionContainer } from "@/components/ui/motion-container"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
 // Import the useNotifications hook
-import { useNotifications } from "../../../contexts/notifications-context"
+import { useNotifications } from "@/contexts/notifications-context"
 
 interface Expense {
   id: string
@@ -98,7 +97,12 @@ const safeFormatDate = (dateValue: DateValue, formatStr: string): string => {
   }
 }
 
-export default function ExpensesPage() {
+interface ExpensesPageProps {
+  params?: Promise<Record<string, string>>;
+  searchParams?: Promise<Record<string, string>>;
+}
+
+export default function ExpensesPage(props: ExpensesPageProps) {
   const [collapsed, setCollapsed] = useState(false)
   const { user } = useAuth()
   const { toast } = useToast()
@@ -133,14 +137,23 @@ export default function ExpensesPage() {
 
     setLoading(true)
     try {
-      const expensesRef = collection(db, "expenses")
-      const q = query(expensesRef, where("userId", "==", user.uid), orderBy("date", "desc"))
+      const expensesData: Expense[] = []
+      let cursor: string | null = null
+      let hasMore = true
+      let pageCount = 0
 
-      const querySnapshot = await getDocs(q)
-      const expensesData = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Expense[]
+      while (hasMore && pageCount < 50) {
+        const page = await expensesAPI.getExpenses({
+          limit: 100,
+          cursor: cursor || undefined,
+          sortBy: "date",
+          sortOrder: "desc"
+        })
+        expensesData.push(...page.items)
+        cursor = page.nextCursor || null
+        hasMore = page.hasMore
+        pageCount += 1
+      }
 
       setExpenses(expensesData)
       setFilteredExpenses(expensesData)
@@ -284,7 +297,7 @@ export default function ExpensesPage() {
       // Find the expense to get its name
       const expenseToDeleteData = expenses.find((expense) => expense.id === expenseToDelete)
 
-      await deleteDoc(doc(db, "expenses", expenseToDelete))
+      await expensesAPI.deleteExpense(expenseToDelete)
 
       // Update local state
       setExpenses(expenses.filter((expense) => expense.id !== expenseToDelete))

@@ -126,7 +126,11 @@ import cache from '../../../src/utils/cache';
 const firebaseMocks = require('../../../src/config/firebase').__mocks;
 
 describe('Budgets Controller', () => {
-  let mockRequest: Partial<Request>;
+  interface AuthenticatedRequest extends Request {
+    user?: { uid: string; email?: string };
+  }
+
+  let mockRequest: Partial<AuthenticatedRequest>;
   let mockResponse: Partial<Response>;
   let mockNext: NextFunction;
   let jsonMock: jest.Mock;
@@ -302,10 +306,11 @@ describe('Budgets Controller', () => {
     it('should create a new budget with all fields', async () => {
       mockRequest.body = {
         name: 'Entertainment Budget',
+        category: 'Entertainment',
         amount: 200,
         period: 'monthly',
         categories: ['Entertainment', 'Subscriptions'],
-        startDate: '2025-02-01',
+        startDate: '2025-02-01T00:00:00.000Z',
       };
 
       await createBudget(
@@ -334,9 +339,11 @@ describe('Budgets Controller', () => {
       for (const period of periods) {
         mockRequest.body = {
           name: `${period} Budget`,
+          category: 'General',
           amount: 100,
           period,
           categories: ['General'],
+          startDate: '2025-02-01T00:00:00.000Z',
         };
 
         await createBudget(
@@ -358,9 +365,11 @@ describe('Budgets Controller', () => {
     it('should invalidate cache after creation', async () => {
       mockRequest.body = {
         name: 'New Budget',
+        category: 'Shopping',
         amount: 300,
         period: 'monthly',
         categories: ['Shopping'],
+        startDate: '2025-02-01T00:00:00.000Z',
       };
 
       await createBudget(

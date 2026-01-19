@@ -37,28 +37,6 @@ export interface UserPortfolioStock {
   gainLossPercent: number
 }
 
-export interface StockHolding {
-  id: string
-  userId: string
-  symbol: string
-  shares: number
-  purchasePrice: number
-  purchaseDate: string
-  createdAt: string
-  updatedAt: string
-}
-
-export interface StockAlert {
-  id: string
-  userId: string
-  symbol: string
-  alertType: 'price_above' | 'price_below' | 'percent_change'
-  targetValue: number
-  isActive: boolean
-  createdAt: string
-  updatedAt: string
-}
-
 export interface StockTransaction {
   id: string
   userId: string

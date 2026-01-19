@@ -7,6 +7,7 @@ interface ResponsiveLayoutContainerProps {
   stockMarketSection: React.ReactNode
   savingsAnalyticsSection: React.ReactNode
   recentTransactionsSection: React.ReactNode
+  billsSection?: React.ReactNode
   className?: string
 }
 
@@ -18,6 +19,7 @@ export function ResponsiveLayoutContainer({
   stockMarketSection,
   savingsAnalyticsSection,
   recentTransactionsSection,
+  billsSection,
   className = "",
 }: ResponsiveLayoutContainerProps) {
   const portfolioState = usePortfolioState()
@@ -36,11 +38,15 @@ export function ResponsiveLayoutContainer({
             {recentTransactionsSection}
           </div>
           
-          {/* Right Column: Savings & Analytics */}
-          <div>
+          {/* Right Column: Bills (desktop only) | Savings & Analytics */}
+          <div className="flex flex-col space-y-4 lg:space-y-6">
+            {billsSection && <div className="hidden lg:block">{billsSection}</div>}
             {savingsAnalyticsSection}
           </div>
         </div>
+        
+        {/* Bills on mobile/tablet */}
+        {billsSection && <div className="lg:hidden mb-6 lg:mb-8">{billsSection}</div>}
       </div>
     )
   }
@@ -48,25 +54,27 @@ export function ResponsiveLayoutContainer({
   // Standard Layout: When user has portfolio
   return (
     <div className={className}>
-      {/* Row 1: Stock Market (Left), Savings & Analytics (Right) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 mb-6 lg:mb-8">
-        {/* Stock Market - Left Half */}
-        <div>
-          {stockMarketSection}
+      {/* Desktop: 2-column layout with equal heights */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 mb-6 lg:mb-8 lg:items-stretch">
+        {/* Left Column: Stock Market | Recent Transactions */}
+        <div className="flex flex-col space-y-4 lg:space-y-6">
+          <div className="flex-[2] flex flex-col min-h-0">
+            {stockMarketSection}
+          </div>
+          <div className="flex-1 flex flex-col min-h-0">
+            {recentTransactionsSection}
+          </div>
         </div>
 
-        {/* Combined Savings Goals & Analytics - Right Half */}
-        <div>
+        {/* Right Column: Bills (desktop only) | Savings Goals | Analytics Overview */}
+        <div className="flex flex-col space-y-4 lg:space-y-6">
+          {billsSection && <div className="hidden lg:block">{billsSection}</div>}
           {savingsAnalyticsSection}
         </div>
       </div>
 
-      {/* Row 2: Recent Transactions (full width) */}
-      <div className="grid grid-cols-1 gap-4 lg:gap-6 mb-6 lg:mb-8">
-        <div>
-          {recentTransactionsSection}
-        </div>
-      </div>
+      {/* Bills on mobile/tablet */}
+      {billsSection && <div className="lg:hidden mb-6 lg:mb-8">{billsSection}</div>}
     </div>
   )
 }

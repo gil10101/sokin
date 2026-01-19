@@ -1,7 +1,7 @@
 'use client'
 
 import React, { ReactNode, Suspense, lazy, ComponentType, RefObject } from 'react'
-import { useIntersectionObserver } from '../../hooks/use-intersection-observer'
+import { useIntersectionObserver } from '@/hooks/use-intersection-observer'
 import { LoadingSpinner } from './loading-spinner'
 
 interface LazyWrapperProps {

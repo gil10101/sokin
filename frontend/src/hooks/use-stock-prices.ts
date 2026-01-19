@@ -1,18 +1,11 @@
 /**
- * @fileoverview Custom React hooks for real-time stock price updates
- * Provides WebSocket-based real-time stock price monitoring with error handling
- * 
- * @version 1.0.0
- * @author Sokin Team
+ * Real-time stock price hooks.
  */
 
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { StockAPI } from '../lib/stock-api'
-import { logger } from '../lib/logger'
+import { StockAPI } from '@/lib/stock-api'
+import { logger } from '@/lib/logger'
 
-/**
- * Stock price update data structure
- */
 interface StockPriceUpdate {
   symbol: string
   price: number
@@ -21,85 +14,22 @@ interface StockPriceUpdate {
   timestamp: string
 }
 
-/**
- * Configuration options for the useStockPrices hook
- */
 interface UseStockPricesOptions {
-  /** Array of stock symbols to monitor */
   symbols: string[]
-  /** Whether to enable real-time updates (default: true) */
   enabled?: boolean
-  /** Custom error handler for connection issues */
   onError?: (error: string) => void
-  /** Custom connection status handler */
   onConnectionChange?: (connected: boolean) => void
 }
 
-/**
- * Return type for the useStockPrices hook
- */
 interface UseStockPricesReturn {
-  /** Real-time price data for subscribed symbols */
   prices: Record<string, StockPriceUpdate>
-  /** WebSocket connection status */
   connected: boolean
-  /** Current error message, if any */
   error: string | null
-  /** Get price data for a specific symbol */
   getPrice: (symbol: string) => StockPriceUpdate | null
-  /** Get price data for multiple symbols */
   getPrices: (symbols: string[]) => Record<string, StockPriceUpdate>
-  /** Manually reconnect to WebSocket */
   reconnect: () => void
 }
 
-/**
- * Custom hook for real-time stock price updates via WebSocket
- * 
- * Features:
- * - Real-time price updates via WebSocket connection
- * - Automatic connection management
- * - Error handling and retry logic
- * - Connection timeout detection
- * - Clean subscription management
- * 
- * @param options - Hook configuration options
- * @returns Object containing price data, connection status, and utility functions
- * 
- * @example
- * Basic usage:
- * ```typescript
- * const { prices, connected, error } = useStockPrices({
- *   symbols: ['AAPL', 'GOOGL', 'MSFT'],
- *   enabled: true
- * })
- * 
- * if (error) {
- *   ('Price updates failed:', error)
- * }
- * 
- * if (connected) {
- *   displayPrice('AAPL', prices['AAPL']?.price)
- * }
- * ```
- * 
- * @example
- * With custom error handling:
- * ```typescript
- * const { prices, getPrice } = useStockPrices({
- *   symbols: ['AAPL'],
- *   onError: (error) => toast.error(`Price updates failed: ${error}`),
- *   onConnectionChange: (connected) => setConnectionStatus(connected)
- * })
- * 
- * const aaplPrice = getPrice('AAPL')
- * ```
- * 
- * @security
- * - WebSocket connection includes authentication token when available
- * - Validates symbol format before subscribing
- * - Limits number of concurrent subscriptions
- */
 export function useStockPrices({ 
   symbols, 
   enabled = true, 
@@ -113,18 +43,9 @@ export function useStockPrices({
   const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  /**
-   * Handle incoming price update from WebSocket
-   * Updates local state and triggers re-render
-   * 
-   * @param symbol - Stock symbol
-   * @param data - Price update data
-   */
   const handlePriceUpdate = useCallback((symbol: string, data: { price: number; change?: number; changePercent?: number; timestamp?: number }) => {
     try {
-      // Validate incoming data
       if (!data || typeof data.price !== 'number') {
-
         return
       }
 
@@ -139,7 +60,6 @@ export function useStockPrices({
         }
       }))
       
-      // Set connected to true when we receive valid data
       if (!connected) {
         setConnected(true)
         setError(null)
@@ -155,10 +75,6 @@ export function useStockPrices({
     }
   }, [connected, onConnectionChange, onError, symbols])
 
-  /**
-   * Manually reconnect to WebSocket
-   * Useful for retry after connection failures
-   */
   const reconnect = useCallback(() => {
     if (unsubscribeRef.current) {
       unsubscribeRef.current()
@@ -168,7 +84,6 @@ export function useStockPrices({
     setConnected(false)
     setError(null)
     
-    // Clear any existing timeouts
     if (connectionTimeoutRef.current) {
       clearTimeout(connectionTimeoutRef.current)
     }
@@ -176,7 +91,6 @@ export function useStockPrices({
       clearTimeout(reconnectTimeoutRef.current)
     }
     
-    // Retry connection after a short delay
     reconnectTimeoutRef.current = setTimeout(() => {
       if (enabled && symbols.length > 0) {
         try {
@@ -188,12 +102,18 @@ export function useStockPrices({
           onError?.(errorMsg)
         }
       }
-    }, 2000) // 2 second delay
+    }, 2000) // 2s
   }, [enabled, symbols, handlePriceUpdate, onError])
 
-  // Main effect for managing WebSocket subscription
+  const hasReceivedDataRef = useRef(false)
+  
   useEffect(() => {
-    // Clean up any existing connections
+    if (Object.keys(prices).length > 0) {
+      hasReceivedDataRef.current = true
+    }
+  }, [prices])
+
+  useEffect(() => {
     if (unsubscribeRef.current) {
       unsubscribeRef.current()
       unsubscribeRef.current = null
@@ -203,14 +123,12 @@ export function useStockPrices({
       clearTimeout(connectionTimeoutRef.current)
     }
 
-    // Don't connect if disabled or no symbols
     if (!enabled || symbols.length === 0) {
       setConnected(false)
       onConnectionChange?.(false)
       return
     }
 
-    // Validate symbols format
     const invalidSymbols = symbols.filter(symbol => 
       !symbol || typeof symbol !== 'string' || !/^[A-Z^]{1,10}$/.test(symbol)
     )
@@ -232,6 +150,7 @@ export function useStockPrices({
 
     try {
       setError(null)
+      hasReceivedDataRef.current = false
       
       // Subscribe to price updates
       const unsubscribe = StockAPI.subscribeToStockPrices(symbols, handlePriceUpdate)
@@ -239,7 +158,7 @@ export function useStockPrices({
 
       // Set a timeout to detect if connection is working
       connectionTimeoutRef.current = setTimeout(() => {
-        if (Object.keys(prices).length === 0) {
+        if (!hasReceivedDataRef.current) {
           setConnected(false)
           onConnectionChange?.(false)
           const errorMsg = 'Real-time price updates not available'
@@ -282,7 +201,7 @@ export function useStockPrices({
         clearTimeout(connectionTimeoutRef.current)
       }
     }
-  }, [symbols, enabled, handlePriceUpdate, onError, onConnectionChange, prices])
+  }, [symbols, enabled, handlePriceUpdate, onError, onConnectionChange])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -299,20 +218,6 @@ export function useStockPrices({
     }
   }, [])
 
-  /**
-   * Get price data for a specific symbol
-   * 
-   * @param symbol - Stock symbol to get price for
-   * @returns Price update data or null if not available
-   * 
-   * @example
-   * ```typescript
-   * const aaplPrice = getPrice('AAPL')
-   * if (aaplPrice) {
-   *   displayPriceUpdate('AAPL', aaplPrice.price, aaplPrice.changePercent)
-   * }
-   * ```
-   */
   const getPrice = useCallback((symbol: string): StockPriceUpdate | null => {
     if (!symbol || typeof symbol !== 'string') {
       return null
@@ -320,20 +225,6 @@ export function useStockPrices({
     return prices[symbol] || null
   }, [prices])
 
-  /**
-   * Get price data for multiple symbols
-   * 
-   * @param symbolList - Array of stock symbols
-   * @returns Object mapping symbols to price data (only includes available data)
-   * 
-   * @example
-   * ```typescript
-   * const portfolioPrices = getPrices(['AAPL', 'GOOGL', 'MSFT'])
-   * Object.entries(portfolioPrices).forEach(([symbol, data]) => {
-   *   updatePortfolioPrice(symbol, data.price)
-   * })
-   * ```
-   */
   const getPrices = useCallback((symbolList: string[]): Record<string, StockPriceUpdate> => {
     if (!Array.isArray(symbolList)) {
       return {}
@@ -358,27 +249,6 @@ export function useStockPrices({
   }
 }
 
-/**
- * Simplified hook for monitoring a single stock price
- * Convenience wrapper around useStockPrices for single symbol use cases
- * 
- * @param symbol - Stock symbol to monitor
- * @param enabled - Whether to enable real-time updates (default: true)
- * @returns Object containing price data, connection status, and error
- * 
- * @example
- * ```typescript
- * const { price, connected, error } = useStockPrice('AAPL')
- * 
- * if (price) {
- *   displayPriceWithChange('AAPL', price.price, price.changePercent)
- * }
- * 
- * if (error) {
- *   ('Failed to get AAPL price:', error)
- * }
- * ```
- */
 export function useStockPrice(symbol: string, enabled = true) {
   const { connected, error, getPrice } = useStockPrices({ 
     symbols: symbol ? [symbol] : [], 
@@ -386,11 +256,8 @@ export function useStockPrice(symbol: string, enabled = true) {
   })
 
   return {
-    /** Price data for the specified symbol */
     price: getPrice(symbol),
-    /** WebSocket connection status */
     connected,
-    /** Current error message, if any */
     error,
   }
 } 

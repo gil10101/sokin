@@ -1,6 +1,17 @@
+/**
+ * Net Worth Routes
+ * 
+ * RESTful routes for net worth management including assets,
+ * liabilities, calculations, and financial insights.
+ * 
+ * @module routes/netWorthRoutes
+ */
+
 import { Router } from 'express';
 import { auth } from '../middleware/auth';
 import { validate } from '../middleware/validation';
+import { asyncHandler } from '../middleware/errorHandler';
+import { createRateLimiter } from '../middleware/rateLimiter';
 import {
   getUserAssets,
   createAsset,
@@ -24,6 +35,10 @@ import {
 
 const router = Router();
 
+// Apply rate limiting
+const readRateLimit = createRateLimiter.read();
+const writeRateLimit = createRateLimiter.api();
+
 // Apply authentication middleware to all routes
 router.use(auth);
 
@@ -31,48 +46,96 @@ router.use(auth);
  * Asset Routes
  */
 
-// GET /api/net-worth/assets - Get all assets for the user
-router.get('/assets', getUserAssets);
+/**
+ * @route   GET /api/net-worth/assets
+ * @desc    Get all assets for the user
+ * @access  Private
+ */
+router.get('/assets', readRateLimit, asyncHandler(getUserAssets));
 
-// POST /api/net-worth/assets - Create a new asset
-router.post('/assets', validate(createAssetSchema), createAsset);
+/**
+ * @route   POST /api/net-worth/assets
+ * @desc    Create a new asset
+ * @access  Private
+ */
+router.post('/assets', writeRateLimit, validate(createAssetSchema), asyncHandler(createAsset));
 
-// PUT /api/net-worth/assets/:id - Update an asset
-router.put('/assets/:id', validate(updateAssetSchema), updateAsset);
+/**
+ * @route   PUT /api/net-worth/assets/:id
+ * @desc    Update an asset
+ * @access  Private
+ */
+router.put('/assets/:id', writeRateLimit, validate(updateAssetSchema), asyncHandler(updateAsset));
 
-// DELETE /api/net-worth/assets/:id - Delete an asset
-router.delete('/assets/:id', deleteAsset);
+/**
+ * @route   DELETE /api/net-worth/assets/:id
+ * @desc    Delete an asset
+ * @access  Private
+ */
+router.delete('/assets/:id', writeRateLimit, asyncHandler(deleteAsset));
 
 /**
  * Liability Routes
  */
 
-// GET /api/net-worth/liabilities - Get all liabilities for the user
-router.get('/liabilities', getUserLiabilities);
+/**
+ * @route   GET /api/net-worth/liabilities
+ * @desc    Get all liabilities for the user
+ * @access  Private
+ */
+router.get('/liabilities', readRateLimit, asyncHandler(getUserLiabilities));
 
-// POST /api/net-worth/liabilities - Create a new liability
-router.post('/liabilities', validate(createLiabilitySchema), createLiability);
+/**
+ * @route   POST /api/net-worth/liabilities
+ * @desc    Create a new liability
+ * @access  Private
+ */
+router.post('/liabilities', writeRateLimit, validate(createLiabilitySchema), asyncHandler(createLiability));
 
-// PUT /api/net-worth/liabilities/:id - Update a liability
-router.put('/liabilities/:id', validate(updateLiabilitySchema), updateLiability);
+/**
+ * @route   PUT /api/net-worth/liabilities/:id
+ * @desc    Update a liability
+ * @access  Private
+ */
+router.put('/liabilities/:id', writeRateLimit, validate(updateLiabilitySchema), asyncHandler(updateLiability));
 
-// DELETE /api/net-worth/liabilities/:id - Delete a liability
-router.delete('/liabilities/:id', deleteLiability);
+/**
+ * @route   DELETE /api/net-worth/liabilities/:id
+ * @desc    Delete a liability
+ * @access  Private
+ */
+router.delete('/liabilities/:id', writeRateLimit, asyncHandler(deleteLiability));
 
 /**
  * Net Worth Calculation Routes
  */
 
-// GET /api/net-worth/calculate - Calculate current net worth
-router.get('/calculate', calculateNetWorth);
+/**
+ * @route   GET /api/net-worth/calculate
+ * @desc    Calculate current net worth
+ * @access  Private
+ */
+router.get('/calculate', readRateLimit, asyncHandler(calculateNetWorth));
 
-// GET /api/net-worth/history - Get net worth history/snapshots
-router.get('/history', getNetWorthHistory);
+/**
+ * @route   GET /api/net-worth/history
+ * @desc    Get net worth history/snapshots
+ * @access  Private
+ */
+router.get('/history', readRateLimit, asyncHandler(getNetWorthHistory));
 
-// GET /api/net-worth/trends - Get net worth trends
-router.get('/trends', getNetWorthTrends);
+/**
+ * @route   GET /api/net-worth/trends
+ * @desc    Get net worth trends
+ * @access  Private
+ */
+router.get('/trends', readRateLimit, asyncHandler(getNetWorthTrends));
 
-// GET /api/net-worth/insights - Get net worth insights
-router.get('/insights', getNetWorthInsights);
+/**
+ * @route   GET /api/net-worth/insights
+ * @desc    Get net worth insights
+ * @access  Private
+ */
+router.get('/insights', readRateLimit, asyncHandler(getNetWorthInsights));
 
 export default router; 

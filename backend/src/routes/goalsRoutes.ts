@@ -1,26 +1,63 @@
+/**
+ * Goals Routes
+ * 
+ * RESTful routes for savings goals management with rate limiting,
+ * authentication, and error handling middleware.
+ * 
+ * @module routes/goalsRoutes
+ */
+
 import { Router } from 'express';
-import { GoalsController } from '../controllers/goalsController';
+import { 
+  getUserGoals, 
+  createGoal, 
+  addContribution, 
+  updateGoal, 
+  deleteGoal 
+} from '../controllers/goalsController';
 import { auth } from '../middleware/auth';
-import { rateLimiter } from '../middleware/rateLimiter';
+import { createRateLimiter } from '../middleware/rateLimiter';
+import { asyncHandler } from '../middleware/errorHandler';
 
 const router = Router();
 
-// Rate limiting for goals API calls (more lenient than other endpoints)
-const goalsRateLimit = rateLimiter(200, 15 * 60 * 1000); // 200 requests per 15 minutes
+// Apply rate limiting
+const readRateLimit = createRateLimiter.read();
+const writeRateLimit = createRateLimiter.api();
 
-// Get user's savings goals
-router.get('/', goalsRateLimit, auth, GoalsController.getUserGoals);
+/**
+ * @route   GET /api/goals
+ * @desc    Get user's savings goals
+ * @access  Private
+ */
+router.get('/', readRateLimit, auth, asyncHandler(getUserGoals));
 
-// Create new savings goal
-router.post('/', goalsRateLimit, auth, GoalsController.createGoal);
+/**
+ * @route   POST /api/goals
+ * @desc    Create new savings goal
+ * @access  Private
+ */
+router.post('/', writeRateLimit, auth, asyncHandler(createGoal));
 
-// Add contribution to goal
-router.post('/:goalId/contribute', goalsRateLimit, auth, GoalsController.addContribution);
+/**
+ * @route   POST /api/goals/:goalId/contribute
+ * @desc    Add contribution to goal
+ * @access  Private
+ */
+router.post('/:goalId/contribute', writeRateLimit, auth, asyncHandler(addContribution));
 
-// Update goal
-router.put('/:goalId', goalsRateLimit, auth, GoalsController.updateGoal);
+/**
+ * @route   PUT /api/goals/:goalId
+ * @desc    Update goal
+ * @access  Private
+ */
+router.put('/:goalId', writeRateLimit, auth, asyncHandler(updateGoal));
 
-// Delete goal
-router.delete('/:goalId', goalsRateLimit, auth, GoalsController.deleteGoal);
+/**
+ * @route   DELETE /api/goals/:goalId
+ * @desc    Delete goal
+ * @access  Private
+ */
+router.delete('/:goalId', writeRateLimit, auth, asyncHandler(deleteGoal));
 
 export default router; 

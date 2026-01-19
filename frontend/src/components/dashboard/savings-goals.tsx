@@ -1,8 +1,8 @@
 "use client"
 
 import { useState, useEffect } from 'react'
-import { useAuth } from '../../contexts/auth-context'
-import { goalsAPI } from '../../lib/api'
+import { useAuth } from '@/contexts/auth-context'
+import { goalsAPI } from '@/lib/api'
 import { Button } from '../ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog'
@@ -31,8 +31,8 @@ import {
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useToast } from '../../hooks/use-toast'
-import { cn } from '../../lib/utils'
+import { useToast } from '@/hooks/use-toast'
+import { cn } from '@/lib/utils'
 
 interface SavingsGoal {
   id?: string
@@ -121,7 +121,13 @@ export function SavingsGoals({ hideHeader = false }: SavingsGoalsProps) {
     setError(null)
     try {
       const goalsData = await goalsAPI.getGoals()
-      setGoals(goalsData as SavingsGoal[])
+      // Transform API response to ensure targetDate field is present
+      // Handles legacy data that may use 'deadline' instead of 'targetDate'
+      const transformedGoals = goalsData.map((goal) => ({
+        ...goal,
+        targetDate: (goal.targetDate || (goal as unknown as { deadline?: string }).deadline || '') as string
+      }))
+      setGoals(transformedGoals as SavingsGoal[])
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : "There was an error loading your savings goals"
       setError('Failed to load savings goals. Please try again.')
@@ -150,7 +156,7 @@ export function SavingsGoals({ hideHeader = false }: SavingsGoalsProps) {
         name: newGoal.name,
         targetAmount: parseFloat(newGoal.targetAmount),
         currentAmount: 0,
-        deadline: newGoal.targetDate.toISOString(),
+        targetDate: newGoal.targetDate.toISOString(),
         category: newGoal.category,
         description: newGoal.description,
         priority: newGoal.priority

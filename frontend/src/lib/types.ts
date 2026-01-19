@@ -18,6 +18,7 @@ export interface UserProfile {
       push: boolean;
       monthlyReport: boolean;
       budgetAlerts: boolean;
+      expenseNotifications?: boolean;
     };
   };
 }
@@ -28,7 +29,7 @@ export interface Expense {
   userId: string;
   name?: string;
   amount: number;
-  date: string | number | Date | { toDate: () => Date };
+  date: string;
   category: string;
   description?: string;
   tags?: string[];
