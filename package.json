@@ -7,27 +7,28 @@
     "backend"
   ],
   "scripts": {
-    "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\" \"npm run dev:stocks\"",
+    "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\"",
     "dev:frontend": "npm run dev --workspace=frontend",
     "dev:backend": "npm run dev --workspace=backend",
-    "dev:stocks": "python stock_service.py",
     "build": "npm run build:frontend && npm run build:backend",
     "build:frontend": "npm run build --workspace=frontend",
     "build:backend": "npm run build --workspace=backend",
-    "start": "concurrently \"npm run start:frontend\" \"npm run start:backend\" \"npm run start:stocks\"",
+    "start": "concurrently \"npm run start:frontend\" \"npm run start:backend\"",
     "start:frontend": "npm run start --workspace=frontend",
     "start:backend": "npm run start --workspace=backend",
-    "start:stocks": "python stock_service.py",
-    "stocks:start": "python stock_service.py",
-    "stocks:dev": "cross-env FLASK_DEBUG=true python stock_service.py",
     "lint": "npm run lint --workspaces"
   },
   "devDependencies": {
-    "concurrently": "^8.2.1",
-    "cross-env": "^7.0.3"
+    "concurrently": "^8.2.1"
   },
-  "dependencies": {
-    "gsap": "^3.13.0",
-    "next": "^16.0.7"
+  "license": "MIT",
+  "description": "Personal finance app: expenses, budgets, goals, net worth, bills, and stock tracking.",
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "overrides": {
+    "esbuild": "^0.25.10",
+    "undici": "^7.16.0",
+    "path-to-regexp": "^0.1.10"
   }
 }

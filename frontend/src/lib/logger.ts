@@ -55,6 +55,19 @@ class Logger {
     }
 
     if (this.isProduction) {
+      // next.config strips console calls from production bundles, so errors
+      // and warnings must reach Sentry directly or they vanish entirely.
+      if (level === 'error' || level === 'warn') {
+        void import('./sentry').then(({ captureError, logMessage }) => {
+          if (level === 'error') {
+            captureError(new Error(message), metadata)
+          } else {
+            logMessage(message, 'warning')
+          }
+        }).catch(() => {
+          // Monitoring unavailable - nothing further we can do client-side
+        })
+      }
       console[level](JSON.stringify(entry))
     } else {
       const prefix = `[${entry.timestamp}] [${level.toUpperCase()}]`

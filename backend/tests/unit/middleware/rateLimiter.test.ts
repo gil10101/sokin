@@ -20,6 +20,8 @@ jest.mock('../../../src/utils/upstashCache', () => ({
     invalidatePattern: jest.fn(),
     has: jest.fn(),
     getOrSet: jest.fn(),
+    rateLimitIncrement: jest.fn(),
+    isAvailable: jest.fn().mockReturnValue(true),
     getStats: jest.fn().mockReturnValue({ memorySize: 0, upstashAvailable: true, lastHealthCheck: 0 }),
   },
   CACHE_TTL: {
@@ -263,6 +265,46 @@ describe('Rate Limiter Middleware', () => {
 
       // Verify pattern invalidation was called
       expect(upstashCache.invalidatePattern).toHaveBeenCalledWith('ratelimit:*');
+    });
+  });
+
+  describe('shared Redis counter', () => {
+    const upstash = jest.requireMock('../../../src/utils/upstashCache').default;
+
+    it('enforces the limit from the shared counter rather than per instance', async () => {
+      // Every serverless instance must see the same count; the previous
+      // write-behind scheme only flushed every 5th request, so an instance
+      // serving fewer than that never persisted anything.
+      upstash.rateLimitIncrement.mockResolvedValue({ count: 101, remainingMs: 60_000 });
+
+      const middleware = rateLimiter(100, 15 * 60 * 1000);
+      await middleware(mockRequest as Request, mockResponse as Response, mockNext);
+
+      expect(mockResponse.status).toHaveBeenCalledWith(429);
+      expect(mockNext).not.toHaveBeenCalled();
+    });
+
+    it('passes the request through while under the shared limit', async () => {
+      upstash.rateLimitIncrement.mockResolvedValue({ count: 3, remainingMs: 60_000 });
+
+      const middleware = rateLimiter(100, 15 * 60 * 1000);
+      await middleware(mockRequest as Request, mockResponse as Response, mockNext);
+
+      expect(mockNext).toHaveBeenCalled();
+      expect(mockResponse.status).not.toHaveBeenCalledWith(429);
+    });
+
+    it('keeps metering in memory when Redis is unreachable', async () => {
+      upstash.rateLimitIncrement.mockResolvedValue(null);
+
+      const middleware = rateLimiter(1, 60 * 1000);
+      await middleware(mockRequest as Request, mockResponse as Response, mockNext);
+      expect(mockNext).toHaveBeenCalled();
+
+      jest.clearAllMocks();
+      upstash.rateLimitIncrement.mockResolvedValue(null);
+      await middleware(mockRequest as Request, mockResponse as Response, mockNext);
+      expect(mockResponse.status).toHaveBeenCalledWith(429);
     });
   });
 });

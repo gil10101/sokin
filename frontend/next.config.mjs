@@ -1,16 +1,8 @@
-import withBundleAnalyzer from '@next/bundle-analyzer'
-
-const bundleAnalyzer = withBundleAnalyzer({
-  enabled: process.env.ANALYZE === 'true',
-})
-
-let userConfig = undefined
-try {
-  // Try to import user config if it exists
-  userConfig = await import('./v0-user-next.config.js')
-} catch (e) {
-  // ignore error - file doesn't exist
-}
+/**
+ * Next 16 builds with Turbopack, so this config carries no webpack block:
+ * the previous splitChunks/performance tuning never ran and only made dev
+ * (which had been pinned to --webpack) diverge from what shipped.
+ */
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -27,8 +19,8 @@ const nextConfig = {
     formats: ['image/avif', 'image/webp'],
     minimumCacheTTL: 31536000, // 1 year
   },
+  turbopack: {},
   experimental: {
-    optimizeCss: true,
     scrollRestoration: true,
     optimizePackageImports: [
       '@radix-ui/react-icons',
@@ -41,122 +33,14 @@ const nextConfig = {
       'firebase',
       'framer-motion'
     ],
-    // Enable advanced tree shaking
-    swcPlugins: [],
   },
   compiler: {
-    removeConsole: process.env.NODE_ENV === 'production',
+    // Keep error/warn: the logger forwards them to Sentry and stripping
+    // them left production with no telemetry at all.
+    removeConsole: process.env.NODE_ENV === 'production' ? { exclude: ['error', 'warn'] } : false,
   },
   poweredByHeader: false,
   compress: true,
-  modularizeImports: {
-    'date-fns': {
-      transform: 'date-fns/{{member}}'
-    }
-  },
-  webpack: (config, { dev, isServer }) => {
-    // Fix HMR instability - ignore file system noise
-    if (dev) {
-      config.watchOptions = {
-        ...config.watchOptions,
-        ignored: [
-          '**/node_modules/**',
-          '**/.git/**',
-          '**/.next/**',
-          '**/tsconfig.tsbuildinfo',
-          '**/*.log',
-        ],
-        aggregateTimeout: 300,
-        poll: false,
-      }
-    }
-
-    // Optimize bundle splitting for better caching
-    config.optimization.splitChunks = {
-      chunks: 'all',
-      cacheGroups: {
-        framework: {
-          chunks: 'all',
-          name: 'framework',
-          test: /(?<!node_modules.*)[\\/]node_modules[\\/](react|react-dom|scheduler|prop-types|use-subscription)[\\/]/,
-          priority: 40,
-          enforce: true,
-        },
-        lib: {
-          test: /[\\/]node_modules[\\/](!next[\\/])[\\/]/,
-          name: 'lib',
-          priority: 30,
-          chunks: 'all',
-        },
-        radix: {
-          test: /[\\/]node_modules[\\/]@radix-ui[\\/]/,
-          name: 'radix',
-          chunks: 'all',
-          priority: 20,
-        },
-        recharts: {
-          test: /[\\/]node_modules[\\/]recharts[\\/]/,
-          name: 'recharts',
-          chunks: 'async', // Load on demand for better performance
-          priority: 15,
-        },
-        firebase: {
-          test: /[\\/]node_modules[\\/]firebase[\\/]/,
-          name: 'firebase',
-          chunks: 'all',
-          priority: 15,
-        },
-        three: {
-          test: /[\\/]node_modules[\\/](three|@react-three)[\\/]/,
-          name: 'three',
-          chunks: 'async', // Only load when needed
-          priority: 10,
-        },
-        framerMotion: {
-          test: /[\\/]node_modules[\\/]framer-motion[\\/]/,
-          name: 'framer-motion',
-          chunks: 'all',
-          priority: 10,
-        },
-        // Separate chunk for large utilities
-        utils: {
-          test: /[\\/]node_modules[\\/](clsx|tailwind-merge|date-fns|sonner)[\\/]/,
-          name: 'utils',
-          chunks: 'all',
-          priority: 5,
-        },
-      },
-    }
-
-    // Stricter performance hints for optimization tracking
-    if (!dev && !isServer) {
-      config.performance = {
-        hints: 'warning',
-        maxAssetSize: 400000, // 400KB - stricter limit
-        maxEntrypointSize: 400000, // 400KB - stricter limit
-        assetFilter: (assetFilename) => {
-          // Ignore source maps and fonts in performance calculations
-          return !assetFilename.endsWith('.map') && !assetFilename.match(/\.(woff|woff2|eot|ttf|otf)$/)
-        }
-      }
-      
-      // Advanced tree shaking
-      config.optimization.usedExports = true
-      // Let package.json sideEffects field and webpack handle tree-shaking correctly
-      // Avoid forcing sideEffects = false as it can drop CSS and library initializers
-    }
-
-    // Optimize CSS extraction
-    if (!isServer) {
-      config.optimization = {
-        ...config.optimization,
-        runtimeChunk: 'single',
-        splitChunks: config.optimization.splitChunks,
-      }
-    }
-
-    return config
-  },
   headers: async () => {
     return [
       {
@@ -169,10 +53,6 @@ const nextConfig = {
           {
             key: 'Strict-Transport-Security',
             value: 'max-age=63072000; includeSubDomains; preload',
-          },
-          {
-            key: 'X-XSS-Protection',
-            value: '1; mode=block',
           },
           {
             key: 'X-Frame-Options',
@@ -201,26 +81,4 @@ const nextConfig = {
   },
 }
 
-mergeConfig(nextConfig, userConfig)
-
-function mergeConfig(nextConfig, userConfig) {
-  if (!userConfig) {
-    return
-  }
-
-  for (const key in userConfig) {
-    if (
-      typeof nextConfig[key] === 'object' &&
-      !Array.isArray(nextConfig[key])
-    ) {
-      nextConfig[key] = {
-        ...nextConfig[key],
-        ...userConfig[key],
-      }
-    } else {
-      nextConfig[key] = userConfig[key]
-    }
-  }
-}
-
-export default bundleAnalyzer(nextConfig)
+export default nextConfig

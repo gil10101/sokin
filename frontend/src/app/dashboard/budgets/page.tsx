@@ -103,6 +103,9 @@ interface BudgetsPageProps {
   searchParams?: Promise<Record<string, string>>;
 }
 
+/** Bounds each paginated walk to 600 records (backend page cap is 100). */
+const MAX_FETCH_PAGES = 6
+
 export default function BudgetsPage(props: BudgetsPageProps) {
   const [collapsed, setCollapsed] = useState(false)
   const { user } = useAuth()
@@ -146,7 +149,7 @@ export default function BudgetsPage(props: BudgetsPageProps) {
       let hasMore = true
       let pageCount = 0
 
-      while (hasMore && pageCount < 50) {
+      while (hasMore && pageCount < MAX_FETCH_PAGES) {
         const page = await budgetsAPI.getBudgets({
           limit: 100,
           cursor: cursor || undefined
@@ -179,7 +182,7 @@ export default function BudgetsPage(props: BudgetsPageProps) {
       let hasMore = true
       let pageCount = 0
 
-      while (hasMore && pageCount < 50) {
+      while (hasMore && pageCount < MAX_FETCH_PAGES) {
         const page = await expensesAPI.getExpenses({
           limit: 100,
           cursor: cursor || undefined,

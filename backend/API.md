@@ -1,130 +1,142 @@
-# Sokin Backend API
+# Sokin API
 
-Auth: Firebase ID token in `Authorization: Bearer <firebase-id-token>`. All endpoints require auth unless marked Public. `/health` is public.
+All endpoints are mounted under `/api` and require a Firebase ID token:
 
-## Rate limits
-
-| Endpoint type | Limit | Window |
-| --- | --- | --- |
-| Read operations | 200 requests | 15 minutes |
-| Write operations | 100 requests | 15 minutes |
-| Auth operations | 20 requests | 15 minutes |
-| Stock API | 100 requests | 1 minute |
-| Sensitive operations | 3 requests | 1 hour |
-
-## Errors
-
-```json
-{
-  "success": false,
-  "error": "Human-readable error message",
-  "code": "ERROR_CODE",
-  "details": {}
-}
+```
+Authorization: Bearer <firebase-id-token>
 ```
 
-## Endpoints
+Responses are wrapped as `{ success, data }`; list endpoints that paginate add
+`pagination: { count, limit, nextCursor, hasMore }`. Errors return
+`{ success: false, error }`.
 
-### Health
+`GET /health` is public and returns `{ status, timestamp }`.
 
-- `GET /health` (Public)
+## Expenses
 
-### Users
+| Method | Path |
+|---|---|
+| GET | `/api/expenses` |
+| GET | `/api/expenses/analytics` |
+| GET | `/api/expenses/:id` |
+| POST | `/api/expenses` |
+| PUT | `/api/expenses/:id` |
+| DELETE | `/api/expenses/:id` |
 
-- `POST /users` - create profile
-- `GET /users/:userId`
-- `PUT /users/:userId`
-- `GET /users/:userId/categories`
-- `PUT /users/:userId/categories`
+## Users & profile
 
-### Expenses
+| Method | Path |
+|---|---|
+| GET | `/api/users/profile` |
+| PUT | `/api/users/profile` |
+| POST | `/api/users` |
+| GET | `/api/users/:userId` |
+| PUT | `/api/users/:userId` |
+| GET | `/api/users/:userId/categories` |
+| PUT | `/api/users/:userId/categories` |
 
-- `GET /expenses` - query: `limit`, `cursor`, `startDate`, `endDate`, `category`
-- `GET /expenses/:id`
-- `POST /expenses`
-- `PUT /expenses/:id`
-- `DELETE /expenses/:id`
-- `GET /expenses/analytics` - query: `timeframe` (3months | 6months | 12months)
+## Budgets
 
-### Budgets
+| Method | Path |
+|---|---|
+| GET | `/api/budgets` |
+| GET | `/api/budgets/:id` |
+| POST | `/api/budgets` |
+| PUT | `/api/budgets/:id` |
+| DELETE | `/api/budgets/:id` |
 
-- `GET /budgets`
-- `POST /budgets`
-- `PUT /budgets/:id`
-- `DELETE /budgets/:id`
+## Receipts
 
-### Stocks
+| Method | Path |
+|---|---|
+| POST | `/api/receipts/process` |
 
-- `GET /stocks/market-indices` (Public)
-- `GET /stocks/trending` (Public) - query: `limit`
-- `GET /stocks/search` (Public) - query: `q`, `limit`
-- `GET /stocks/stock/:symbol` (Public)
-- `GET /stocks/portfolio/:userId`
-- `POST /stocks/transaction`
-- `GET /stocks/max-sell/:symbol`
-- `GET /stocks/transactions` - query: `limit`
+## Notifications
 
-### Bill Reminders
+| Method | Path |
+|---|---|
+| GET | `/api/notifications` |
+| POST | `/api/notifications` |
+| PATCH | `/api/notifications/:notificationId/read` |
+| PATCH | `/api/notifications/read-all` |
+| PATCH | `/api/notifications/:notificationId/dismiss` |
+| PATCH | `/api/notifications/dismiss-all` |
+| DELETE | `/api/notifications/:notificationId` |
+| PUT | `/api/notifications/preferences` |
+| GET | `/api/notifications/preferences` |
+| POST | `/api/notifications/fcm-token` |
+| POST | `/api/notifications/check-budget-alerts` |
+| GET | `/api/notifications/check-budget-alerts` |
 
-- `GET /bill-reminders`
-- `POST /bill-reminders`
-- `PUT /bill-reminders/:id`
-- `DELETE /bill-reminders/:id`
+## Savings goals
 
-### Goals
+| Method | Path |
+|---|---|
+| GET | `/api/goals` |
+| POST | `/api/goals` |
+| POST | `/api/goals/:goalId/contribute` |
+| PUT | `/api/goals/:goalId` |
+| DELETE | `/api/goals/:goalId` |
 
-- `GET /goals`
-- `POST /goals`
-- `PUT /goals/:id`
-- `DELETE /goals/:id`
+## Bill reminders
 
-### Net Worth
+| Method | Path |
+|---|---|
+| GET | `/api/bill-reminders` |
+| POST | `/api/bill-reminders` |
+| POST | `/api/bill-reminders/:billId/pay` |
+| PUT | `/api/bill-reminders/:billId` |
+| DELETE | `/api/bill-reminders/:billId` |
 
-- `GET /net-worth/current`
-- `POST /net-worth/assets`
-- `POST /net-worth/liabilities`
-- `GET /net-worth/history`
+## Stocks
 
-### Dashboard
+| Method | Path |
+|---|---|
+| GET | `/api/stocks/market-indices` |
+| GET | `/api/stocks/trending` |
+| GET | `/api/stocks/search` |
+| GET | `/api/stocks/stock/:symbol` |
+| GET | `/api/stocks/portfolio` |
+| POST | `/api/stocks/transaction` |
+| GET | `/api/stocks/max-sell/:symbol` |
+| GET | `/api/stocks/transactions` |
+| GET | `/api/stocks/watchlist` |
+| POST | `/api/stocks/watchlist` |
+| PUT | `/api/stocks/watchlist` |
+| DELETE | `/api/stocks/watchlist/:symbol` |
 
-- `GET /dashboard/summary`
+## Net worth
 
-### Notifications
+| Method | Path |
+|---|---|
+| GET | `/api/net-worth/assets` |
+| POST | `/api/net-worth/assets` |
+| PUT | `/api/net-worth/assets/:id` |
+| DELETE | `/api/net-worth/assets/:id` |
+| GET | `/api/net-worth/liabilities` |
+| POST | `/api/net-worth/liabilities` |
+| PUT | `/api/net-worth/liabilities/:id` |
+| DELETE | `/api/net-worth/liabilities/:id` |
+| GET | `/api/net-worth/calculate` |
+| GET | `/api/net-worth/history` |
+| GET | `/api/net-worth/trends` |
+| GET | `/api/net-worth/insights` |
 
-- `GET /notifications`
-- `PUT /notifications/:id/read`
-- `PUT /notifications/read-all`
+## Dashboard
 
-### Receipts
+| Method | Path |
+|---|---|
+| GET | `/api/dashboard` |
 
-- `POST /receipts/scan` - `multipart/form-data` with image
+## Subscriptions
 
-## WebSocket (stocks)
+| Method | Path |
+|---|---|
+| GET | `/api/subscriptions` |
+| POST | `/api/subscriptions` |
+| PUT | `/api/subscriptions/:id` |
+| DELETE | `/api/subscriptions/:id` |
 
-```javascript
-import { io } from 'socket.io-client';
+---
 
-const socket = io('wss://your-api-domain.vercel.app', {
-  auth: { token: firebaseIdToken }
-});
-```
-
-Client → server:
-
-| Event | Payload |
-| --- | --- |
-| `subscribe_prices` | `{ symbols: ['AAPL', 'GOOGL'] }` |
-| `unsubscribe_prices` | `{ symbols: ['AAPL'] }` |
-
-Server → client:
-
-| Event | Payload |
-| --- | --- |
-| `connected` | `{ status, authenticated }` |
-| `price_updates` | `{ AAPL: { price, change, ... } }` |
-| `subscribed` | `{ symbols, status }` |
-| `error` | `{ message }` |
-
-## Data source
-
-Stock data uses Finnhub.
+70 routes generated from `backend/src/routes/`.

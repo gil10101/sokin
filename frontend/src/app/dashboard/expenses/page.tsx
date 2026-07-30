@@ -102,6 +102,9 @@ interface ExpensesPageProps {
   searchParams?: Promise<Record<string, string>>;
 }
 
+/** Backend caps a page at 100, so this bounds the view to 600 expenses. */
+const MAX_EXPENSE_PAGES = 6
+
 export default function ExpensesPage(props: ExpensesPageProps) {
   const [collapsed, setCollapsed] = useState(false)
   const { user } = useAuth()
@@ -144,7 +147,7 @@ export default function ExpensesPage(props: ExpensesPageProps) {
       let hasMore = true
       let pageCount = 0
 
-      while (hasMore && pageCount < 50) {
+      while (hasMore && pageCount < MAX_EXPENSE_PAGES) {
         const page = await expensesAPI.getExpenses({
           limit: 100,
           cursor: cursor || undefined,

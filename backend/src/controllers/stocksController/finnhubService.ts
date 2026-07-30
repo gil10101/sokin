@@ -289,14 +289,16 @@ export async function getOptimizedStockData(symbol: string): Promise<StockData |
   try {
     // URL encode symbol to handle special characters (e.g., BRK.A, BRK.B)
     const encodedSymbol = encodeURIComponent(symbol)
-    const [quote, profile] = await Promise.allSettled([
+    const [quote, profile, metrics] = await Promise.allSettled([
       callFinnhubAPI<FinnhubQuote>(`/quote?symbol=${encodedSymbol}`, CACHE_DURATIONS.QUOTE),
-      callFinnhubAPI<FinnhubProfile>(`/stock/profile2?symbol=${encodedSymbol}`, CACHE_DURATIONS.PROFILE)
+      callFinnhubAPI<FinnhubProfile>(`/stock/profile2?symbol=${encodedSymbol}`, CACHE_DURATIONS.PROFILE),
+      callFinnhubAPI<FinnhubMetrics>(`/stock/metric?symbol=${encodedSymbol}&metric=all`, CACHE_DURATIONS.PROFILE)
     ])
 
     if (quote.status === 'fulfilled' && quote.value && quote.value.c > 0) {
       const profileData = profile.status === 'fulfilled' ? profile.value : undefined
-      return convertFinnhubToStockData(symbol, quote.value, profileData)
+      const metricsData = metrics.status === 'fulfilled' ? metrics.value : undefined
+      return convertFinnhubToStockData(symbol, quote.value, profileData, undefined, metricsData)
     }
     return null
   } catch (error) {
@@ -312,9 +314,10 @@ export async function getOptimizedStockData(symbol: string): Promise<StockData |
 export async function getFullStockData(symbol: string, includeHistorical = true): Promise<StockData> {
   // URL encode symbol to handle special characters (e.g., BRK.A, BRK.B)
   const encodedSymbol = encodeURIComponent(symbol)
-  const [quote, profile] = await Promise.allSettled([
+  const [quote, profile, metrics] = await Promise.allSettled([
     callFinnhubAPI<FinnhubQuote>(`/quote?symbol=${encodedSymbol}`, CACHE_DURATIONS.QUOTE),
-    callFinnhubAPI<FinnhubProfile>(`/stock/profile2?symbol=${encodedSymbol}`, CACHE_DURATIONS.PROFILE)
+    callFinnhubAPI<FinnhubProfile>(`/stock/profile2?symbol=${encodedSymbol}`, CACHE_DURATIONS.PROFILE),
+    callFinnhubAPI<FinnhubMetrics>(`/stock/metric?symbol=${encodedSymbol}&metric=all`, CACHE_DURATIONS.PROFILE)
   ])
 
   if (quote.status === 'fulfilled' && quote.value && quote.value.c > 0) {
@@ -322,8 +325,11 @@ export async function getFullStockData(symbol: string, includeHistorical = true)
 
     if (includeHistorical) {
       try {
-        const toTimestamp = Math.floor(Date.now() / 1000)
-        const fromTimestamp = toTimestamp - (365 * 24 * 60 * 60)
+        // Bucket the range to whole days: the timestamps are part of the
+        // cache key, so a per-second range meant every request missed.
+        const DAY_SECONDS = 24 * 60 * 60
+        const toTimestamp = Math.floor(Date.now() / 1000 / DAY_SECONDS) * DAY_SECONDS
+        const fromTimestamp = toTimestamp - (365 * DAY_SECONDS)
         const candleResult = await callFinnhubAPI<FinnhubCandle>(
           `/stock/candle?symbol=${encodedSymbol}&resolution=D&from=${fromTimestamp}&to=${toTimestamp}`,
           CACHE_DURATIONS.CANDLES
@@ -335,7 +341,8 @@ export async function getFullStockData(symbol: string, includeHistorical = true)
     }
 
     const profileData = profile.status === 'fulfilled' ? profile.value : undefined
-    return convertFinnhubToStockData(symbol, quote.value, profileData, candles)
+    const metricsData = metrics.status === 'fulfilled' ? metrics.value : undefined
+    return convertFinnhubToStockData(symbol, quote.value, profileData, candles, metricsData)
   }
 
   throw new Error(`Failed to fetch stock data for ${symbol} from Finnhub API`)

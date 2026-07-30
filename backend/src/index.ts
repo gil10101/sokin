@@ -189,8 +189,9 @@ app.use(errorHandler);
 // Validate critical configuration before starting server
 validateCriticalConfig();
 
-// Start server (only for local development, not in Vercel)
-if (!isServerless) {
+// Start server for local development only: Vercel invokes the exported app
+// per request, and tests import it with supertest rather than binding a port.
+if (!isServerless && process.env.NODE_ENV !== 'test') {
   app.listen(Number(port), () => {
     logger.info(`Server running on port ${port}`);
     if (process.env.NODE_ENV === 'development') {

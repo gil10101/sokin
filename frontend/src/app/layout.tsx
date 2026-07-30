@@ -44,15 +44,18 @@ export const metadata: Metadata = {
   description: APP_DESCRIPTION,
   manifest: '/manifest.json',
   icons: {
-    icon: '/sokin-icon.png',
-    apple: '/sokin-icon.png',
+    icon: [
+      { url: '/favicon.png', sizes: '32x32', type: 'image/png' },
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+    ],
+    apple: '/apple-touch-icon.png',
   },
   openGraph: {
     title: "Sokin",
     description: APP_DESCRIPTION,
     siteName: "Sokin",
     type: "website",
-    images: ["/sokin-icon.png"],
+    images: ["/icon-512.png"],
   },
   twitter: {
     card: "summary",

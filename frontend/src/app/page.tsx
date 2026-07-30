@@ -431,7 +431,7 @@ export default function LandingPage() {
                 <div className={`grid grid-cols-1 ${isMobile ? 'gap-8' : 'md:grid-cols-2 gap-12 md:gap-16'}`}>
                   <div>
                     <p className="text-lg text-cream/70 font-outfit mb-6">
-                      Sokin is more than just an expense tracker. It's a complete financial companion designed with you in
+                      Sokin is more than just an expense tracker. It&apos;s a complete financial companion designed with you in
                       mind.
                     </p>
                     <p className="text-lg text-cream/70 font-outfit">
@@ -564,7 +564,7 @@ export default function LandingPage() {
               <div className={`grid grid-cols-1 ${isMobile ? 'gap-8' : 'md:grid-cols-2 gap-12 md:gap-24'}`}>
                 <div>
                   <p className={`${isMobile ? 'text-base mb-8' : 'text-lg mb-6'} text-cream/70 font-outfit`}>
-                    Join Sokin today and experience a new way to manage your personal finances. It's completely free to
+                    Join Sokin today and experience a new way to manage your personal finances. It&apos;s completely free to
                     use.
                   </p>
                   <motion.div 

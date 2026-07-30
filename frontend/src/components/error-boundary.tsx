@@ -124,19 +124,19 @@ export const DashboardErrorBoundary = ({ children }: { children: ReactNode }) =>
   <ErrorBoundary
     name="Dashboard"
     fallback={
-      <div className="flex items-center justify-center min-h-[400px] bg-gray-50 dark:bg-gray-900 rounded-lg">
+      <div className="flex items-center justify-center min-h-[400px] bg-cream/5 border border-cream/10 rounded-xl">
         <div className="text-center">
-          <div className="text-gray-600 dark:text-gray-300 text-lg font-semibold mb-2">
-            Dashboard Unavailable
+          <div className="text-cream text-lg font-medium font-outfit mb-2">
+            Dashboard unavailable
           </div>
-          <div className="text-gray-500 dark:text-gray-400 text-sm mb-4">
+          <div className="text-cream/60 text-sm mb-6">
             Unable to load your dashboard. Please refresh the page.
           </div>
-          <button 
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors"
+          <button
+            className="px-4 py-2 bg-cream text-dark rounded-lg text-sm font-medium hover:bg-cream/90 transition-colors"
             onClick={() => window.location.reload()}
           >
-            Refresh Page
+            Refresh page
           </button>
         </div>
       </div>
@@ -150,10 +150,10 @@ export const ChartErrorBoundary = ({ children }: { children: ReactNode }) => (
   <ErrorBoundary
     name="Chart"
     fallback={
-      <div className="flex items-center justify-center h-64 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg">
+      <div className="flex items-center justify-center h-64 bg-cream/5 border border-cream/10 rounded-xl">
         <div className="text-center">
-          <div className="text-gray-500 dark:text-gray-400 text-sm mb-2">Chart unavailable</div>
-          <div className="text-xs text-gray-400 dark:text-gray-500">Unable to load visualization</div>
+          <div className="text-cream/60 text-sm mb-2">Chart unavailable</div>
+          <div className="text-xs text-cream/40">Unable to load visualization</div>
         </div>
       </div>
     }
@@ -166,11 +166,11 @@ export const FormErrorBoundary = ({ children }: { children: ReactNode }) => (
   <ErrorBoundary
     name="Form"
     fallback={
-      <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg">
-        <div className="text-yellow-800 dark:text-yellow-200 text-sm font-medium mb-1">
-          Form Error
+      <div className="p-4 bg-amber-400/10 border border-amber-400/20 rounded-xl">
+        <div className="text-amber-300 text-sm font-medium mb-1">
+          Form error
         </div>
-        <div className="text-yellow-700 dark:text-yellow-300 text-xs">
+        <div className="text-amber-200/80 text-xs">
           Please refresh the page and try again. If the problem persists, contact support.
         </div>
       </div>

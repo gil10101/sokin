@@ -1,266 +1,121 @@
 /**
  * Cache Utility Unit Tests
- * 
- * Tests in-memory cache functionality including:
- * - Get/Set operations
- * - TTL expiration
- * - Cache invalidation
- * - Edge cases
+ *
+ * Exercises the real src/utils/cache.ts facade over upstashCache. The
+ * previous version of this file defined its own throwaway Cache class in
+ * beforeEach and never imported the module under test, so it reported
+ * coverage while asserting nothing about production behaviour.
  */
 
-// We need to test the actual cache implementation
-// First, let's create a test version that doesn't use the mock
+const mockUpstash = {
+  get: jest.fn(),
+  set: jest.fn(),
+  del: jest.fn(),
+  invalidatePattern: jest.fn(),
+  getOrSet: jest.fn(),
+  getStats: jest.fn(),
+  isAvailable: jest.fn(),
+};
+
+jest.mock('../../../src/utils/upstashCache', () => ({
+  __esModule: true,
+  default: mockUpstash,
+}));
+
+import cache, { CACHE_TTL } from '../../../src/utils/cache';
 
 describe('Cache Utility', () => {
-  let Cache: any;
-  let cache: any;
-
   beforeEach(() => {
-    // Clear module cache to get fresh instance
-    jest.resetModules();
-    
-    // Mock the setInterval to prevent cleanup from running
-    jest.useFakeTimers();
-    
-    // Create fresh cache instance for each test
-    Cache = class {
-      private cache: Map<string, { value: any; expiry: number }>;
-      private defaultTtl: number;
-
-      constructor(defaultTtlSeconds: number = 60) {
-        this.cache = new Map();
-        this.defaultTtl = defaultTtlSeconds * 1000;
-      }
-
-      set<T>(key: string, value: T, ttlSeconds?: number): void {
-        const expiry = Date.now() + (ttlSeconds ? ttlSeconds * 1000 : this.defaultTtl);
-        this.cache.set(key, { value, expiry });
-      }
-
-      get<T>(key: string): T | null {
-        const item = this.cache.get(key);
-        if (!item) return null;
-        if (item.expiry < Date.now()) {
-          this.cache.delete(key);
-          return null;
-        }
-        return item.value;
-      }
-
-      has(key: string): boolean {
-        const item = this.cache.get(key);
-        if (!item) return false;
-        if (item.expiry < Date.now()) {
-          this.cache.delete(key);
-          return false;
-        }
-        return true;
-      }
-
-      del(key: string): void {
-        this.cache.delete(key);
-      }
-
-      clear(): void {
-        this.cache.clear();
-      }
-
-      size(): number {
-        return this.cache.size;
-      }
-    };
-
-    cache = new Cache(60);
+    jest.clearAllMocks();
+    mockUpstash.get.mockResolvedValue(null);
+    mockUpstash.set.mockResolvedValue(undefined);
+    mockUpstash.del.mockResolvedValue(undefined);
+    mockUpstash.invalidatePattern.mockResolvedValue(undefined);
   });
 
-  afterEach(() => {
-    jest.useRealTimers();
-  });
+  describe('getAsync', () => {
+    it('returns the cached value from the distributed cache', async () => {
+      mockUpstash.get.mockResolvedValue({ id: 'expense-1', amount: 25 });
 
-  describe('set and get', () => {
-    it('should store and retrieve a value', () => {
-      cache.set('key1', 'value1');
-      expect(cache.get('key1')).toBe('value1');
+      await expect(cache.getAsync('expenses:user-1:list')).resolves.toEqual({
+        id: 'expense-1',
+        amount: 25,
+      });
+      expect(mockUpstash.get).toHaveBeenCalledWith('expenses:user-1:list');
     });
 
-    it('should store and retrieve an object', () => {
-      const obj = { name: 'test', count: 42 };
-      cache.set('obj-key', obj);
-      expect(cache.get('obj-key')).toEqual(obj);
-    });
-
-    it('should store and retrieve an array', () => {
-      const arr = [1, 2, 3, 'four'];
-      cache.set('arr-key', arr);
-      expect(cache.get('arr-key')).toEqual(arr);
-    });
-
-    it('should return null for non-existent key', () => {
-      expect(cache.get('non-existent')).toBeNull();
-    });
-
-    it('should overwrite existing value', () => {
-      cache.set('key1', 'value1');
-      cache.set('key1', 'value2');
-      expect(cache.get('key1')).toBe('value2');
+    it('returns null on a miss', async () => {
+      await expect(cache.getAsync('missing')).resolves.toBeNull();
     });
   });
 
-  describe('TTL expiration', () => {
-    it('should return value before TTL expires', () => {
-      cache.set('key1', 'value1', 10); // 10 seconds TTL
-      
-      // Advance time by 5 seconds
-      jest.advanceTimersByTime(5000);
-      
-      expect(cache.get('key1')).toBe('value1');
+  describe('setAsync', () => {
+    it('forwards the TTL to the distributed cache', async () => {
+      await cache.setAsync('dashboard:user-1', { expenses: [] }, CACHE_TTL.DASHBOARD);
+
+      expect(mockUpstash.set).toHaveBeenCalledWith(
+        'dashboard:user-1',
+        { expenses: [] },
+        CACHE_TTL.DASHBOARD
+      );
     });
 
-    it('should return null after TTL expires', () => {
-      cache.set('key1', 'value1', 10); // 10 seconds TTL
-      
-      // Advance time by 11 seconds
-      jest.advanceTimersByTime(11000);
-      
-      expect(cache.get('key1')).toBeNull();
-    });
+    it('falls back to a default TTL when none is given', async () => {
+      await cache.setAsync('key', 'value');
 
-    it('should use default TTL when not specified', () => {
-      cache.set('key1', 'value1'); // Uses default 60 seconds
-      
-      // Advance time by 30 seconds - should still be there
-      jest.advanceTimersByTime(30000);
-      expect(cache.get('key1')).toBe('value1');
-      
-      // Advance another 31 seconds - should be expired
-      jest.advanceTimersByTime(31000);
-      expect(cache.get('key1')).toBeNull();
-    });
-
-    it('should handle very short TTL', () => {
-      cache.set('key1', 'value1', 1); // 1 second TTL
-      
-      expect(cache.get('key1')).toBe('value1');
-      
-      jest.advanceTimersByTime(1001);
-      expect(cache.get('key1')).toBeNull();
+      expect(mockUpstash.set).toHaveBeenCalledWith('key', 'value', 60);
     });
   });
 
-  describe('has method', () => {
-    it('should return true for existing key', () => {
-      cache.set('key1', 'value1');
-      expect(cache.has('key1')).toBe(true);
+  describe('invalidation', () => {
+    it('deletes a single key', async () => {
+      await cache.delAsync('user:user-1:profile');
+
+      expect(mockUpstash.del).toHaveBeenCalledWith('user:user-1:profile');
     });
 
-    it('should return false for non-existent key', () => {
-      expect(cache.has('non-existent')).toBe(false);
+    it('invalidates a wildcard pattern', async () => {
+      await cache.invalidatePatternAsync('expenses:user-1:*');
+
+      expect(mockUpstash.invalidatePattern).toHaveBeenCalledWith('expenses:user-1:*');
     });
 
-    it('should return false for expired key', () => {
-      cache.set('key1', 'value1', 1);
-      
-      jest.advanceTimersByTime(2000);
-      
-      expect(cache.has('key1')).toBe(false);
-    });
-  });
+    it('covers analytics keys with the list invalidation pattern', () => {
+      // Regression: analytics used to live at expenses:analytics:<uid>:<tf>,
+      // which expenses:<uid>:* did not match, so it served stale numbers
+      // for its full TTL after any expense mutation.
+      const userId = 'user-1';
+      const analyticsKey = `expenses:${userId}:analytics:6months`;
+      const pattern = `expenses:${userId}:*`;
 
-  describe('del method', () => {
-    it('should delete existing key', () => {
-      cache.set('key1', 'value1');
-      expect(cache.get('key1')).toBe('value1');
-      
-      cache.del('key1');
-      expect(cache.get('key1')).toBeNull();
-    });
+      const toRegExp = (p: string) =>
+        new RegExp(`^${p.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')}$`);
 
-    it('should not throw for non-existent key', () => {
-      expect(() => cache.del('non-existent')).not.toThrow();
+      expect(toRegExp(pattern).test(analyticsKey)).toBe(true);
     });
   });
 
-  describe('clear method', () => {
-    it('should remove all entries', () => {
-      cache.set('key1', 'value1');
-      cache.set('key2', 'value2');
-      cache.set('key3', 'value3');
-      
-      cache.clear();
-      
-      expect(cache.get('key1')).toBeNull();
-      expect(cache.get('key2')).toBeNull();
-      expect(cache.get('key3')).toBeNull();
+  describe('getOrSet', () => {
+    it('delegates to the deduplicating implementation', async () => {
+      const loader = jest.fn().mockResolvedValue(['a']);
+      mockUpstash.getOrSet.mockImplementation(
+        async (_key: string, _ttl: number, cb: () => Promise<unknown>) => cb()
+      );
+
+      await expect(cache.getOrSet('goals:user-1:list', 30, loader)).resolves.toEqual(['a']);
+      expect(mockUpstash.getOrSet).toHaveBeenCalledWith('goals:user-1:list', 30, loader);
+      expect(loader).toHaveBeenCalledTimes(1);
     });
   });
 
-  describe('edge cases', () => {
-    it('should handle null value', () => {
-      cache.set('null-key', null);
-      // Note: This will return null, which is same as "not found"
-      // This is a known limitation of the cache design
-      expect(cache.get('null-key')).toBeNull();
+  describe('CACHE_TTL presets', () => {
+    it('keeps list and single-item lookups short lived', () => {
+      expect(CACHE_TTL.LIST_QUERY).toBeLessThanOrEqual(60);
+      expect(CACHE_TTL.SINGLE_ITEM).toBeLessThanOrEqual(60);
     });
 
-    it('should handle undefined value', () => {
-      cache.set('undefined-key', undefined);
-      expect(cache.get('undefined-key')).toBeUndefined();
-    });
-
-    it('should handle empty string key', () => {
-      cache.set('', 'empty-key-value');
-      expect(cache.get('')).toBe('empty-key-value');
-    });
-
-    it('should handle special characters in key', () => {
-      cache.set('key:with:colons', 'value1');
-      cache.set('key/with/slashes', 'value2');
-      cache.set('key.with.dots', 'value3');
-      
-      expect(cache.get('key:with:colons')).toBe('value1');
-      expect(cache.get('key/with/slashes')).toBe('value2');
-      expect(cache.get('key.with.dots')).toBe('value3');
-    });
-
-    it('should handle boolean values', () => {
-      cache.set('true-key', true);
-      cache.set('false-key', false);
-      
-      expect(cache.get('true-key')).toBe(true);
-      expect(cache.get('false-key')).toBe(false);
-    });
-
-    it('should handle number values including zero', () => {
-      cache.set('zero-key', 0);
-      cache.set('negative-key', -100);
-      cache.set('float-key', 3.14159);
-      
-      expect(cache.get('zero-key')).toBe(0);
-      expect(cache.get('negative-key')).toBe(-100);
-      expect(cache.get('float-key')).toBe(3.14159);
-    });
-
-    it('should handle large objects', () => {
-      const largeObj = {
-        data: Array(1000).fill({ id: 1, name: 'test' }),
-      };
-      
-      cache.set('large-obj', largeObj);
-      expect(cache.get('large-obj')).toEqual(largeObj);
-    });
-
-    it('should handle concurrent operations', () => {
-      // Set multiple keys
-      for (let i = 0; i < 100; i++) {
-        cache.set(`key-${i}`, `value-${i}`);
-      }
-      
-      // Verify all values
-      for (let i = 0; i < 100; i++) {
-        expect(cache.get(`key-${i}`)).toBe(`value-${i}`);
-      }
+    it('caches rarely-changing company profiles for an hour', () => {
+      expect(CACHE_TTL.COMPANY_PROFILE).toBe(3600);
     });
   });
 });
-
-

@@ -1,30 +1,27 @@
 /**
  * API Integration Tests
- * 
- * Tests the Express application endpoints including:
- * - Health check
- * - Route mounting
- * - Error handling
- * - CORS configuration
- * 
- * Note: These tests use supertest to make actual HTTP requests
- * to the Express application without starting a server.
+ *
+ * Boots the REAL Express app (src/index.ts, which api/index.ts re-exports)
+ * and drives it with supertest. The previous version built a throwaway app
+ * with two stub routes, so it could never have caught the production
+ * entrypoint missing its error handler or the subscriptions router.
  */
 
 import request from 'supertest';
-import express, { Express } from 'express';
+import type { Express } from 'express';
 
-const describeIntegration = process.env.RUN_INTEGRATION_TESTS === 'true'
-  ? describe
-  : describe.skip;
+process.env.NODE_ENV = 'test';
+process.env.CORS_ORIGIN = 'http://localhost:3000';
+process.env.CRON_SECRET = 'test-cron-secret-value-at-least-32-chars';
 
-// Mock all external dependencies before importing the app
 jest.mock('../../src/config/firebase', () => ({
   db: null,
   auth: null,
+  storage: null,
 }));
 
 jest.mock('../../src/utils/logger', () => ({
+  __esModule: true,
   default: {
     info: jest.fn(),
     warn: jest.fn(),
@@ -33,159 +30,95 @@ jest.mock('../../src/utils/logger', () => ({
   },
 }));
 
-// Create a minimal test app
-const createTestApp = (): Express => {
-  const app = express();
-  
-  app.use(express.json());
-  
-  // Health check route
-  app.get('/health', (req, res) => {
-    res.status(200).json({ 
-      status: 'ok', 
-      timestamp: new Date().toISOString() 
-    });
-  });
-  
-  // Mock API routes for testing
-  app.get('/api/test', (req, res) => {
-    res.json({ message: 'Test endpoint' });
-  });
-  
-  app.post('/api/test', (req, res) => {
-    res.status(201).json({ 
-      message: 'Created', 
-      data: req.body 
-    });
-  });
-  
-  // 404 handler
-  app.use((req, res) => {
-    res.status(404).json({ error: 'Route not found' });
-  });
-  
-  // Error handler
-  app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
-    res.status(500).json({ error: 'Internal server error' });
-  });
-  
-  return app;
-};
+// Keep the limiter off the network; it must still meter in memory.
+jest.mock('../../src/utils/upstashCache', () => ({
+  __esModule: true,
+  default: {
+    get: jest.fn().mockResolvedValue(null),
+    set: jest.fn().mockResolvedValue(undefined),
+    del: jest.fn().mockResolvedValue(undefined),
+    invalidatePattern: jest.fn().mockResolvedValue(undefined),
+    getOrSet: jest.fn(),
+    rateLimitIncrement: jest.fn().mockResolvedValue(null),
+    isAvailable: jest.fn().mockReturnValue(false),
+    getStats: jest.fn().mockReturnValue({ memorySize: 0, upstashAvailable: false, lastHealthCheck: 0 }),
+  },
+}));
 
-describeIntegration('API Integration Tests', () => {
-  let app: Express;
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const app: Express = require('../../src/index').default;
 
-  beforeAll(() => {
-    app = createTestApp();
-  });
+describe('API integration', () => {
+  describe('health', () => {
+    it('reports ok', async () => {
+      const res = await request(app).get('/health');
 
-  describe('Health Check', () => {
-    it('GET /health should return 200 with status ok', async () => {
-      const response = await request(app)
-        .get('/health')
-        .expect('Content-Type', /json/)
-        .expect(200);
-
-      expect(response.body).toHaveProperty('status', 'ok');
-      expect(response.body).toHaveProperty('timestamp');
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe('ok');
     });
   });
 
-  describe('API Routes', () => {
-    it('GET /api/test should return test message', async () => {
-      const response = await request(app)
-        .get('/api/test')
-        .expect('Content-Type', /json/)
-        .expect(200);
+  describe('route mounting', () => {
+    // Every feature router must be reachable on the deployed app.
+    // /api/subscriptions in particular used to 404 in production because
+    // it was mounted in src/index.ts but not in the Vercel entrypoint.
+    // Probed via a route each router actually declares - users, receipts and
+    // stocks have no bare GET '/', so asking for one would test the test.
+    const routes = [
+      '/api/expenses',
+      '/api/users/profile',
+      '/api/budgets',
+      '/api/notifications',
+      '/api/goals',
+      '/api/bill-reminders',
+      '/api/stocks/trending',
+      '/api/net-worth/assets',
+      '/api/dashboard',
+      '/api/subscriptions',
+    ];
 
-      expect(response.body).toHaveProperty('message', 'Test endpoint');
-    });
+    it.each(routes)('mounts %s', async (path) => {
+      const res = await request(app).get(path);
 
-    it('POST /api/test should create resource', async () => {
-      const testData = { name: 'Test', value: 123 };
-      
-      const response = await request(app)
-        .post('/api/test')
-        .send(testData)
-        .expect('Content-Type', /json/)
-        .expect(201);
-
-      expect(response.body).toHaveProperty('message', 'Created');
-      expect(response.body.data).toEqual(testData);
-    });
-  });
-
-  describe('Error Handling', () => {
-    it('should return 404 for unknown routes', async () => {
-      const response = await request(app)
-        .get('/api/unknown-route')
-        .expect('Content-Type', /json/)
-        .expect(404);
-
-      expect(response.body).toHaveProperty('error', 'Route not found');
+      // Unauthenticated, so anything except "no such route" proves it mounted
+      expect(res.status).not.toBe(404);
     });
   });
 
-  describe('Request Parsing', () => {
-    it('should parse JSON body correctly', async () => {
-      const testData = {
-        string: 'value',
-        number: 42,
-        boolean: true,
-        array: [1, 2, 3],
-        nested: { key: 'value' },
-      };
+  describe('error responses', () => {
+    it('returns a JSON envelope for unknown routes', async () => {
+      const res = await request(app).get('/api/does-not-exist');
 
-      const response = await request(app)
-        .post('/api/test')
-        .send(testData)
-        .expect(201);
-
-      expect(response.body.data).toEqual(testData);
+      expect(res.status).toBe(404);
+      expect(res.type).toBe('application/json');
+      expect(res.body).toMatchObject({ success: false });
     });
 
-    it('should handle empty body', async () => {
-      const response = await request(app)
-        .post('/api/test')
-        .send({})
-        .expect(201);
+    it('returns a JSON envelope for auth failures rather than HTML', async () => {
+      // Without the global error handler mounted, AppError fell through to
+      // Express's default finalhandler and produced an HTML body.
+      const res = await request(app).get('/api/expenses');
 
-      expect(response.body.data).toEqual({});
+      expect(res.status).toBe(401);
+      expect(res.type).toBe('application/json');
+      expect(res.body.success).toBe(false);
+      expect(typeof res.body.error).toBe('string');
+    });
+  });
+
+  describe('cron authentication', () => {
+    it('rejects budget-alert runs without the shared secret', async () => {
+      const res = await request(app).post('/api/notifications/check-budget-alerts');
+
+      expect(res.status).toBe(401);
+    });
+
+    it('rejects an incorrect shared secret', async () => {
+      const res = await request(app)
+        .post('/api/notifications/check-budget-alerts')
+        .set('x-cron-secret', 'wrong-value');
+
+      expect(res.status).toBe(401);
     });
   });
 });
-
-describeIntegration('Express App Configuration', () => {
-  it('should have JSON parsing middleware', async () => {
-    const app = createTestApp();
-    
-    const response = await request(app)
-      .post('/api/test')
-      .set('Content-Type', 'application/json')
-      .send({ test: 'data' })
-      .expect(201);
-
-    expect(response.body.data).toEqual({ test: 'data' });
-  });
-
-  it('should respond to HEAD requests', async () => {
-    const app = createTestApp();
-    
-    await request(app)
-      .head('/health')
-      .expect(200);
-  });
-});
-
-describeIntegration('Response Headers', () => {
-  it('should set content-type to application/json', async () => {
-    const app = createTestApp();
-    
-    const response = await request(app)
-      .get('/health');
-
-    expect(response.headers['content-type']).toMatch(/application\/json/);
-  });
-});
-
-

@@ -99,14 +99,14 @@ export function ExpenseChart({ timeframe = "30days" }: ExpenseChartProps) {
         }))
         .sort((a, b) => a.sortDate.getTime() - b.sortDate.getTime())
 
+      let runningTotal = 0
       const groupedData: ChartDataPoint[] = sortedData.map((item, index) => {
-        const relevantAmounts = sortedData.slice(0, index + 1).map(d => d.amount)
-        const movingAverage = relevantAmounts.reduce((sum, amt) => sum + amt, 0) / relevantAmounts.length
+        runningTotal += item.amount
 
         return {
           name: item.name,
           amount: item.amount,
-          average: movingAverage
+          average: runningTotal / (index + 1)
         }
       })
 
@@ -188,7 +188,7 @@ export function ExpenseChart({ timeframe = "30days" }: ExpenseChartProps) {
               axisLine={false}
               tickLine={false}
               tick={{ fill: "rgba(245, 245, 240, 0.6)", fontSize: isMobile ? 9 : 12 }}
-              tickFormatter={(value) => isMobile ? `$${(value/1000).toFixed(0)}k` : `$${value}`}
+              tickFormatter={(value) => isMobile && value >= 1000 ? `$${(value / 1000).toFixed(1)}k` : `$${value}`}
               width={isMobile ? 30 : 60}
             />
             <Tooltip
