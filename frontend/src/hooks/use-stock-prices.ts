@@ -13,6 +13,13 @@ import { StockAPI } from '@/lib/stock-api'
 const REFRESH_INTERVAL_MS = 30_000
 const VALID_SYMBOL = /^[A-Z0-9.^-]{1,10}$/
 
+/**
+ * Stable identity for the empty case. Returning a fresh {} on every render
+ * makes every consumer callback that closes over `prices` a new function,
+ * which re-runs their effects and can loop.
+ */
+const NO_PRICES: Record<string, StockPriceUpdate> = {}
+
 interface StockPriceUpdate {
   symbol: string
   price: number
@@ -74,7 +81,7 @@ export function useStockPrices({
     },
   })
 
-  const prices = query.data ?? {}
+  const prices = query.data ?? NO_PRICES
 
   const getPrice = useCallback(
     (symbol: string) => prices[symbol] ?? null,
