@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useCallback, useRef } from "react"
 import { TrendingUp, TrendingDown, ChevronRight, ChevronLeft, Activity, RefreshCw, DollarSign, PieChart, BarChart3 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
 import { Badge } from "../ui/badge"
@@ -132,6 +132,8 @@ interface StockMarketProps {
 
 export function StockMarket({ compact = false }: StockMarketProps) {
   const { user } = useAuth()
+  const userRef = useRef(user)
+  useEffect(() => { userRef.current = user }, [user])
   const { isMobile, isTablet } = useViewport()
   const [marketIndices, setMarketIndices] = useState<MarketIndex[]>([])
   const [userPortfolio, setUserPortfolio] = useState<UserPortfolioStock[]>([])
@@ -153,29 +155,23 @@ export function StockMarket({ compact = false }: StockMarketProps) {
     enabled: portfolioSymbols.length > 0,
   })
 
-  const loadStockData = async () => {
+  const loadStockData = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
-      
 
-      
       // Load market indices (always available)
-
       const indicesPromise = StockAPI.getMarketIndices()
-      
+
       // Load user-specific data if authenticated
       let portfolioPromise: Promise<UserPortfolioStock[]> = Promise.resolve([])
       let holdingsPromise: Promise<PortfolioHolding[]> = Promise.resolve([])
       let transactionsPromise: Promise<StockTransaction[]> = Promise.resolve([])
-      
-      if (user) {
 
-        portfolioPromise = StockAPI.getUserPortfolio(user.uid)
-        holdingsPromise = StockAPI.getPortfolioHoldings(user.uid)
-        transactionsPromise = StockAPI.getTransactionHistory(user.uid)
-      } else {
-
+      if (userRef.current) {
+        portfolioPromise = StockAPI.getUserPortfolio(userRef.current.uid)
+        holdingsPromise = StockAPI.getPortfolioHoldings(userRef.current.uid)
+        transactionsPromise = StockAPI.getTransactionHistory(userRef.current.uid)
       }
 
       const [indices, portfolio, holdings, transactions] = await Promise.all([
@@ -211,7 +207,7 @@ export function StockMarket({ compact = false }: StockMarketProps) {
       setLoading(false)
       setIsRetrying(false)
     }
-  }
+  }, [])
 
   const handleRetry = async () => {
     setIsRetrying(true)
@@ -227,7 +223,7 @@ export function StockMarket({ compact = false }: StockMarketProps) {
   // Load stock data on component mount
   useEffect(() => {
     loadStockData()
-  }, [user])
+  }, [user, loadStockData])
 
   // Function to update portfolio stocks with real-time prices
   const updatePortfolioWithRealTimePrices = (portfolio: UserPortfolioStock[]): UserPortfolioStock[] => {

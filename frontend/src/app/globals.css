@@ -65,10 +65,10 @@
     @apply bg-dark text-cream;
   }
   .font-outfit {
-    font-family: "Outfit", sans-serif;
+    font-family: var(--font-outfit), "Outfit", sans-serif;
   }
   .font-roboto-mono {
-    font-family: "Roboto Mono", monospace;
+    font-family: var(--font-roboto-mono), "Roboto Mono", monospace;
   }
 
   /* Mobile-first responsive utilities */
@@ -131,5 +131,23 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;  /* Chrome, Safari and Opera */
   }
+}
+
+@keyframes loading-dot {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+@keyframes loading-pulse {
+  0%, 100% { opacity: 0.6; transform: scale(0.8); }
+  50% { opacity: 0.4; transform: scale(1.2); }
+}
+
+.animate-loading-dot {
+  animation: loading-dot 1.2s ease-in-out infinite;
+}
+
+.animate-loading-pulse {
+  animation: loading-pulse 1.5s ease-in-out infinite;
 }
 

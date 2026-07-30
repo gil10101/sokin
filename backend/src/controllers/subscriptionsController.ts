@@ -11,19 +11,17 @@ import { AppError } from '../middleware/errorHandler';
 import logger from '../utils/logger';
 import { Subscription } from '../models/types';
 import { normalizeDateFields } from '../utils/firestore';
-
-const normalizeIsoDate = (value: unknown, fieldName: string): string => {
-  const date = value instanceof Date ? value : new Date(String(value));
-  if (isNaN(date.getTime())) {
-    throw new AppError(`Invalid ${fieldName} date`, 400, true);
-  }
-  return date.toISOString();
-};
+import { normalizeIsoDate } from '../utils/dates';
+import cache, { CACHE_TTL } from '../utils/cache';
 
 const normalizeSubscription = (subscription: Subscription): Subscription => normalizeDateFields(
   subscription,
   ['startDate', 'nextPaymentDate', 'createdAt', 'updatedAt']
 );
+
+function buildSubscriptionsCacheKey(userId: string): string {
+  return `subscriptions:${userId}:list`;
+}
 
 export const getSubscriptions = async (
   req: Request,
@@ -39,6 +37,13 @@ export const getSubscriptions = async (
       throw new AppError('Database not initialized', 500, false);
     }
 
+    const cacheKey = buildSubscriptionsCacheKey(req.user.uid);
+    const cachedResult = await cache.getAsync<{ success: boolean; data: Subscription[] }>(cacheKey);
+    if (cachedResult) {
+      res.status(200).json(cachedResult);
+      return;
+    }
+
     const snapshot = await db
       .collection('subscriptions')
       .where('userId', '==', req.user.uid)
@@ -50,7 +55,10 @@ export const getSubscriptions = async (
       ...doc.data()
     } as Subscription));
 
-    res.status(200).json({ success: true, data: subscriptions });
+    const result = { success: true, data: subscriptions };
+    await cache.setAsync(cacheKey, result, CACHE_TTL.LIST_QUERY);
+
+    res.status(200).json(result);
   } catch (error) {
     if (error instanceof AppError) {
       next(error);
@@ -120,6 +128,8 @@ export const createSubscription = async (
 
     const docRef = await db.collection('subscriptions').add(subscriptionData);
 
+    await cache.invalidatePatternAsync(`subscriptions:${req.user.uid}:*`);
+
     res.status(201).json({
       success: true,
       data: normalizeSubscription({ id: docRef.id, ...subscriptionData })
@@ -185,6 +195,8 @@ export const updateSubscription = async (
 
     await db.collection('subscriptions').doc(subscriptionId).update(updateData);
 
+    await cache.invalidatePatternAsync(`subscriptions:${req.user.uid}:*`);
+
     res.status(200).json({
       success: true,
       data: normalizeSubscription({
@@ -234,6 +246,8 @@ export const deleteSubscription = async (
     }
 
     await db.collection('subscriptions').doc(subscriptionId).delete();
+
+    await cache.invalidatePatternAsync(`subscriptions:${req.user.uid}:*`);
 
     res.status(200).json({ success: true, message: 'Subscription deleted successfully' });
   } catch (error) {

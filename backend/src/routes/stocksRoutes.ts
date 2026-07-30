@@ -76,8 +76,7 @@ router.get('/stock/:symbol', stocksRateLimit, validateParams(stockSymbolParamsSc
  */
 router.get(
   '/portfolio', 
-  stocksRateLimit,
-  auth,
+  auth, stocksRateLimit,
   asyncHandler(stocksController.getUserPortfolio)
 );
 
@@ -88,8 +87,7 @@ router.get(
  */
 router.post(
   '/transaction', 
-  writeRateLimit,
-  auth, 
+  auth, writeRateLimit, 
   validate(transactionSchema),
   asyncHandler(stocksController.executeTransaction)
 );
@@ -101,8 +99,7 @@ router.post(
  */
 router.get(
   '/max-sell/:symbol', 
-  stocksRateLimit,
-  auth,
+  auth, stocksRateLimit,
   validateParams(stockSymbolParamsSchema),
   asyncHandler(stocksController.getMaxSellAmount)
 );
@@ -114,8 +111,7 @@ router.get(
  */
 router.get(
   '/transactions', 
-  stocksRateLimit,
-  auth, 
+  auth, stocksRateLimit, 
   asyncHandler(stocksController.getTransactionHistory)
 );
 
@@ -126,8 +122,7 @@ router.get(
  */
 router.get(
   '/watchlist',
-  stocksRateLimit,
-  auth,
+  auth, stocksRateLimit,
   asyncHandler(stocksController.getUserWatchlist)
 );
 
@@ -138,8 +133,7 @@ router.get(
  */
 router.post(
   '/watchlist',
-  writeRateLimit,
-  auth,
+  auth, writeRateLimit,
   asyncHandler(stocksController.addToWatchlist)
 );
 
@@ -150,8 +144,7 @@ router.post(
  */
 router.put(
   '/watchlist',
-  writeRateLimit,
-  auth,
+  auth, writeRateLimit,
   asyncHandler(stocksController.updateWatchlist)
 );
 
@@ -162,8 +155,7 @@ router.put(
  */
 router.delete(
   '/watchlist/:symbol',
-  writeRateLimit,
-  auth,
+  auth, writeRateLimit,
   validateParams(stockSymbolParamsSchema),
   asyncHandler(stocksController.removeFromWatchlist)
 );

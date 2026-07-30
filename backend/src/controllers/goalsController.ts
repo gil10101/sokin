@@ -32,16 +32,13 @@ function buildGoalCacheKey(goalId: string): string {
 
 const normalizeGoal = (goal: SavingsGoal): SavingsGoal => {
   const normalizedContributions = goal.contributions?.map((contribution) =>
-    normalizeDateFields(contribution as Record<string, unknown>, ['date'])
-  ) as GoalContribution[] | undefined;
+    normalizeDateFields(contribution, ['date'])
+  );
 
   return normalizeDateFields(
-    {
-      ...goal,
-      contributions: normalizedContributions
-    } as Record<string, unknown>,
+    { ...goal, contributions: normalizedContributions },
     ['targetDate', 'createdAt', 'updatedAt', 'completedAt']
-  ) as SavingsGoal;
+  );
 };
 
 /**

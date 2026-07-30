@@ -1,10 +1,9 @@
 "use client"
 
-import { AlertDialogTrigger } from "@/components/ui/alert-dialog"
-
 import type React from "react"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import { useAuth } from "@/contexts/auth-context"
 import { format, addMonths, addDays, addYears } from "date-fns"
 import { DashboardSidebar } from "@/components/dashboard/sidebar"
@@ -56,7 +55,6 @@ import { subscriptionsAPI } from "@/lib/api"
 interface Subscription {
   id: string
   name: string
-  logo?: string
   amount: number
   billingCycle: "monthly" | "quarterly" | "semi-annually" | "annually" | "custom"
   customInterval?: number
@@ -73,14 +71,31 @@ interface Subscription {
   updatedAt?: string
 }
 
-// Define payment history interface
-interface PaymentHistory {
+// Define projected payment interface
+interface ProjectedPayment {
   id: string
   subscriptionId: string
   date: string
   amount: number
-  status: "paid" | "pending" | "failed"
   paymentMethod: string
+}
+
+// Payload sent to the API when creating or updating a subscription
+type SubscriptionPayload = Omit<Subscription, "id" | "userId" | "createdAt" | "updatedAt">
+
+// Form state for adding/editing a subscription
+interface SubscriptionFormData {
+  name: string
+  amount: string
+  billingCycle: Subscription["billingCycle"]
+  customInterval: string
+  customIntervalUnit: "days" | "weeks" | "months" | "years"
+  startDate: Date
+  paymentMethod: string
+  website: string
+  notes: string
+  autoRenew: boolean
+  category: string
 }
 
 // Default categories
@@ -100,20 +115,6 @@ const SUBSCRIPTION_CATEGORIES = [
 
 // Default payment methods
 const PAYMENT_METHODS = ["Credit Card", "Debit Card", "PayPal", "Bank Transfer", "Apple Pay", "Google Pay", "Other"]
-
-// Mock logos for popular services
-const SERVICE_LOGOS: Record<string, string> = {
-  Netflix: "/placeholder.svg?height=40&width=40&text=N",
-  Spotify: "/placeholder.svg?height=40&width=40&text=S",
-  "Amazon Prime": "/placeholder.svg?height=40&width=40&text=A",
-  "Disney+": "/placeholder.svg?height=40&width=40&text=D",
-  "YouTube Premium": "/placeholder.svg?height=40&width=40&text=Y",
-  "Apple Music": "/placeholder.svg?height=40&width=40&text=AM",
-  "Microsoft 365": "/placeholder.svg?height=40&width=40&text=M",
-  "Adobe Creative Cloud": "/placeholder.svg?height=40&width=40&text=A",
-  "HBO Max": "/placeholder.svg?height=40&width=40&text=H",
-  Hulu: "/placeholder.svg?height=40&width=40&text=H",
-}
 
 // Helper function to safely parse dates
 const safeParseDate = (dateValue: unknown): Date => {
@@ -144,59 +145,69 @@ const safeParseDate = (dateValue: unknown): Date => {
   }
 }
 
-// Generate payment history from subscription data
-const generatePaymentHistory = (subscription: Subscription): PaymentHistory[] => {
-  const history: PaymentHistory[] = []
-  const startDate = safeParseDate(subscription.startDate)
-  const now = new Date()
-  let currentDate = new Date(startDate)
+// Advance a date by one billing cycle. Returns the same date if the cycle
+// cannot advance (unknown cycle or invalid custom interval) so callers can bail out.
+const advanceByBillingCycle = (
+  date: Date,
+  billingCycle: string,
+  customInterval?: number,
+  customIntervalUnit?: string,
+): Date => {
+  switch (billingCycle) {
+    case "monthly":
+      return addMonths(date, 1)
+    case "quarterly":
+      return addMonths(date, 3)
+    case "semi-annually":
+      return addMonths(date, 6)
+    case "annually":
+      return addYears(date, 1)
+    case "custom":
+      if (customInterval && customInterval > 0 && customIntervalUnit) {
+        switch (customIntervalUnit) {
+          case "days":
+            return addDays(date, customInterval)
+          case "weeks":
+            return addDays(date, customInterval * 7)
+          case "months":
+            return addMonths(date, customInterval)
+          case "years":
+            return addYears(date, customInterval)
+        }
+      }
+      return date
+    default:
+      return date
+  }
+}
 
-  while (currentDate <= now) {
-    history.push({
+// Generate upcoming projected payments from the subscription's next payment date
+const generateProjectedPayments = (subscription: Subscription): ProjectedPayment[] => {
+  const projected: ProjectedPayment[] = []
+  let currentDate = safeParseDate(subscription.nextPaymentDate)
+
+  while (projected.length < 6) {
+    projected.push({
       id: `payment-${subscription.id}-${currentDate.getTime()}`,
       subscriptionId: subscription.id,
       date: currentDate.toISOString(),
       amount: subscription.amount,
-      status: "paid",
       paymentMethod: subscription.paymentMethod,
     })
 
-    // Advance to next payment date based on billing cycle
-    switch (subscription.billingCycle) {
-      case "monthly":
-        currentDate = addMonths(currentDate, 1)
-        break
-      case "quarterly":
-        currentDate = addMonths(currentDate, 3)
-        break
-      case "semi-annually":
-        currentDate = addMonths(currentDate, 6)
-        break
-      case "annually":
-        currentDate = addYears(currentDate, 1)
-        break
-      case "custom":
-        if (subscription.customInterval && subscription.customIntervalUnit) {
-          switch (subscription.customIntervalUnit) {
-            case "days":
-              currentDate = addDays(currentDate, subscription.customInterval)
-              break
-            case "weeks":
-              currentDate = addDays(currentDate, subscription.customInterval * 7)
-              break
-            case "months":
-              currentDate = addMonths(currentDate, subscription.customInterval)
-              break
-            case "years":
-              currentDate = addYears(currentDate, subscription.customInterval)
-              break
-          }
-        }
-        break
-    }
+    const nextDate = advanceByBillingCycle(
+      currentDate,
+      subscription.billingCycle,
+      subscription.customInterval,
+      subscription.customIntervalUnit,
+    )
+
+    // Guard against cycles that never advance
+    if (nextDate <= currentDate) break
+    currentDate = nextDate
   }
 
-  return history
+  return projected
 }
 
 // Calculate next payment date based on billing cycle
@@ -211,38 +222,11 @@ const calculateNextPaymentDate = (
 
   // Find the next payment date after today
   while (nextDate <= now) {
-    switch (billingCycle) {
-      case "monthly":
-        nextDate = addMonths(nextDate, 1)
-        break
-      case "quarterly":
-        nextDate = addMonths(nextDate, 3)
-        break
-      case "semi-annually":
-        nextDate = addMonths(nextDate, 6)
-        break
-      case "annually":
-        nextDate = addYears(nextDate, 1)
-        break
-      case "custom":
-        if (customInterval && customIntervalUnit) {
-          switch (customIntervalUnit) {
-            case "days":
-              nextDate = addDays(nextDate, customInterval)
-              break
-            case "weeks":
-              nextDate = addDays(nextDate, customInterval * 7)
-              break
-            case "months":
-              nextDate = addMonths(nextDate, customInterval)
-              break
-            case "years":
-              nextDate = addYears(nextDate, customInterval)
-              break
-          }
-        }
-        break
-    }
+    const advanced = advanceByBillingCycle(nextDate, billingCycle, customInterval, customIntervalUnit)
+
+    // Guard against cycles that never advance
+    if (advanced <= nextDate) break
+    nextDate = advanced
   }
 
   return nextDate
@@ -286,12 +270,13 @@ const calculateAnnualCost = (
     case "annually":
       return amount
     case "custom":
-      if (customInterval && customIntervalUnit) {
+      if (customInterval && customInterval > 0 && customIntervalUnit) {
+        // Convert the cycle length into payments per year
         switch (customIntervalUnit) {
           case "days":
             return amount * (365 / customInterval)
           case "weeks":
-            return amount * (52 / customInterval)
+            return amount * (365 / (customInterval * 7))
           case "months":
             return amount * (12 / customInterval)
           case "years":
@@ -312,7 +297,10 @@ interface SubscriptionsPageProps {
 export default function SubscriptionsPage(props: SubscriptionsPageProps) {
   const [collapsed, setCollapsed] = useState(false)
   const { user } = useAuth()
+  const userRef = useRef(user)
+  useEffect(() => { userRef.current = user }, [user])
   const { toast } = useToast()
+  const queryClient = useQueryClient()
 
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
   const [filteredSubscriptions, setFilteredSubscriptions] = useState<Subscription[]>([])
@@ -320,15 +308,16 @@ export default function SubscriptionsPage(props: SubscriptionsPageProps) {
   const [openDialog, setOpenDialog] = useState(false)
   const [expandedSubscriptions, setExpandedSubscriptions] = useState<Record<string, boolean>>({})
   const [subscriptionToDelete, setSubscriptionToDelete] = useState<string | null>(null)
+  const [editingSubscriptionId, setEditingSubscriptionId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [sortBy, setSortBy] = useState<string>("nextPaymentDate")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
   const [categoryFilter, setCategoryFilter] = useState<string>("all")
-  const [paymentHistories, setPaymentHistories] = useState<Record<string, PaymentHistory[]>>({})
+  const [projectedPayments, setProjectedPayments] = useState<Record<string, ProjectedPayment[]>>({})
   const [mounted, setMounted] = useState(false)
 
   // Form state for adding/editing subscription
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<SubscriptionFormData>({
     name: "",
     amount: "",
     billingCycle: "monthly",
@@ -368,39 +357,27 @@ export default function SubscriptionsPage(props: SubscriptionsPageProps) {
 
     // Apply sorting
     result.sort((a, b) => {
-      let valueA, valueB
+      let comparison: number
 
       switch (sortBy) {
         case "name":
-          valueA = a.name.toLowerCase()
-          valueB = b.name.toLowerCase()
+          comparison = a.name.localeCompare(b.name)
           break
         case "amount":
-          valueA = a.amount
-          valueB = b.amount
-          break
-        case "nextPaymentDate":
-          valueA = safeParseDate(a.nextPaymentDate).getTime()
-          valueB = safeParseDate(b.nextPaymentDate).getTime()
+          comparison = a.amount - b.amount
           break
         case "billingCycle":
-          valueA = a.billingCycle
-          valueB = b.billingCycle
+          comparison = a.billingCycle.localeCompare(b.billingCycle)
           break
         case "category":
-          valueA = a.category
-          valueB = b.category
+          comparison = a.category.localeCompare(b.category)
           break
+        case "nextPaymentDate":
         default:
-          valueA = new Date(a.nextPaymentDate).getTime()
-          valueB = new Date(b.nextPaymentDate).getTime()
+          comparison = safeParseDate(a.nextPaymentDate).getTime() - safeParseDate(b.nextPaymentDate).getTime()
       }
 
-      if (sortDirection === "asc") {
-        return valueA > valueB ? 1 : -1
-      } else {
-        return valueA < valueB ? 1 : -1
-      }
+      return sortDirection === "asc" ? comparison : -comparison
     })
 
     setFilteredSubscriptions(result)
@@ -408,20 +385,25 @@ export default function SubscriptionsPage(props: SubscriptionsPageProps) {
 
   // Fetch subscriptions from API
   const fetchSubscriptions = useCallback(async () => {
-    if (!user) return
+    if (!userRef.current) return
 
     setLoading(true)
     try {
       const subscriptionsData = await subscriptionsAPI.getSubscriptions()
 
-      setSubscriptions(subscriptionsData)
+      // Normalize API data: drop any records without an id
+      const normalizedSubscriptions = subscriptionsData.filter(
+        (subscription): subscription is Subscription => Boolean(subscription.id),
+      )
 
-      // Generate payment histories for each subscription
-      const histories: Record<string, PaymentHistory[]> = {}
-      subscriptionsData.forEach((subscription) => {
-        histories[subscription.id] = generatePaymentHistory(subscription)
+      setSubscriptions(normalizedSubscriptions)
+
+      // Generate projected payments for each subscription
+      const projected: Record<string, ProjectedPayment[]> = {}
+      normalizedSubscriptions.forEach((subscription) => {
+        projected[subscription.id] = generateProjectedPayments(subscription)
       })
-      setPaymentHistories(histories)
+      setProjectedPayments(projected)
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : "There was an error loading your subscriptions"
       toast({
@@ -432,14 +414,14 @@ export default function SubscriptionsPage(props: SubscriptionsPageProps) {
     } finally {
       setLoading(false)
     }
-  }, [user, toast])
+  }, [])
 
   // Fetch subscriptions when user is available
   useEffect(() => {
     if (user && mounted) {
       fetchSubscriptions()
     }
-  }, [user, mounted, fetchSubscriptions])
+  }, [user, mounted])
 
   // Handle form input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -512,10 +494,16 @@ export default function SubscriptionsPage(props: SubscriptionsPageProps) {
     }
 
     // Validate custom interval if billing cycle is custom
-    if (formData.billingCycle === "custom" && (!formData.customInterval || !formData.customIntervalUnit)) {
+    const parsedCustomInterval =
+      formData.billingCycle === "custom" ? Number.parseInt(formData.customInterval) : undefined
+
+    if (
+      formData.billingCycle === "custom" &&
+      (!parsedCustomInterval || parsedCustomInterval < 0 || !formData.customIntervalUnit)
+    ) {
       toast({
         title: "Missing custom interval",
-        description: "Please specify a custom billing interval",
+        description: "Please specify a custom billing interval greater than zero",
         variant: "destructive",
       })
       return
@@ -528,55 +516,55 @@ export default function SubscriptionsPage(props: SubscriptionsPageProps) {
       const nextPaymentDate = calculateNextPaymentDate(
         formData.startDate,
         formData.billingCycle,
-        formData.customInterval ? Number.parseInt(formData.customInterval) : undefined,
+        parsedCustomInterval,
         formData.customIntervalUnit,
       )
 
       // Prepare subscription data
-      const subscriptionData = {
+      const subscriptionData: SubscriptionPayload = {
         name: formData.name,
-        logo: SERVICE_LOGOS[formData.name] || `/placeholder.svg?height=40&width=40&text=${formData.name.charAt(0)}`,
         amount: Number.parseFloat(formData.amount),
-        billingCycle: formData.billingCycle as "monthly" | "quarterly" | "semi-annually" | "annually" | "custom",
+        billingCycle: formData.billingCycle,
         startDate: formData.startDate.toISOString(),
         nextPaymentDate: nextPaymentDate.toISOString(),
         paymentMethod: formData.paymentMethod,
-        website: formData.website || null,
-        notes: formData.notes || null,
+        website: formData.website || "",
+        notes: formData.notes || "",
         autoRenew: formData.autoRenew,
         category: formData.category,
       }
 
       // Only include custom interval fields if billing cycle is custom
       if (formData.billingCycle === "custom") {
-        subscriptionData.customInterval = Number.parseInt(formData.customInterval)
-        subscriptionData.customIntervalUnit = formData.customIntervalUnit as "days" | "weeks" | "months" | "years"
+        subscriptionData.customInterval = parsedCustomInterval
+        subscriptionData.customIntervalUnit = formData.customIntervalUnit
       }
 
-      // Add subscription to Firestore
-      const newSubscription = await subscriptionsAPI.createSubscription(subscriptionData)
-
-      setSubscriptions((prev) => [...prev, newSubscription])
-
-      // Generate payment history
-      const history = generatePaymentHistory(newSubscription)
-      setPaymentHistories((prev) => ({
-        ...prev,
-        [newSubscription.id]: history,
-      }))
+      if (editingSubscriptionId) {
+        await subscriptionsAPI.updateSubscription(editingSubscriptionId, subscriptionData)
+      } else {
+        await subscriptionsAPI.createSubscription(subscriptionData)
+      }
 
       toast({
-        title: "Subscription added",
-        description: "Your subscription has been added successfully",
+        title: editingSubscriptionId ? "Subscription updated" : "Subscription added",
+        description: editingSubscriptionId
+          ? "Your subscription has been updated successfully"
+          : "Your subscription has been added successfully",
       })
 
       // Reset form and close dialog
       resetForm()
+      setEditingSubscriptionId(null)
       setOpenDialog(false)
+
+      // Refresh the list and any dashboard data built from it
+      await fetchSubscriptions()
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] })
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "There was an error adding your subscription"
+      const errorMessage = error instanceof Error ? error.message : "There was an error saving your subscription"
       toast({
-        title: "Error adding subscription",
+        title: editingSubscriptionId ? "Error updating subscription" : "Error adding subscription",
         description: errorMessage,
         variant: "destructive",
       })
@@ -585,23 +573,46 @@ export default function SubscriptionsPage(props: SubscriptionsPageProps) {
     }
   }
 
+  // Open the dialog prefilled with an existing subscription
+  const handleEditSubscription = (subscription: Subscription) => {
+    setFormData({
+      name: subscription.name,
+      amount: subscription.amount.toString(),
+      billingCycle: subscription.billingCycle,
+      customInterval: subscription.customInterval ? subscription.customInterval.toString() : "",
+      customIntervalUnit: subscription.customIntervalUnit || "months",
+      startDate: safeParseDate(subscription.startDate),
+      paymentMethod: subscription.paymentMethod,
+      website: subscription.website || "",
+      notes: subscription.notes || "",
+      autoRenew: subscription.autoRenew,
+      category: subscription.category,
+    })
+    setEditingSubscriptionId(subscription.id)
+    setOpenDialog(true)
+  }
+
   // Handle subscription deletion
   const handleDeleteSubscription = async () => {
-    if (!subscriptionToDelete) return
+    const subscriptionId = subscriptionToDelete
+    if (!subscriptionId) return
 
     try {
-      await subscriptionsAPI.deleteSubscription(subscriptionToDelete)
+      await subscriptionsAPI.deleteSubscription(subscriptionId)
 
       // Update local state
-      setSubscriptions((prev) => prev.filter((subscription) => subscription.id !== subscriptionToDelete))
+      setSubscriptions((prev) => prev.filter((subscription) => subscription.id !== subscriptionId))
 
       // Remove from expanded subscriptions
-      const { [subscriptionToDelete]: _, ...rest } = expandedSubscriptions
+      const { [subscriptionId]: _, ...rest } = expandedSubscriptions
       setExpandedSubscriptions(rest)
 
-      // Remove payment history
-      const { [subscriptionToDelete]: __, ...restHistories } = paymentHistories
-      setPaymentHistories(restHistories)
+      // Remove projected payments
+      const { [subscriptionId]: __, ...restProjected } = projectedPayments
+      setProjectedPayments(restProjected)
+
+      // Refresh any dashboard data built from subscriptions
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] })
 
       toast({
         title: "Subscription deleted",
@@ -619,12 +630,12 @@ export default function SubscriptionsPage(props: SubscriptionsPageProps) {
     }
   }
 
-  // Calculate total monthly and annual costs
+  // Calculate total monthly and annual costs across all subscriptions
   const calculateTotalCosts = () => {
     let monthlyTotal = 0
     let annualTotal = 0
 
-    filteredSubscriptions.forEach((subscription) => {
+    subscriptions.forEach((subscription) => {
       const annualCost = calculateAnnualCost(
         subscription.amount,
         subscription.billingCycle,
@@ -691,7 +702,7 @@ export default function SubscriptionsPage(props: SubscriptionsPageProps) {
                   </div>
                   <div className="flex flex-col items-center sm:items-start text-center sm:text-left sm:w-32 sm:pl-6">
                     <p className="text-xs sm:text-sm text-cream/60">Subscriptions</p>
-                    <p className="text-lg sm:text-xl font-medium mt-1">{filteredSubscriptions.length}</p>
+                    <p className="text-lg sm:text-xl font-medium mt-1">{subscriptions.length}</p>
                   </div>
                 </div>
               </div>
@@ -799,15 +810,7 @@ export default function SubscriptionsPage(props: SubscriptionsPageProps) {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3 flex-1 min-w-0">
                           <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-md bg-cream/10 flex items-center justify-center overflow-hidden flex-shrink-0">
-                            {subscription.logo ? (
-                              <img
-                                src={subscription.logo || "/placeholder.svg"}
-                                alt={subscription.name}
-                                className="h-full w-full object-cover"
-                              />
-                            ) : (
-                              <span className="text-sm sm:text-lg font-medium">{subscription.name.charAt(0)}</span>
-                            )}
+                            <span className="text-sm sm:text-lg font-medium">{subscription.name.charAt(0)}</span>
                           </div>
                           <div className="min-w-0 flex-1">
                             <div className="flex items-start justify-between gap-2">
@@ -936,8 +939,8 @@ export default function SubscriptionsPage(props: SubscriptionsPageProps) {
                           </div>
 
                           <div>
-                            <h4 className="font-medium mb-3 sm:mb-4 text-sm sm:text-base">Payment History</h4>
-                            {paymentHistories[subscription.id] && paymentHistories[subscription.id].length > 0 ? (
+                            <h4 className="font-medium mb-3 sm:mb-4 text-sm sm:text-base">Projected Payments</h4>
+                            {projectedPayments[subscription.id] && projectedPayments[subscription.id].length > 0 ? (
                               <div className="space-y-2 sm:space-y-3">
                                 <div className="hidden sm:block overflow-x-auto">
                                   <Table>
@@ -945,69 +948,36 @@ export default function SubscriptionsPage(props: SubscriptionsPageProps) {
                                       <TableRow className="border-cream/10 hover:bg-transparent">
                                         <TableHead className="text-cream/60 text-xs">Date</TableHead>
                                         <TableHead className="text-cream/60 text-xs">Amount</TableHead>
-                                        <TableHead className="text-cream/60 text-xs">Status</TableHead>
                                         <TableHead className="text-cream/60 text-xs">Method</TableHead>
                                       </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                      {paymentHistories[subscription.id]
-                                        .sort((a, b) => safeParseDate(b.date).getTime() - safeParseDate(a.date).getTime())
-                                        .slice(0, 5)
-                                        .map((payment) => (
-                                          <TableRow key={payment.id} className="border-cream/10">
-                                            <TableCell className="text-xs">{format(safeParseDate(payment.date), "MMM d, yyyy")}</TableCell>
-                                            <TableCell className="text-xs">${payment.amount.toFixed(2)}</TableCell>
-                                            <TableCell>
-                                              <span
-                                                className={`px-2 py-1 rounded-full text-xs ${
-                                                  payment.status === "paid"
-                                                    ? "bg-green-500/20 text-green-400"
-                                                    : payment.status === "pending"
-                                                      ? "bg-yellow-500/20 text-yellow-400"
-                                                      : "bg-red-500/20 text-red-400"
-                                                }`}
-                                              >
-                                                {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
-                                              </span>
-                                            </TableCell>
-                                            <TableCell className="text-xs">{payment.paymentMethod}</TableCell>
-                                          </TableRow>
-                                        ))}
+                                      {projectedPayments[subscription.id].map((payment) => (
+                                        <TableRow key={payment.id} className="border-cream/10">
+                                          <TableCell className="text-xs">{format(safeParseDate(payment.date), "MMM d, yyyy")}</TableCell>
+                                          <TableCell className="text-xs">${payment.amount.toFixed(2)}</TableCell>
+                                          <TableCell className="text-xs">{payment.paymentMethod}</TableCell>
+                                        </TableRow>
+                                      ))}
                                     </TableBody>
                                   </Table>
                                 </div>
-                                
-                                {/* Mobile payment history layout */}
+
+                                {/* Mobile projected payments layout */}
                                 <div className="block sm:hidden space-y-2">
-                                  {paymentHistories[subscription.id]
-                                    .sort((a, b) => safeParseDate(b.date).getTime() - safeParseDate(a.date).getTime())
-                                    .slice(0, 3)
-                                    .map((payment) => (
-                                      <div key={payment.id} className="bg-cream/10 rounded-lg p-3 space-y-1">
-                                        <div className="flex justify-between items-start">
-                                          <span className="text-xs text-cream/60">{format(safeParseDate(payment.date), "MMM d, yyyy")}</span>
-                                          <span className="text-xs font-medium">${payment.amount.toFixed(2)}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center">
-                                          <span className="text-xs text-cream/60">{payment.paymentMethod}</span>
-                                          <span
-                                            className={`px-2 py-1 rounded-full text-xs ${
-                                              payment.status === "paid"
-                                                ? "bg-green-500/20 text-green-400"
-                                                : payment.status === "pending"
-                                                  ? "bg-yellow-500/20 text-yellow-400"
-                                                  : "bg-red-500/20 text-red-400"
-                                            }`}
-                                          >
-                                            {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
-                                          </span>
-                                        </div>
+                                  {projectedPayments[subscription.id].slice(0, 3).map((payment) => (
+                                    <div key={payment.id} className="bg-cream/10 rounded-lg p-3 space-y-1">
+                                      <div className="flex justify-between items-start">
+                                        <span className="text-xs text-cream/60">{format(safeParseDate(payment.date), "MMM d, yyyy")}</span>
+                                        <span className="text-xs font-medium">${payment.amount.toFixed(2)}</span>
                                       </div>
-                                    ))}
+                                      <p className="text-xs text-cream/60">{payment.paymentMethod}</p>
+                                    </div>
+                                  ))}
                                 </div>
                               </div>
                             ) : (
-                              <p className="text-xs sm:text-sm text-cream/60">No payment history available</p>
+                              <p className="text-xs sm:text-sm text-cream/60">No projected payments available</p>
                             )}
                           </div>
                         </div>
@@ -1016,48 +986,19 @@ export default function SubscriptionsPage(props: SubscriptionsPageProps) {
                           <Button
                             variant="outline"
                             className="bg-transparent border-cream/10 text-cream hover:bg-cream/10 w-full sm:w-auto"
-                            onClick={() => {
-                              // Edit functionality would go here
-                              toast({
-                                title: "Edit feature",
-                                description: "Edit functionality is not implemented in this demo",
-                              })
-                            }}
+                            onClick={() => handleEditSubscription(subscription)}
                           >
                             <Edit className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                             Edit
                           </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                variant="outline"
-                                className="bg-transparent border-red-500/20 text-red-400 hover:bg-red-500/10 w-full sm:w-auto"
-                              >
-                                <Trash2 className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                                Delete
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent className="bg-dark border-cream/10 text-cream w-[95vw] max-w-[400px]">
-                              <AlertDialogHeader>
-                                <AlertDialogTitle className="text-base sm:text-lg">Delete Subscription</AlertDialogTitle>
-                                <AlertDialogDescription className="text-cream/60 text-sm">
-                                  Are you sure you want to delete the &quot;{subscription.name}&quot; subscription? This action
-                                  cannot be undone.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-0">
-                                <AlertDialogCancel className="bg-transparent border-cream/10 text-cream hover:bg-cream/10 w-full sm:w-auto">
-                                  Cancel
-                                </AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => setSubscriptionToDelete(subscription.id)}
-                                  className="bg-red-500 text-white hover:bg-red-600 w-full sm:w-auto"
-                                >
-                                  Delete
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                          <Button
+                            variant="outline"
+                            className="bg-transparent border-red-500/20 text-red-400 hover:bg-red-500/10 w-full sm:w-auto"
+                            onClick={() => setSubscriptionToDelete(subscription.id)}
+                          >
+                            <Trash2 className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                            Delete
+                          </Button>
                         </div>
                       </div>
                     </CollapsibleContent>
@@ -1069,12 +1010,25 @@ export default function SubscriptionsPage(props: SubscriptionsPageProps) {
         </div>
       </main>
 
-      <Dialog open={openDialog} onOpenChange={setOpenDialog}>
+      <Dialog
+        open={openDialog}
+        onOpenChange={(open) => {
+          setOpenDialog(open)
+          if (!open) {
+            resetForm()
+            setEditingSubscriptionId(null)
+          }
+        }}
+      >
         <DialogContent className="bg-dark border-cream/10 text-cream w-[95vw] max-w-[550px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-lg sm:text-xl">Add New Subscription</DialogTitle>
+            <DialogTitle className="text-lg sm:text-xl">
+              {editingSubscriptionId ? "Edit Subscription" : "Add New Subscription"}
+            </DialogTitle>
             <DialogDescription className="text-cream/60 text-sm sm:text-base">
-              Add details about your subscription to track payments and renewals.
+              {editingSubscriptionId
+                ? "Update the details of your subscription."
+                : "Add details about your subscription to track payments and renewals."}
             </DialogDescription>
           </DialogHeader>
 
@@ -1309,6 +1263,7 @@ export default function SubscriptionsPage(props: SubscriptionsPageProps) {
                 variant="outline"
                 onClick={() => {
                   resetForm()
+                  setEditingSubscriptionId(null)
                   setOpenDialog(false)
                 }}
                 className="bg-transparent border-cream/10 text-cream hover:bg-cream/10 hover:text-cream w-full sm:w-auto"
@@ -1316,7 +1271,7 @@ export default function SubscriptionsPage(props: SubscriptionsPageProps) {
                 Cancel
               </Button>
               <Button type="submit" disabled={loading} className="bg-cream text-dark hover:bg-cream/90 font-medium w-full sm:w-auto">
-                {loading ? "Adding..." : "Add Subscription"}
+                {loading ? "Saving..." : editingSubscriptionId ? "Save Changes" : "Add Subscription"}
               </Button>
             </DialogFooter>
           </form>

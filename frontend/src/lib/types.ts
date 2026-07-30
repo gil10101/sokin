@@ -6,39 +6,11 @@ export interface User {
   photoURL?: string;
 }
 
-export interface UserProfile {
-  name: string;
-  email: string;
-  createdAt: string;
-  settings: {
-    currency: string;
-    theme: string;
-    notifications: {
-      email: boolean;
-      push: boolean;
-      monthlyReport: boolean;
-      budgetAlerts: boolean;
-      expenseNotifications?: boolean;
-    };
-  };
-}
-
-// Expense-related types
-export interface Expense {
-  id: string;
-  userId: string;
-  name?: string;
-  amount: number;
-  date: string;
-  category: string;
-  description?: string;
-  tags?: string[];
-  receiptImageUrl?: string;
-  receiptData?: any;
-  createdAt: string;
-  updatedAt?: string;
-  receipt?: string;
-}
+/**
+ * Entity shapes live in lib/api.ts (the API response contract) so pages and
+ * hooks cannot drift from what the backend actually returns.
+ */
+export type { UserProfile, Expense, Budget, BudgetPeriod } from './api'
 
 export interface ExpenseFormData {
   amount: number;
@@ -49,25 +21,12 @@ export interface ExpenseFormData {
   receipt?: File | null;
 }
 
-// Budget-related types
-export interface Budget {
-  id: string;
-  userId: string;
-  category: string;
-  amount: number;
-  period: 'daily' | 'weekly' | 'monthly' | 'yearly';
-  startDate: string;
-  endDate?: string;
-  createdAt: string;
-  updatedAt?: string;
-}
-
 export interface BudgetFormData {
   category: string;
   amount: number;
-  period: 'daily' | 'weekly' | 'monthly' | 'yearly';
+  period: import('./api').BudgetPeriod;
   startDate: string;
-  endDate?: string;
+  endDate?: string | null;
 }
 
 // Net Worth and Asset/Liability Types

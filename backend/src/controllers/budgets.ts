@@ -15,6 +15,7 @@ import logger from '../utils/logger';
 import cache, { CACHE_TTL } from '../utils/cache';
 import { Budget, PaginationMeta } from '../models/types';
 import { normalizeDateFields, normalizeDateValue } from '../utils/firestore';
+import { invalidateDashboardCache } from './dashboardController';
 
 /** Default page size for pagination */
 const DEFAULT_PAGE_SIZE = 50;
@@ -348,7 +349,7 @@ export const createBudget = async (
       category,
       categories: categories || (category ? [category] : []),
       startDate: normalizedStartDate,
-      endDate: normalizedEndDate === undefined ? undefined : normalizedEndDate,
+      endDate: normalizedEndDate || undefined,
       notes: notes ?? null,
       createdAt: new Date().toISOString(),
     };
@@ -357,8 +358,9 @@ export const createBudget = async (
     
     // Invalidate all cached budget pages for this user
     await cache.invalidatePatternAsync(`budgets:${req.user.uid}:*`);
-    
-    res.status(201).json({ 
+    await invalidateDashboardCache(req.user!.uid);
+
+    res.status(201).json({
       success: true,
       data: normalizeBudget({
         id: budgetRef.id,
@@ -488,12 +490,13 @@ export const updateBudget = async (
       cache.invalidatePatternAsync(`budgets:${userId}:*`),
       cache.delAsync(buildBudgetCacheKey(budgetId))
     ]).catch((err) => {
-      logger.warn('Cache invalidation failed for budget update', { 
+      logger.warn('Cache invalidation failed for budget update', {
         budgetId, userId, error: err instanceof Error ? err.message : 'Unknown error'
       });
     });
-    
-    res.status(200).json({ 
+    await invalidateDashboardCache(req.user!.uid);
+
+    res.status(200).json({
       success: true,
       data: normalizeBudget({
         id: budgetId,
@@ -570,12 +573,13 @@ export const deleteBudget = async (
       cache.invalidatePatternAsync(`budgets:${userId}:*`),
       cache.delAsync(buildBudgetCacheKey(budgetId))
     ]).catch((err) => {
-      logger.warn('Cache invalidation failed for budget delete', { 
+      logger.warn('Cache invalidation failed for budget delete', {
         budgetId, userId, error: err instanceof Error ? err.message : 'Unknown error'
       });
     });
-    
-    res.status(200).json({ 
+    await invalidateDashboardCache(req.user!.uid);
+
+    res.status(200).json({
       success: true,
       message: 'Budget deleted successfully'
     });

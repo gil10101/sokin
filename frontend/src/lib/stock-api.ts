@@ -1,9 +1,8 @@
 /**
- * Stock API client: REST + WebSocket with auth, caching, retries.
+ * Stock API client: REST with auth, caching, retries.
  */
 
 import { auth } from './firebase'
-import { io, Socket } from 'socket.io-client'
 
 export interface StockData {
   symbol: string
@@ -99,12 +98,21 @@ export class StockAPI {
     return envUrl.endsWith('/api') ? envUrl : `${envUrl}/api`
   })()
 
-  private static socket: Socket | null = null
-  private static priceUpdateCallbacks = new Map<string, Set<(data: StockData) => void>>()
-  private static connectionAttempted = false
-  private static connectionFailed = false
-
   private static cache = new Map<string, CacheEntry<StockData | MarketIndex[] | UserPortfolioStock[] | StockData[]>>()
+
+  private static inflightRequests = new Map<string, Promise<unknown>>()
+
+  private static async deduplicatedRequest<T>(key: string, factory: () => Promise<T>): Promise<T> {
+    const inflight = this.inflightRequests.get(key)
+    if (inflight) return inflight as Promise<T>
+
+    const promise = factory().finally(() => {
+      this.inflightRequests.delete(key)
+    })
+
+    this.inflightRequests.set(key, promise)
+    return promise
+  }
 
   private static async getAuthHeaders(): Promise<Record<string, string>> {
     const user = auth.currentUser
@@ -237,11 +245,13 @@ export class StockAPI {
     const cached = this.getFromCache<MarketIndex[]>(cacheKey)
     if (cached) return cached
 
-    const response = await this.fetchWithRetry(`${this.baseUrl}/stocks/market-indices`)
-    const data = await this.handleResponse<MarketIndex[]>(response)
-    
-    this.setCache(cacheKey, data, 30000) // 30s
-    return data
+    return this.deduplicatedRequest(cacheKey, async () => {
+      const response = await this.fetchWithRetry(`${this.baseUrl}/stocks/market-indices`)
+      const data = await this.handleResponse<MarketIndex[]>(response)
+
+      this.setCache(cacheKey, data, 30000) // 30s
+      return data
+    })
   }
 
   static async getUserPortfolio(userId: string): Promise<UserPortfolioStock[]> {
@@ -253,13 +263,14 @@ export class StockAPI {
     const cached = this.getFromCache<UserPortfolioStock[]>(cacheKey)
     if (cached) return cached
 
-    const headers = await this.getAuthHeaders()
-    // userId from auth token on backend
-    const response = await this.fetchWithRetry(`${this.baseUrl}/stocks/portfolio`, { headers })
-    const result = await this.handleResponse<UserPortfolioStock[]>(response)
-    
-    this.setCache(cacheKey, result, 15000) // 15s
-    return result
+    return this.deduplicatedRequest(cacheKey, async () => {
+      const headers = await this.getAuthHeaders()
+      const response = await this.fetchWithRetry(`${this.baseUrl}/stocks/portfolio`, { headers })
+      const result = await this.handleResponse<UserPortfolioStock[]>(response)
+
+      this.setCache(cacheKey, result, 15000) // 15s
+      return result
+    })
   }
 
   static async getStockData(symbol: string): Promise<StockData> {
@@ -311,16 +322,9 @@ export class StockAPI {
   }
 
   static async getPortfolioHoldings(userId: string): Promise<PortfolioHolding[]> {
-    if (!auth.currentUser) throw new Error('User not authenticated')
-    
-    const headers = await this.getAuthHeaders()
-    // userId from auth token on backend
-    const response = await this.fetchWithRetry(`${this.baseUrl}/stocks/portfolio`, { headers })
-    const portfolioData = await this.handleResponse<UserPortfolioStock[] | { holdings: UserPortfolioStock[] }>(response)
-    const holdings = Array.isArray(portfolioData) ? portfolioData : (portfolioData.holdings || [])
-    // Backend has no timestamps; use now.
+    const portfolio = await this.getUserPortfolio(userId)
     const now = new Date()
-    return holdings.map((h: UserPortfolioStock) => ({
+    return portfolio.map((h) => ({
       userId,
       symbol: h.symbol,
       shares: h.shares,
@@ -440,136 +444,6 @@ export class StockAPI {
     this.cache.clear()
   }
 
-  static resetConnectionState(): void {
-    this.connectionAttempted = false
-    this.connectionFailed = false
-    if (this.socket) {
-      this.socket.disconnect()
-      this.socket = null
-    }
-    this.priceUpdateCallbacks.clear()
-  }
-
-  private static async initializeSocket(): Promise<Socket | null> {
-    if (this.connectionFailed) {
-      return null
-    }
-
-    if (!this.socket && !this.connectionAttempted) {
-      this.connectionAttempted = true
-      
-      try {
-        // Check health before websocket.
-        const healthUrl = this.baseUrl.replace('/api', '/health')
-        const healthResponse = await fetch(healthUrl, { 
-          method: 'GET'
-        })
-        
-        if (!healthResponse.ok) {
-          this.connectionFailed = true
-          return null
-        }
-        
-        const healthData = await healthResponse.json()
-        
-        if (healthData.status !== 'healthy') {
-          this.connectionFailed = true
-          return null
-        }
-        
-        const socketUrl = this.baseUrl.replace('/api', '')
-        this.socket = io(socketUrl, {
-          transports: ['websocket', 'polling'],
-          autoConnect: true,
-          timeout: 5000,
-          forceNew: true,
-        })
-
-        this.socket.on('connect', () => {
-          this.connectionFailed = false
-        })
-
-        this.socket.on('disconnect', () => {})
-
-        this.socket.on('price_updates', (data: Record<string, StockData>) => {
-          Object.entries(data).forEach(([symbol, priceData]) => {
-            const callbacks = this.priceUpdateCallbacks.get(symbol)
-            if (callbacks) {
-              callbacks.forEach(callback => callback(priceData))
-            }
-          })
-        })
-
-        this.socket.on('connect_error', () => {
-          this.connectionFailed = true
-          this.socket = null
-        })
-
-        // Fail if not connected in 5s.
-        setTimeout(() => {
-          if (this.socket && !this.socket.connected) {
-            this.connectionFailed = true
-            this.socket.disconnect()
-            this.socket = null
-          }
-        }, 5000)
-      } catch (error) {
-        // Log only in dev.
-        if (process.env.NODE_ENV === 'development') {
-          console.debug('WebSocket init failed:', error)
-        }
-        this.connectionFailed = true
-        this.socket = null
-      }
-    }
-
-    return this.socket
-  }
-
-  static subscribeToStockPrices(symbols: string[], callback: (symbol: string, data: StockData) => void): () => void {
-    symbols.forEach(symbol => {
-      if (!this.priceUpdateCallbacks.has(symbol)) {
-        this.priceUpdateCallbacks.set(symbol, new Set())
-      }
-
-      const symbolCallback = (data: StockData) => callback(symbol, data)
-      this.priceUpdateCallbacks.get(symbol)!.add(symbolCallback)
-    })
-
-    this.initializeSocket().then(socket => {
-      if (socket) {
-        socket.emit('subscribe_prices', { symbols })
-      }
-    }).catch(() => {
-    })
-
-    return () => {
-      symbols.forEach(symbol => {
-        const callbacks = this.priceUpdateCallbacks.get(symbol)
-        if (callbacks) {
-          callbacks.clear()
-          if (callbacks.size === 0) {
-            this.priceUpdateCallbacks.delete(symbol)
-          }
-        }
-      })
-
-      this.initializeSocket().then(socket => {
-        if (socket) {
-          socket.emit('unsubscribe_prices', { symbols })
-        }
-      }).catch(() => {
-      })
-    }
-  }
-
-  static disconnectSocket(): void {
-    if (this.socket) {
-      this.socket.disconnect()
-      this.socket = null
-      this.priceUpdateCallbacks.clear()
-    }
-  }
 }
 
 export const formatPrice = (price: number): string => {

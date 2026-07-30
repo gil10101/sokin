@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { MotionDiv, MotionHeader, fadeInUp, staggerContainer } from "@/components/ui/dynamic-motion"
 import {
@@ -66,6 +66,8 @@ interface NetWorthPageProps {
 
 export default function NetWorthPage(props: NetWorthPageProps) {
   const { user, loading: authLoading } = useAuth()
+  const userRef = useRef(user)
+  useEffect(() => { userRef.current = user }, [user])
   const router = useRouter()
   const [collapsed, setCollapsed] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -79,7 +81,7 @@ export default function NetWorthPage(props: NetWorthPageProps) {
   const fetchNetWorthData = useCallback(async () => {
     try {
       setLoading(true)
-      const token = await user?.getIdToken()
+      const token = await userRef.current?.getIdToken()
 
       // Fetch net worth calculation
       const netWorthData = await api.get('net-worth/calculate', { token }) as { data: NetWorthCalculation }
@@ -92,17 +94,13 @@ export default function NetWorthPage(props: NetWorthPageProps) {
     } finally {
       setLoading(false)
     }
-  }, [user])
+  }, [])
 
   useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/auth/login')
-      return
-    }
     if (user) {
       fetchNetWorthData()
     }
-  }, [user, authLoading, router, fetchNetWorthData])
+  }, [user, fetchNetWorthData])
 
   const handleAddNew = (type: 'asset' | 'liability') => {
     setFormType(type)
@@ -256,6 +254,7 @@ export default function NetWorthPage(props: NetWorthPageProps) {
               <MotionContainer delay={0.3}>
                 <MetricCard
                   title="Net Worth"
+                  polarity="growth"
                   value={formatCurrency(netWorth?.netWorth || 0)}
                   change={netWorth?.monthlyChangePercent ? formatPercent(netWorth.monthlyChangePercent) : undefined}
                   trend={netWorth?.monthlyChange ? (netWorth.monthlyChange >= 0 ? "up" : "down") : undefined}

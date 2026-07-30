@@ -14,6 +14,7 @@ import { Notification, NotificationPreferences, Budget, Expense } from '../model
 import { AppError } from '../middleware/errorHandler';
 import logger from '../utils/logger';
 import { normalizeDateFields } from '../utils/firestore';
+import { invalidateDashboardCache } from './dashboardController';
 
 /**
  * Calculate current spending for a budget
@@ -85,11 +86,8 @@ const calculateBudgetSpending = async (userId: string, budget: Budget): Promise<
   }, 0);
 };
 
-const normalizeNotification = (notification: Notification & Record<string, unknown>): Notification =>
-  normalizeDateFields(
-    notification as Record<string, unknown>,
-    ['createdAt', 'scheduledFor', 'updatedAt']
-  ) as Notification;
+const normalizeNotification = (notification: Notification): Notification =>
+  normalizeDateFields(notification, ['createdAt', 'scheduledFor']);
 
 /**
  * Send push notification to user
@@ -202,6 +200,7 @@ const generateBudgetAlerts = async (userId: string): Promise<Notification[]> => 
               percentage: String(spentPercentage)
             },
             read: false,
+            dismissed: false,
             createdAt: new Date().toISOString(),
             priority: threshold.type === 'exceeded' ? 'high' : 'medium'
           };
@@ -257,15 +256,16 @@ export const getUserNotifications = async (
     const notificationsRef = db.collection('notifications');
     const q = notificationsRef
       .where('userId', '==', userId)
-      .orderBy('createdAt', 'desc');
+      .where('dismissed', '==', false)
+      .orderBy('createdAt', 'desc')
+      .limit(100);
     const snapshot = await q.get();
-    
+
     const notifications = snapshot.docs
       .map(doc => normalizeNotification({
         id: doc.id,
         ...doc.data()
-      } as Notification))
-      .filter((notification) => notification.dismissed !== true);
+      } as Notification));
 
     res.json({ success: true, data: notifications });
   } catch (error) {
@@ -315,6 +315,8 @@ export const createNotification = async (
     };
 
     const docRef = await db.collection('notifications').add(notification);
+
+    await invalidateDashboardCache(userId);
 
     res.status(201).json({
       success: true,
@@ -369,6 +371,8 @@ export const markAsRead = async (
       updatedAt: new Date().toISOString()
     });
 
+    await invalidateDashboardCache(userId);
+
     res.json({ success: true, message: 'Notification marked as read' });
   } catch (error) {
     if (error instanceof AppError) {
@@ -408,11 +412,18 @@ export const markAllAsRead = async (
       .where('read', '==', false)
       .get();
 
-    const batch = db.batch();
-    snapshot.docs.forEach((doc) => {
-      batch.update(doc.ref, { read: true, updatedAt: new Date().toISOString() });
-    });
-    await batch.commit();
+    const BATCH_LIMIT = 500;
+    const docs = snapshot.docs;
+    for (let i = 0; i < docs.length; i += BATCH_LIMIT) {
+      const batch = db.batch();
+      const chunk = docs.slice(i, i + BATCH_LIMIT);
+      chunk.forEach((doc) => {
+        batch.update(doc.ref, { read: true, updatedAt: new Date().toISOString() });
+      });
+      await batch.commit();
+    }
+
+    await invalidateDashboardCache(userId);
 
     res.json({ success: true, message: 'All notifications marked as read' });
   } catch (error) {
@@ -463,6 +474,8 @@ export const dismissNotification = async (
       updatedAt: new Date().toISOString()
     });
 
+    await invalidateDashboardCache(userId);
+
     res.json({ success: true, message: 'Notification dismissed' });
   } catch (error) {
     if (error instanceof AppError) {
@@ -502,11 +515,18 @@ export const dismissAllNotifications = async (
       .where('dismissed', '==', false)
       .get();
 
-    const batch = db.batch();
-    snapshot.docs.forEach((doc) => {
-      batch.update(doc.ref, { dismissed: true, updatedAt: new Date().toISOString() });
-    });
-    await batch.commit();
+    const BATCH_LIMIT = 500;
+    const docs = snapshot.docs;
+    for (let i = 0; i < docs.length; i += BATCH_LIMIT) {
+      const batch = db.batch();
+      const chunk = docs.slice(i, i + BATCH_LIMIT);
+      chunk.forEach((doc) => {
+        batch.update(doc.ref, { dismissed: true, updatedAt: new Date().toISOString() });
+      });
+      await batch.commit();
+    }
+
+    await invalidateDashboardCache(userId);
 
     res.json({ success: true, message: 'All notifications dismissed' });
   } catch (error) {
@@ -553,6 +573,8 @@ export const deleteNotification = async (
     }
 
     await db.doc(`notifications/${notificationId}`).delete();
+
+    await invalidateDashboardCache(userId);
 
     res.json({ success: true, message: 'Notification deleted' });
   } catch (error) {
@@ -737,28 +759,43 @@ export const registerFCMToken = async (
  * Check budget alerts (called by scheduled Cloud Function)
  */
 export const checkBudgetAlerts = async (
-  req: Request, 
-  res: Response, 
+  req: Request,
+  res: Response,
   next: NextFunction
 ): Promise<void> => {
   try {
-    const { userId } = req.body;
-    
-    if (!userId) {
-      throw new AppError('User ID required', 400, true);
+    if (!db) {
+      throw new AppError('Database not initialized', 500, false);
     }
 
-    const alerts = await generateBudgetAlerts(userId);
-    
-    res.json({ success: true, data: alerts });
+    // Query all budgets that are active
+    const budgetsSnapshot = await db.collection('budgets')
+      .where('isActive', '==', true)
+      .get();
+
+    // Collect unique user IDs from active budgets
+    const userIds = new Set<string>();
+    budgetsSnapshot.docs.forEach(doc => {
+      const data = doc.data();
+      if (data.userId) {
+        userIds.add(data.userId);
+      }
+    });
+
+    const allAlerts: Notification[] = [];
+    for (const userId of userIds) {
+      const alerts = await generateBudgetAlerts(userId);
+      allAlerts.push(...alerts);
+    }
+
+    res.json({ success: true, data: { usersProcessed: userIds.size, alertsGenerated: allAlerts.length } });
   } catch (error) {
     if (error instanceof AppError) {
       next(error);
       return;
     }
-    logger.error('Error checking budget alerts', { 
-      error: error instanceof Error ? error.message : 'Unknown error', 
-      userId: req.body.userId 
+    logger.error('Error checking budget alerts', {
+      error: error instanceof Error ? error.message : 'Unknown error'
     });
     next(new AppError('Failed to check budget alerts', 500, false));
   }

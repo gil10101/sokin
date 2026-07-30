@@ -121,7 +121,7 @@ service cloud.firestore {
      * Validation: Ensures required fields and valid amounts
      */
     match /expenses/{expenseId} {
-      allow read, write: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      allow read, delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
       allow create: if isAuthenticated() && 
         request.auth.uid == request.resource.data.userId &&
         hasRequiredFields(['userId', 'name', 'amount', 'category']) &&
@@ -157,7 +157,7 @@ service cloud.firestore {
      * Validation: Ensures valid amounts and time periods
      */
     match /budgets/{budgetId} {
-      allow read, write: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      allow read, delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
       allow create: if isAuthenticated() && 
         request.auth.uid == request.resource.data.userId &&
         request.resource.data.keys().hasAll(['userId', 'category', 'amount', 'period']) &&
@@ -203,7 +203,7 @@ service cloud.firestore {
      * Validation: Ensures valid amounts and billing cycles
      */
     match /subscriptions/{subscriptionId} {
-      allow read, write: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      allow read, delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
       allow create: if isAuthenticated() && 
         request.auth.uid == request.resource.data.userId &&
         hasRequiredFields(['userId', 'name', 'amount', 'billingCycle']) &&
@@ -225,7 +225,7 @@ service cloud.firestore {
      * Validation: Ensures proper notification structure
      */
     match /notifications/{notificationId} {
-      allow read, write: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      allow read, delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
       allow create: if isAuthenticated() && 
         request.auth.uid == request.resource.data.userId &&
         hasRequiredFields(['userId', 'title', 'message', 'type']) &&
@@ -251,7 +251,7 @@ service cloud.firestore {
      * Validation: Ensures valid target amounts and dates
      */
     match /goals/{goalId} {
-      allow read, write: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      allow read, delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
       allow create: if isAuthenticated() && 
         request.auth.uid == request.resource.data.userId &&
         hasRequiredFields(['userId', 'name', 'targetAmount', 'currentAmount']) &&
@@ -275,7 +275,7 @@ service cloud.firestore {
      * Validation: Ensures valid amounts and due dates
      */
     match /billReminders/{billId} {
-      allow read, write: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      allow read, delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
       allow create: if isAuthenticated() && 
         request.auth.uid == request.resource.data.userId &&
         hasRequiredFields(['userId', 'name', 'amount', 'dueDate']) &&
@@ -298,7 +298,7 @@ service cloud.firestore {
      * Security: Users can only access their own portfolios
      */
     match /portfolios/{portfolioId} {
-      allow read, write: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      allow read, delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
       allow create: if isAuthenticated() && 
         request.auth.uid == request.resource.data.userId &&
         hasValidTimestamps();
@@ -332,7 +332,7 @@ service cloud.firestore {
      * Validation: Ensures valid transaction data and stock symbols
      */
     match /stockTransactions/{transactionId} {
-      allow read, write: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      allow read, delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
       allow create: if isAuthenticated() && 
         request.auth.uid == request.resource.data.userId &&
         hasRequiredFields(['userId', 'symbol', 'transactionType', 'shares', 'pricePerShare', 'totalAmount']) &&
@@ -368,7 +368,7 @@ service cloud.firestore {
      * Validation: Ensures valid net worth amounts and timestamps
      */
     match /netWorthSnapshots/{snapshotId} {
-      allow read, write: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      allow read, delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
       allow create: if isAuthenticated() &&
         request.auth.uid == request.resource.data.userId &&
         hasRequiredFields(['userId', 'netWorth', 'assets', 'liabilities']) &&
@@ -404,7 +404,7 @@ service cloud.firestore {
      * Validation: Ensures valid asset structure and amounts
      */
     match /assets/{assetId} {
-      allow read, write: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      allow read, delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
       allow create: if isAuthenticated() &&
         request.auth.uid == request.resource.data.userId &&
         hasRequiredFields(['userId', 'type', 'category', 'name', 'currentValue']) &&
@@ -425,7 +425,7 @@ service cloud.firestore {
      * Validation: Ensures valid liability structure and amounts
      */
     match /liabilities/{liabilityId} {
-      allow read, write: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      allow read, delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
       allow create: if isAuthenticated() &&
         request.auth.uid == request.resource.data.userId &&
         hasRequiredFields(['userId', 'type', 'category', 'name', 'currentBalance']) &&
@@ -445,7 +445,7 @@ service cloud.firestore {
      * Security: Users can only access their own income records
      */
     match /incomes/{incomeId} {
-      allow read, write: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      allow read, delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
       allow create: if isAuthenticated() &&
         request.auth.uid == request.resource.data.userId &&
         hasRequiredFields(['userId', 'name', 'amount']) &&
@@ -466,9 +466,9 @@ service cloud.firestore {
      * Note: Typically created by backend services
      */
     match /predictions/{predictionId} {
-      allow read: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      allow read, delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
       // Write access restricted - predictions are typically generated server-side
-      allow write: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      allow create, update: if isAuthenticated() && request.auth.uid == request.resource.data.userId;
     }
 
   }

@@ -5,6 +5,8 @@ import logger from '../utils/logger';
 import cache, { CACHE_TTL } from '../utils/cache';
 import { Expense, PaginationMeta } from '../models/types';
 import { normalizeDateFields } from '../utils/firestore';
+import { normalizeIsoDate } from '../utils/dates';
+import { invalidateDashboardCache } from './dashboardController';
 
 const DEFAULT_PAGE_SIZE = 50;
 
@@ -32,14 +34,6 @@ const normalizeExpense = (expense: Expense): Expense => normalizeDateFields(
   expense,
   ['date', 'createdAt', 'updatedAt']
 );
-
-const normalizeIsoDate = (value: unknown, fieldName: string): string => {
-  const date = value instanceof Date ? value : new Date(String(value));
-  if (isNaN(date.getTime())) {
-    throw new AppError(`Invalid ${fieldName} date`, 400, true);
-  }
-  return date.toISOString();
-};
 
 function buildExpensesCacheKey(
   userId: string,
@@ -102,7 +96,11 @@ export const getAllExpenses = async (
     const category = req.query.category as string | undefined;
     const startDate = req.query.startDate as string | undefined;
     const endDate = req.query.endDate as string | undefined;
-    
+
+    if (startDate && endDate && startDate > endDate) {
+      throw new AppError('startDate cannot be after endDate', 400, true);
+    }
+
     const cacheKey = buildExpensesCacheKey(userId, {
       limit, cursor, sortBy, sortOrder, category, startDate, endDate
     });
@@ -134,20 +132,16 @@ export const getAllExpenses = async (
     query = query.orderBy(sortBy, sortOrder);
     }
     
-    // Cursor with ownership check
     if (cursor) {
-      try {
-        const cursorDoc = await db.collection('expenses').doc(cursor).get();
-        // Ensure cursor belongs to user
-        if (cursorDoc.exists && cursorDoc.data()?.userId === userId) {
-          query = query.startAfter(cursorDoc);
-        } else {
-          throw new AppError('Invalid pagination cursor', 400, true);
-        }
-      } catch (error) {
-        if (error instanceof AppError) throw error;
+      const cursorDoc = await db.collection('expenses').doc(cursor).get();
+      if (!cursorDoc.exists) {
         throw new AppError('Invalid pagination cursor', 400, true);
       }
+      // Verify cursor document belongs to the current user
+      if (cursorDoc.data()?.userId !== userId) {
+        throw new AppError('Invalid pagination cursor', 400, true);
+      }
+      query = query.startAfter(cursorDoc);
     }
     
     // Fetch one extra for hasMore
@@ -306,8 +300,9 @@ export const createExpense = async (
     
     // Invalidate cached pages
     await cache.invalidatePatternAsync(`expenses:${req.user.uid}:*`);
-    
-    res.status(201).json({ 
+    await invalidateDashboardCache(req.user.uid);
+
+    res.status(201).json({
       success: true,
       data: normalizeExpense({
         id: expenseRef.id,
@@ -383,8 +378,9 @@ export const updateExpense = async (
       cache.invalidatePatternAsync(`expenses:${req.user.uid}:*`),
       cache.delAsync(buildExpenseCacheKey(expenseId))
     ]);
-    
-    res.status(200).json({ 
+    await invalidateDashboardCache(req.user.uid);
+
+    res.status(200).json({
       success: true,
       data: normalizeExpense({
         id: expenseId,
@@ -446,8 +442,9 @@ export const deleteExpense = async (
       cache.invalidatePatternAsync(`expenses:${req.user.uid}:*`),
       cache.delAsync(buildExpenseCacheKey(expenseId))
     ]);
-    
-    res.status(200).json({ 
+    await invalidateDashboardCache(req.user.uid);
+
+    res.status(200).json({
       success: true,
       message: 'Expense deleted successfully'
     });
@@ -488,7 +485,7 @@ export const getExpenseAnalytics = async (
       throw new AppError(`Invalid timeframe. Allowed: ${validTimeframes.join(', ')}`, 400, true);
     }
 
-    const cacheKey = `expenses:analytics:${userId}:${timeframe}`;
+    const cacheKey = `expenses:${userId}:analytics:${timeframe}`;
 
     const cachedResult = await cache.getAsync<{
       success: boolean;
@@ -536,12 +533,18 @@ export const getExpenseAnalytics = async (
     const endDateStr = endDate.toISOString();
 
     // Fetch all expenses in the date range
+    const ANALYTICS_MAX_EXPENSES = 10000;
     const expensesSnapshot = await db.collection('expenses')
       .where('userId', '==', userId)
       .where('date', '>=', startDateStr)
       .where('date', '<=', endDateStr)
       .orderBy('date', 'desc')
+      .limit(ANALYTICS_MAX_EXPENSES)
       .get();
+
+    if (expensesSnapshot.size === ANALYTICS_MAX_EXPENSES) {
+      logger.warn('Analytics query hit max expense limit', { userId, timeframe, limit: ANALYTICS_MAX_EXPENSES });
+    }
 
     const expenses = expensesSnapshot.docs.map(doc => ({
       id: doc.id,

@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect, useCallback, useMemo } from "react"
+import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { CreditCard, ChevronRight, Calendar, Search, TrendingUp, Plus } from "@/lib/icons"
 import { DashboardSidebar } from "@/components/dashboard/sidebar"
 import dynamic from "next/dynamic"
@@ -37,6 +37,7 @@ import { MetricCard } from "@/components/dashboard/metric-card"
 import { SavingsGoals } from "@/components/dashboard/savings-goals"
 import { BillReminders } from "@/components/dashboard/bill-reminders"
 import { ResponsiveLayoutContainer } from "@/components/dashboard/responsive-layout-container"
+import { usePortfolioState } from "@/hooks/use-portfolio-state"
 import { Input } from "@/components/ui/input"
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter } from "next/navigation"
@@ -45,7 +46,7 @@ import { useUpcomingBills } from "@/hooks/use-upcoming-bills"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { NotificationsDropdown } from "@/components/notifications/notifications-dropdown"
 import { api } from "@/lib/api"
-import { useQueryClient } from "@tanstack/react-query"
+import { useQuery } from "@tanstack/react-query"
 import Link from "next/link"
 import type { NetWorthCalculation, Budget } from "@/lib/types"
 
@@ -75,10 +76,12 @@ interface DashboardPageProps {
 }
 
 export default function DashboardPage(props: DashboardPageProps) {
-  const queryClient = useQueryClient()
   const [collapsed, setCollapsed] = useState(false)
   const { user, loading: authLoading } = useAuth()
+  const userRef = useRef(user)
+  useEffect(() => { userRef.current = user }, [user])
   const router = useRouter()
+  const portfolioState = usePortfolioState()
   const [mounted, setMounted] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [searchResults, setSearchResults] = useState<Expense[]>([])
@@ -179,71 +182,46 @@ export default function DashboardPage(props: DashboardPageProps) {
     setMounted(true)
   }, [])
 
-  const fetchDashboard = useCallback(async () => {
-    if (!user) return
+  type DashboardPayload = { expenses: Expense[]; budgets: Budget[]; notifications: Notification[] }
 
-    // Check if we already have cached data
-    const cachedData = queryClient.getQueryData(['dashboard', user.uid])
-    if (cachedData) {
-      const data = cachedData as { expenses: Expense[]; budgets: Budget[]; notifications: Notification[] }
-      setExpenses(data.expenses || [])
-      setBudgets(data.budgets || [])
-      setNotifications(data.notifications || [])
-      return
-    }
-
-    try {
-      const token = await user.getIdToken()
-      const data = await api.get<{ expenses: Expense[]; budgets: Budget[]; notifications: Notification[] }>(
+  // Dashboard payload through React Query so staleTime/invalidation apply -
+  // the previous getQueryData early-return meant the numbers never refreshed
+  // within a session.
+  const dashboardQuery = useQuery({
+    queryKey: ['dashboard', user?.uid],
+    enabled: !!user && mounted,
+    queryFn: async (): Promise<DashboardPayload> => {
+      const token = await userRef.current?.getIdToken()
+      const response = await api.get<DashboardPayload | { success?: boolean; data?: DashboardPayload }>(
         'dashboard',
         { token }
       )
-      setExpenses(data.expenses || [])
-      setBudgets(data.budgets || [])
-      setNotifications(data.notifications || [])
+      // Backend wraps the payload in { success, data }
+      return ('data' in response && response.data ? response.data : response) as DashboardPayload
+    },
+  })
 
-      // Cache dashboard data
-      queryClient.setQueryData(['dashboard', user.uid], data, {
-        updatedAt: Date.now(),
-      })
-
-      // Prime React Query cache for shared expenses hook consumers
-      queryClient.setQueryData(['expenses', user.uid, null], data.expenses || [])
-    } catch (error) {
-      setExpenses([])
-      setBudgets([])
-      setNotifications([])
-    }
-  }, [user, queryClient])
-
-  const fetchNetWorth = useCallback(async () => {
-    try {
-      const token = await user?.getIdToken()
+  const netWorthQuery = useQuery({
+    queryKey: ['net-worth', user?.uid],
+    enabled: !!user && mounted,
+    queryFn: async (): Promise<NetWorthCalculation | null> => {
+      const token = await userRef.current?.getIdToken()
       const data = await api.get<{ data: NetWorthCalculation }>('net-worth/calculate', { token })
-      setNetWorth(data.data)
-    } catch (error) {
+      return data.data ?? null
+    },
+  })
 
-    }
-  }, [user])
-
-  // Fetch dashboard data when user is available with optimized caching
   useEffect(() => {
-    if (user && mounted) {
-      // Use requestIdleCallback for non-critical data fetching
-      const fetchData = () => {
-        fetchDashboard()
-        // Delay net worth fetching to prioritize main dashboard data
-        setTimeout(fetchNetWorth, 1000)
-      }
+    // Note: the dashboard payload is capped server-side (recent items only),
+    // so it must not be used to prime the full expenses cache.
+    setExpenses(dashboardQuery.data?.expenses || [])
+    setBudgets(dashboardQuery.data?.budgets || [])
+    setNotifications(dashboardQuery.data?.notifications || [])
+  }, [dashboardQuery.data])
 
-      if ('requestIdleCallback' in window) {
-        requestIdleCallback(fetchData, { timeout: 2000 })
-      } else {
-        // Fallback for browsers without requestIdleCallback
-        setTimeout(fetchData, 100)
-      }
-    }
-  }, [user, mounted, fetchDashboard, fetchNetWorth])
+  useEffect(() => {
+    setNetWorth(netWorthQuery.data ?? null)
+  }, [netWorthQuery.data])
 
   const searchExpenses = async (searchTerm: string) => {
     if (!searchTerm.trim()) {
@@ -486,6 +464,7 @@ export default function DashboardPage(props: DashboardPageProps) {
               <Link href="/dashboard/net-worth" className="block">
                 <MetricCard
                   title="Net Worth"
+                  polarity="growth"
                   value={netWorth ? formatCurrency(netWorth.netWorth) : "$0.00"}
                   change={netWorth?.monthlyChangePercent ? formatPercent(netWorth.monthlyChangePercent) : "0.0%"}
                   trend={
@@ -557,6 +536,7 @@ export default function DashboardPage(props: DashboardPageProps) {
 
           {/* Responsive Layout Container - Adapts based on portfolio state */}
           <ResponsiveLayoutContainer
+            portfolioState={portfolioState}
             billsSection={
               <MotionContainer className="bg-cream/5 rounded-xl p-4 lg:p-6 h-full" delay={0.7}>
                 <div className="flex flex-col gap-2 mb-4">
@@ -639,7 +619,7 @@ export default function DashboardPage(props: DashboardPageProps) {
                   </button>
                 </div>
                 <div className="flex-1 min-h-0">
-                  <RecentTransactions />
+                  <RecentTransactions expenses={expenses.slice(0, 7)} />
                 </div>
               </MotionContainer>
             }

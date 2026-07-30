@@ -2,7 +2,7 @@
 
 
 
-import React, { useState, useEffect, useCallback } from "react"
+import React, { useState, useEffect, useCallback, useRef } from "react"
 import { ChevronRight, Search, TrendingUp, TrendingDown, Activity, ArrowUpDown, Plus, Minus, Star, DollarSign } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/sidebar"
 import { UserPortfolio } from "@/components/dashboard/user-portfolio"
@@ -457,6 +457,8 @@ interface StocksPageProps {
 
 export default function StocksPage(props: StocksPageProps) {
   const { user } = useAuth()
+  const userRef = useRef(user)
+  useEffect(() => { userRef.current = user }, [user])
   const [collapsed, setCollapsed] = useState(false)
   const [trendingStocks, setTrendingStocks] = useState<StockData[]>([])
   const [searchResults, setSearchResults] = useState<StockData[]>([])
@@ -507,7 +509,7 @@ export default function StocksPage(props: StocksPageProps) {
   }, [])
 
   const loadWatchlist = useCallback(async () => {
-    if (!user) {
+    if (!userRef.current) {
       // For anonymous users, use localStorage
       const saved = localStorage.getItem(`watchlist_anonymous`)
       if (saved) {
@@ -518,7 +520,7 @@ export default function StocksPage(props: StocksPageProps) {
 
     try {
       // For authenticated users, load from Firestore
-      const firestoreWatchlist = await StockAPI.getUserWatchlist(user.uid)
+      const firestoreWatchlist = await StockAPI.getUserWatchlist(userRef.current.uid)
       setWatchlist(firestoreWatchlist)
     } catch (err) {
       logger.error("Error loading watchlist", {
@@ -526,12 +528,12 @@ export default function StocksPage(props: StocksPageProps) {
         error: err instanceof Error ? err.message : 'Unknown error'
       })
     }
-  }, [user])
+  }, [])
 
   useEffect(() => {
     loadStockData()
     loadWatchlist()
-  }, [loadStockData, loadWatchlist])
+  }, [user])
 
   useEffect(() => {
     // Clear previous timer
@@ -892,7 +894,7 @@ export default function StocksPage(props: StocksPageProps) {
                               {getSortIcon('symbol')}
                             </div>
                           </TableHead>
-                          <TableHead className="text-cream/80 w-[24%]">
+                          <TableHead className="text-cream/80 w-[21%]">
                             Company Name
                           </TableHead>
                           <TableHead 
@@ -943,7 +945,7 @@ export default function StocksPage(props: StocksPageProps) {
                           <TableHead className="text-cream/80 text-center w-[10%]">
                             Chart
                           </TableHead>
-                          {user && <TableHead className="text-cream/80 text-center w-[12%]">Actions</TableHead>}
+                          {user && <TableHead className="text-cream/80 text-center w-[15%]">Actions</TableHead>}
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1037,7 +1039,6 @@ export default function StocksPage(props: StocksPageProps) {
                                     onClick={() => openTransactionDialog(stock, 'trade')}
                                     className="text-xs h-8 px-2"
                                   >
-                                    <DollarSign className="h-3 w-3 mr-1" />
                                     Trade
                                   </Button>
                                 </div>
@@ -1048,7 +1049,7 @@ export default function StocksPage(props: StocksPageProps) {
                       </TableBody>
                     </Table>
                   </div>
-                  
+
                   {filteredStocks.length === 0 && (
                     <div className="text-center py-8 text-cream/60">
                       <Activity className="h-8 w-8 mx-auto mb-2 opacity-50" />

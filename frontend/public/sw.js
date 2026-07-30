@@ -1,19 +1,9 @@
-const CACHE_NAME = 'sokin-v1.0.0'
-const STATIC_CACHE_NAME = 'sokin-static-v1.0.0'
+const STATIC_CACHE_NAME = 'sokin-static-v2.0.0'
 
 // Static assets to cache
 const STATIC_ASSETS = [
-  '/',
   '/sokin-icon.png',
   '/manifest.json',
-]
-
-// Cache API responses for these endpoints
-const API_CACHE_ENDPOINTS = [
-  '/api/dashboard',
-  '/api/expenses',
-  '/api/budgets',
-  '/api/net-worth',
 ]
 
 self.addEventListener('install', (event) => {
@@ -30,7 +20,11 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME && cacheName !== STATIC_CACHE_NAME) {
+          // Purge all previous cache generations, including the old
+          // authenticated-API cache (sokin-v1.0.0) which must never come back:
+          // the Cache API keys by URL only, so cached /api responses leak
+          // one user's data to the next on a shared browser.
+          if (cacheName !== STATIC_CACHE_NAME) {
             return caches.delete(cacheName)
           }
         })
@@ -42,29 +36,12 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const { request } = event
-  const url = new URL(request.url)
 
-  // Cache API responses with stale-while-revalidate strategy
-  if (API_CACHE_ENDPOINTS.some(endpoint => url.pathname.includes(endpoint))) {
-    event.respondWith(
-      caches.open(CACHE_NAME).then(async (cache) => {
-        const cachedResponse = await cache.match(request)
-        
-        // Return cached response immediately
-        const networkPromise = fetch(request).then((response) => {
-          // Update cache with fresh response
-          if (response.ok) {
-            cache.put(request, response.clone())
-          }
-          return response
-        }).catch(() => {
-          // Return cached response if network fails
-          return cachedResponse
-        })
-
-        return cachedResponse || networkPromise
-      })
-    )
+  // Never intercept navigations or API calls; only GET requests are cacheable.
+  if (request.mode === 'navigate' || request.method !== 'GET') {
+    return
+  }
+  if (new URL(request.url).pathname.startsWith('/api/')) {
     return
   }
 

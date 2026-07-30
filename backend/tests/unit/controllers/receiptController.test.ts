@@ -28,9 +28,11 @@ TOTAL       $12.40`,
   })),
 }));
 
-// Mock sharp for image processing
+// Mock sharp for image processing. metadata() reports a real raster format
+// because the controller now verifies magic bytes before processing.
 jest.mock('sharp', () => {
   return jest.fn(() => ({
+    metadata: jest.fn().mockResolvedValue({ format: 'jpeg', width: 1000, height: 1400 }),
     resize: jest.fn().mockReturnThis(),
     sharpen: jest.fn().mockReturnThis(),
     normalize: jest.fn().mockReturnThis(),

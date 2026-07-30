@@ -22,17 +22,29 @@ const visionClient = new ImageAnnotatorClient({
   projectId: process.env.GOOGLE_CLOUD_PROJECT_ID
 });
 
+// Raster formats sharp can safely decode. SVG is deliberately excluded:
+// it passes an image/* check but is an XML/script surface, not a photo.
+const ALLOWED_RECEIPT_MIMETYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/heic',
+  'image/heif',
+]);
+
 // Configure multer for image uploads
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
     fileSize: 10 * 1024 * 1024, // 10MB limit
+    files: 1,
+    fields: 10,
   },
   fileFilter: (_req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-    if (file.mimetype.startsWith('image/')) {
+    if (ALLOWED_RECEIPT_MIMETYPES.has(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(null, false);
+      cb(new AppError('Unsupported file type - upload a JPEG, PNG, WebP, or HEIC image', 415, true));
     }
   }
 }).single('receipt');
@@ -300,6 +312,14 @@ export const processReceipt = async (
     }
 
     // Preprocess image for better OCR accuracy
+    // Verify magic bytes: the multer mimetype is client-supplied, so decode
+    // the header and require a real raster format before processing.
+    const imageMeta = await sharp(req.file.buffer).metadata().catch(() => null);
+    const ALLOWED_FORMATS = new Set(['jpeg', 'png', 'webp', 'heif']);
+    if (!imageMeta?.format || !ALLOWED_FORMATS.has(imageMeta.format)) {
+      throw new AppError('File content is not a supported image format', 415, true);
+    }
+
     const processedImage = await sharp(req.file.buffer)
       .resize(1200, null, { withoutEnlargement: true })
       .sharpen()

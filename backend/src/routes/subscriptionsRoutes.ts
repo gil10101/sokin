@@ -27,7 +27,7 @@ const writeRateLimit = createRateLimiter.api();
  * @desc    Get all subscriptions for authenticated user
  * @access  Private
  */
-router.get('/', readRateLimit, auth, asyncHandler(getSubscriptions));
+router.get('/', auth, readRateLimit, asyncHandler(getSubscriptions));
 
 /**
  * @route   POST /api/subscriptions
@@ -36,8 +36,7 @@ router.get('/', readRateLimit, auth, asyncHandler(getSubscriptions));
  */
 router.post(
   '/',
-  writeRateLimit,
-  auth,
+  auth, writeRateLimit,
   validate(createSubscriptionSchema),
   asyncHandler(createSubscription)
 );
@@ -49,8 +48,7 @@ router.post(
  */
 router.put(
   '/:id',
-  writeRateLimit,
-  auth,
+  auth, writeRateLimit,
   validateParams(idParamsSchema),
   validate(updateSubscriptionSchema),
   asyncHandler(updateSubscription)
@@ -63,8 +61,7 @@ router.put(
  */
 router.delete(
   '/:id',
-  writeRateLimit,
-  auth,
+  auth, writeRateLimit,
   validateParams(idParamsSchema),
   asyncHandler(deleteSubscription)
 );

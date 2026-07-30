@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { MulterError } from 'multer';
 import logger from '../utils/logger';
 
 // Operational errors are safe to send to clients.
@@ -38,6 +39,16 @@ export const errorHandler = (
     statusCode = err.statusCode;
     message = err.message;
     isOperational = err.isOperational;
+  } else if (err instanceof MulterError) {
+    // Upload errors are client errors, not server faults
+    isOperational = true;
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      statusCode = 413;
+      message = 'File too large (maximum 10MB)';
+    } else {
+      statusCode = 400;
+      message = `Upload error: ${err.message}`;
+    }
   }
 
   if (isOperational) {

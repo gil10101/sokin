@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { api } from '@/lib/api';
 import { ApiError } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-context';
@@ -9,6 +9,9 @@ export function useApi<T = unknown>() {
   const [isLoading, setIsLoading] = useState(false);
   const { user } = useAuth();
 
+  const userRef = useRef(user);
+  useEffect(() => { userRef.current = user }, [user]);
+
   const execute = useCallback(
     async <R>(
       apiCall: () => Promise<R>
@@ -17,7 +20,7 @@ export function useApi<T = unknown>() {
       setError(null);
 
       try {
-        if (!user) {
+        if (!userRef.current) {
           throw new Error('User is not authenticated');
         }
 
@@ -36,7 +39,7 @@ export function useApi<T = unknown>() {
         return null;
       }
     },
-    [user]
+    []
   );
 
   const get = useCallback(
@@ -86,4 +89,4 @@ export function useApi<T = unknown>() {
     patch,
     reset,
   };
-} 
+}

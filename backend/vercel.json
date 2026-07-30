@@ -4,5 +4,11 @@
       "source": "/(.*)",
       "destination": "/api/index"
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/notifications/check-budget-alerts",
+      "schedule": "0 13 * * *"
+    }
   ]
 }

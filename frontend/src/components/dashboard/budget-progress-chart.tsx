@@ -23,17 +23,7 @@ const safeParseDate = (dateValue: unknown): Date => {
   return isNaN(date.getTime()) ? new Date() : date
 }
 
-interface Budget {
-  id: string
-  userId: string
-  category?: string
-  categories?: string[]
-  amount: number
-  spent?: number
-  startDate: string
-  endDate?: string
-  period: "daily" | "weekly" | "monthly" | "yearly"
-}
+import type { Budget } from "@/lib/api"
 
 
 interface BudgetProgressData {

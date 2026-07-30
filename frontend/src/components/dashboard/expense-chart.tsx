@@ -182,7 +182,7 @@ export function ExpenseChart({ timeframe = "30days" }: ExpenseChartProps) {
               angle={isMobile ? -45 : 0}
               textAnchor={isMobile ? "end" : "middle"}
               height={isMobile ? 50 : 30}
-              interval={isMobile ? 1 : 0}
+              interval="preserveStartEnd"
             />
             <YAxis
               axisLine={false}

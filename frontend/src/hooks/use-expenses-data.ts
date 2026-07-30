@@ -6,7 +6,7 @@ import { api } from '@/lib/api'
 
 export interface Expense {
   id: string
-  name?: string
+  name: string
   amount: number
   date: string
   category: string

@@ -4,7 +4,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { useEffect, useState } from "react"
 import { ArrowRight, Menu, X, ArrowDown, BarChart3, PieChart, Target, Wallet } from "lucide-react"
-import { motion, useScroll, useTransform } from "framer-motion"
+import { motion } from "framer-motion"
 import { useAuth } from "@/contexts/auth-context"
 import dynamic from "next/dynamic"
 
@@ -89,12 +89,7 @@ const useResponsiveViewport = () => {
 
 export default function LandingPage() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const { scrollYProgress } = useScroll()
-  const opacity = useTransform(scrollYProgress, [0, 0.05], [1, 0])
-  const scale = useTransform(scrollYProgress, [0, 0.05], [1, 0.98])
-
   const [activeSection, setActiveSection] = useState("hero")
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
   const { user, loading } = useAuth()
   const [mounted, setMounted] = useState(false)
   const [componentsLoaded, setComponentsLoaded] = useState(false)
@@ -135,18 +130,6 @@ export default function LandingPage() {
     window.addEventListener("scroll", handleScroll)
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
-
-  useEffect(() => {
-    // Disable mouse tracking on mobile devices
-    if (isMobile) return
-
-    const handleMouseMove = (e: MouseEvent) => {
-      setMousePosition({ x: e.clientX, y: e.clientY })
-    }
-
-    window.addEventListener("mousemove", handleMouseMove)
-    return () => window.removeEventListener("mousemove", handleMouseMove)
-  }, [isMobile])
 
   const scrollToSection = (sectionId: string) => {
     const section = document.getElementById(sectionId)
@@ -231,14 +214,6 @@ export default function LandingPage() {
     
     setTouchStart(0)
     setTouchEnd(0)
-  }
-
-  if (!mounted) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-dark text-cream" aria-hidden="true" data-aria-hidden="true">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cream"></div>
-      </div>
-    )
   }
 
   return (

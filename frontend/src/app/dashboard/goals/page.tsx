@@ -1,9 +1,9 @@
 "use client"
 
 import React from "react"
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { useAuth } from "@/contexts/auth-context"
-import { format, differenceInDays, isAfter, isBefore, addMonths, addYears } from "date-fns"
+import { format, differenceInDays, isAfter, isBefore, addMonths, addYears, startOfDay } from "date-fns"
 import { DashboardSidebar } from "@/components/dashboard/sidebar"
 import { AddButton } from "@/components/ui/add-button"
 import { MetricCard } from "@/components/dashboard/metric-card"
@@ -105,20 +105,22 @@ interface GoalFormData {
 }
 
 const categories = [
-  { value: 'emergency', label: 'Emergency Fund', icon: Shield, color: 'bg-red-100 text-red-800' },
-  { value: 'vacation', label: 'Vacation', icon: MapPin, color: 'bg-blue-100 text-blue-800' },
-  { value: 'home', label: 'Home/Property', icon: Home, color: 'bg-green-100 text-green-800' },
-  { value: 'car', label: 'Vehicle', icon: Car, color: 'bg-purple-100 text-purple-800' },
-  { value: 'education', label: 'Education', icon: GraduationCap, color: 'bg-yellow-100 text-yellow-800' },
-  { value: 'retirement', label: 'Retirement', icon: User, color: 'bg-indigo-100 text-indigo-800' },
-  { value: 'other', label: 'Other', icon: Bookmark, color: 'bg-gray-100 text-gray-800' }
+  { value: 'emergency', label: 'Emergency Fund', icon: Shield, color: 'bg-red-500/20 text-red-400' },
+  { value: 'vacation', label: 'Vacation', icon: MapPin, color: 'bg-blue-500/20 text-blue-400' },
+  { value: 'home', label: 'Home/Property', icon: Home, color: 'bg-green-500/20 text-green-400' },
+  { value: 'car', label: 'Vehicle', icon: Car, color: 'bg-purple-500/20 text-purple-400' },
+  { value: 'education', label: 'Education', icon: GraduationCap, color: 'bg-yellow-500/20 text-yellow-400' },
+  { value: 'retirement', label: 'Retirement', icon: User, color: 'bg-indigo-500/20 text-indigo-400' },
+  { value: 'other', label: 'Other', icon: Bookmark, color: 'bg-cream/10 text-cream/80' }
 ]
 
 const priorityConfig = {
-  low: { label: 'Low', color: 'bg-gray-100 text-gray-800' },
-  medium: { label: 'Medium', color: 'bg-yellow-100 text-yellow-800' },
-  high: { label: 'High', color: 'bg-red-100 text-red-800'   }
+  low: { label: 'Low', color: 'bg-cream/10 text-cream/60' },
+  medium: { label: 'Medium', color: 'bg-yellow-500/20 text-yellow-400' },
+  high: { label: 'High', color: 'bg-red-500/20 text-red-400' }
 }
+
+const defaultPriorityConfig = { label: 'Unknown', color: 'bg-cream/10 text-cream/80' }
 
 interface GoalsPageProps {
   params?: Promise<Record<string, string>>;
@@ -128,6 +130,8 @@ interface GoalsPageProps {
 export default function GoalsPage(props: GoalsPageProps) {
   const [collapsed, setCollapsed] = useState(false)
   const { user } = useAuth()
+  const userRef = useRef(user)
+  useEffect(() => { userRef.current = user }, [user])
   const { toast } = useToast()
 
   const [goals, setGoals] = useState<SavingsGoal[]>([])
@@ -155,14 +159,18 @@ export default function GoalsPage(props: GoalsPageProps) {
     priority: 'medium'
   })
 
-  const fetchGoals = useCallback(async () => {
-    if (!user) return
+  const fetchGoals = useCallback(async (): Promise<SavingsGoal[]> => {
+    if (!userRef.current) return []
 
     setLoading(true)
     try {
       const goalsData = await goalsAPI.getGoals()
 
-      setGoals(goalsData)
+      // Normalize: drop any records missing an id so downstream code can rely on id: string
+      const normalizedGoals = goalsData.filter((g): g is SavingsGoal => !!g.id)
+
+      setGoals(normalizedGoals)
+      return normalizedGoals
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : "There was an error loading your savings goals"
       toast({
@@ -170,16 +178,17 @@ export default function GoalsPage(props: GoalsPageProps) {
         description: errorMessage,
         variant: "destructive",
       })
+      return []
     } finally {
       setLoading(false)
     }
-  }, [user, toast])
+  }, [])
 
   useEffect(() => {
     if (user) {
       fetchGoals()
     }
-  }, [user, fetchGoals])
+  }, [user])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -296,7 +305,7 @@ export default function GoalsPage(props: GoalsPageProps) {
     if (!selectedGoal || !contributionAmount) return
 
     const amount = parseFloat(contributionAmount)
-    if (amount <= 0) {
+    if (!Number.isFinite(amount) || amount <= 0) {
       toast({
         title: "Invalid Amount",
         description: "Please enter a valid contribution amount",
@@ -306,47 +315,55 @@ export default function GoalsPage(props: GoalsPageProps) {
     }
 
     try {
-      const newCurrentAmount = selectedGoal.currentAmount + amount
-      
-      await goalsAPI.addContribution(selectedGoal.id, {
+      const goalId = selectedGoal.id
+      const goalName = selectedGoal.name
+      const previousAmount = selectedGoal.currentAmount
+
+      await goalsAPI.addContribution(goalId, {
         amount,
         method: "manual",
         source: "Manual Entry",
         note: contributionNote || undefined
       })
 
-      // Check for milestones
-      const progressPercentage = (newCurrentAmount / selectedGoal.targetAmount) * 100
-      if (progressPercentage >= 100) {
-        toast({
-          title: "🎉 Goal Completed!",
-          description: `Congratulations! You've reached your "${selectedGoal.name}" goal!`,
-          duration: 7000
-        })
-      } else if (progressPercentage >= 75 && selectedGoal.currentAmount / selectedGoal.targetAmount < 0.75) {
-        toast({
-          title: "🏆 Milestone Reached!",
-          description: `You're 75% of the way to your "${selectedGoal.name}" goal!`,
-          duration: 5000
-        })
-      } else if (progressPercentage >= 50 && selectedGoal.currentAmount / selectedGoal.targetAmount < 0.50) {
-        toast({
-          title: "🎯 Halfway There!",
-          description: `You're 50% of the way to your "${selectedGoal.name}" goal!`,
-          duration: 5000
-        })
-      }
+      const freshGoals = await fetchGoals()
+      const updatedGoal = freshGoals.find(g => g.id === goalId)
 
-      await fetchGoals()
       setShowContributionDialog(false)
       setSelectedGoal(null)
       setContributionAmount('')
       setContributionNote('')
-      
+
       toast({
         title: "Contribution Added",
         description: `$${amount.toLocaleString()} has been added to your goal.`
       })
+
+      // Check for milestones against the freshly fetched goal data
+      if (updatedGoal && updatedGoal.targetAmount > 0) {
+        const progressPercentage = (updatedGoal.currentAmount / updatedGoal.targetAmount) * 100
+        const previousPercentage = (previousAmount / updatedGoal.targetAmount) * 100
+
+        if (progressPercentage >= 100) {
+          toast({
+            title: "🎉 Goal Completed!",
+            description: `Congratulations! You've reached your "${goalName}" goal!`,
+            duration: 7000
+          })
+        } else if (progressPercentage >= 75 && previousPercentage < 75) {
+          toast({
+            title: "🏆 Milestone Reached!",
+            description: `You're 75% of the way to your "${goalName}" goal!`,
+            duration: 5000
+          })
+        } else if (progressPercentage >= 50 && previousPercentage < 50) {
+          toast({
+            title: "🎯 Halfway There!",
+            description: `You're 50% of the way to your "${goalName}" goal!`,
+            duration: 5000
+          })
+        }
+      }
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : "Failed to add contribution"
       toast({
@@ -358,6 +375,7 @@ export default function GoalsPage(props: GoalsPageProps) {
   }
 
   const getProgressPercentage = (goal: SavingsGoal) => {
+    if (goal.targetAmount <= 0) return 0
     return Math.min((goal.currentAmount / goal.targetAmount) * 100, 100)
   }
 
@@ -402,13 +420,16 @@ export default function GoalsPage(props: GoalsPageProps) {
       }
     })
 
+  const totalTargetValue = goals.reduce((sum, g) => sum + g.targetAmount, 0)
+  const totalSavedAmount = goals.reduce((sum, g) => sum + g.currentAmount, 0)
+
   const stats = {
     total: goals.length,
     active: goals.filter(g => !g.isCompleted).length,
     completed: goals.filter(g => g.isCompleted).length,
-    totalValue: goals.reduce((sum, g) => sum + g.targetAmount, 0),
-    savedAmount: goals.reduce((sum, g) => sum + g.currentAmount, 0),
-    overallProgress: goals.length > 0 ? (goals.reduce((sum, g) => sum + g.currentAmount, 0) / goals.reduce((sum, g) => sum + g.targetAmount, 0)) * 100 : 0
+    totalValue: totalTargetValue,
+    savedAmount: totalSavedAmount,
+    overallProgress: totalTargetValue > 0 ? Math.min((totalSavedAmount / totalTargetValue) * 100, 999) : 0
   }
 
   if (loading) {
@@ -571,6 +592,7 @@ export default function GoalsPage(props: GoalsPageProps) {
                 const status = getGoalStatus(goal)
                 const categoryInfo = categories.find(c => c.value === goal.category)
                 const IconComponent = categoryInfo?.icon || Bookmark
+                const priorityInfo = priorityConfig[goal.priority] ?? defaultPriorityConfig
 
                 return (
                   <MotionDiv
@@ -579,7 +601,7 @@ export default function GoalsPage(props: GoalsPageProps) {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
-                    transition={{ duration: 0.3, delay: index * 0.1 }}
+                    transition={{ duration: 0.3, delay: Math.min(index * 0.05, 0.4) }}
                   >
                     <Card className={cn(
                       "relative overflow-hidden bg-cream/5 border-cream/20 hover:bg-cream/10 transition-all duration-300 h-full",
@@ -599,8 +621,8 @@ export default function GoalsPage(props: GoalsPageProps) {
                             </CardTitle>
                             
                             <div className="flex items-center gap-2 flex-wrap">
-                              <Badge variant="outline" className={cn("text-xs border-cream/20", priorityConfig[goal.priority].color)}>
-                                {priorityConfig[goal.priority].label}
+                              <Badge variant="outline" className={cn("text-xs border-cream/20", priorityInfo.color)}>
+                                {priorityInfo.label}
                               </Badge>
                               <Badge variant="outline" className={cn("text-xs border-cream/20", categoryInfo?.color)}>
                                 {categoryInfo?.label}
@@ -612,7 +634,7 @@ export default function GoalsPage(props: GoalsPageProps) {
                                 </Badge>
                               )}
                               {status === 'urgent' && (
-                                <Badge className="text-xs bg-yellow-100 text-yellow-800">
+                                <Badge className="text-xs bg-yellow-500/20 text-yellow-400">
                                   <Clock className="h-3 w-3 mr-1" />
                                   {daysRemaining} days left
                                 </Badge>
@@ -694,7 +716,9 @@ export default function GoalsPage(props: GoalsPageProps) {
                               {progressPercentage.toFixed(1)}% Complete
                             </span>
                             <span className="text-sm text-cream/60">
-                              ${(goal.targetAmount - goal.currentAmount).toLocaleString()} remaining
+                              {goal.currentAmount > goal.targetAmount
+                                ? `Over target by $${(goal.currentAmount - goal.targetAmount).toLocaleString()}`
+                                : `$${(goal.targetAmount - goal.currentAmount).toLocaleString()} remaining`}
                             </span>
                           </div>
                         </div>
@@ -873,7 +897,7 @@ export default function GoalsPage(props: GoalsPageProps) {
                           mode="single"
                           selected={formData.targetDate}
                           onSelect={handleDateChange}
-                          disabled={(date) => isBefore(date, new Date())}
+                          disabled={(date) => isBefore(date, startOfDay(new Date()))}
                           initialFocus
                         />
                       </PopoverContent>
@@ -997,7 +1021,7 @@ export default function GoalsPage(props: GoalsPageProps) {
                   <Button 
                     onClick={handleAddContribution}
                     className="flex-1"
-                    disabled={!contributionAmount || parseFloat(contributionAmount) <= 0}
+                    disabled={!Number.isFinite(parseFloat(contributionAmount)) || parseFloat(contributionAmount) <= 0}
                   >
                     Add ${contributionAmount || '0.00'}
                   </Button>
@@ -1040,7 +1064,7 @@ export default function GoalsPage(props: GoalsPageProps) {
                     <h4 className="font-medium text-cream/80">Recent Contributions</h4>
                     {viewContributionsGoal.contributions && viewContributionsGoal.contributions.length > 0 ? (
                       <div className="space-y-3">
-                        {viewContributionsGoal.contributions
+                        {[...viewContributionsGoal.contributions]
                           .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
                           .map((contribution) => (
                             <div 

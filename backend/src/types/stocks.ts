@@ -1,5 +1,7 @@
 // Stock market data interfaces
 
+import type { Timestamp } from 'firebase-admin/firestore'
+
 export interface StockData {
   symbol: string
   name: string
@@ -47,4 +49,5 @@ export interface StockTransaction {
   totalAmount: number
   transactionDate: string
   createdAt: string
-} 
+  timestamp?: Timestamp | string
+}

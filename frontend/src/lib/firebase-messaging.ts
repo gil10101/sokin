@@ -156,8 +156,10 @@ export const initializeMessaging = async () => {
         return;
       }
 
-      // Register service worker
-      await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+      // Register service worker with its own scope to avoid conflicts with sw.js
+      await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
+        scope: '/firebase-cloud-messaging-push-scope',
+      });
       logger.info('Service worker registered for Firebase messaging');
 
       // Request notification permission and get token

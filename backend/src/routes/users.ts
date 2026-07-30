@@ -92,14 +92,14 @@ const userIdParamsSchema = Joi.object({
  * @desc    Get current user's profile
  * @access  Private (requires authentication)
  */
-router.get('/profile', readRateLimit, auth, getUserProfile);
+router.get('/profile', auth, readRateLimit, getUserProfile);
 
 /**
  * @route   PUT /api/users/profile
  * @desc    Update current user's profile
  * @access  Private (requires authentication)
  */
-router.put('/profile', writeRateLimit, auth, validate(updateUserSchema), updateUserProfile);
+router.put('/profile', auth, writeRateLimit, validate(updateUserSchema), updateUserProfile);
 
 // =============================================================================
 // User Management Routes (/:userId)

@@ -39,34 +39,34 @@ const writeRateLimit = createRateLimiter.api(); // 100 requests per 15 minutes
  * @query   activeOnly - Filter active budgets only
  * @access  Private
  */
-router.get('/', readRateLimit, auth, validateQuery(budgetsPaginationSchema), asyncHandler(getAllBudgets));
+router.get('/', auth, readRateLimit, validateQuery(budgetsPaginationSchema), asyncHandler(getAllBudgets));
 
 /**
  * @route   GET /api/budgets/:id
  * @desc    Get a specific budget by ID
  * @access  Private (owner only)
  */
-router.get('/:id', readRateLimit, auth, validateParams(idParamsSchema), asyncHandler(getBudgetById));
+router.get('/:id', auth, readRateLimit, validateParams(idParamsSchema), asyncHandler(getBudgetById));
 
 /**
  * @route   POST /api/budgets
  * @desc    Create a new budget
  * @access  Private
  */
-router.post('/', writeRateLimit, auth, validate(createBudgetSchema), asyncHandler(createBudget));
+router.post('/', auth, writeRateLimit, validate(createBudgetSchema), asyncHandler(createBudget));
 
 /**
  * @route   PUT /api/budgets/:id
  * @desc    Update an existing budget
  * @access  Private (owner only)
  */
-router.put('/:id', writeRateLimit, auth, validateParams(idParamsSchema), validate(updateBudgetSchema), asyncHandler(updateBudget));
+router.put('/:id', auth, writeRateLimit, validateParams(idParamsSchema), validate(updateBudgetSchema), asyncHandler(updateBudget));
 
 /**
  * @route   DELETE /api/budgets/:id
  * @desc    Delete a budget
  * @access  Private (owner only)
  */
-router.delete('/:id', writeRateLimit, auth, validateParams(idParamsSchema), asyncHandler(deleteBudget));
+router.delete('/:id', auth, writeRateLimit, validateParams(idParamsSchema), asyncHandler(deleteBudget));
 
 export default router; 

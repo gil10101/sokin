@@ -14,6 +14,7 @@ import { db } from '../../config/firebase'
 import { Timestamp } from 'firebase-admin/firestore'
 import cache, { CACHE_TTL } from '../../utils/cache'
 import logger from '../../utils/logger'
+import { AppError } from '../../middleware/errorHandler'
 
 import {
   CACHE_DURATIONS,
@@ -68,17 +69,9 @@ function sanitizeSearchQuery(query: string): string {
   return query.replace(/[^a-zA-Z0-9\s\.\-]/g, '')
 }
 
-function logSecurityEvent(req: Request, action: string, details: Record<string, unknown> = {}): void {
-  logger.info('Security Event', {
-    timestamp: new Date().toISOString(),
-    action,
-    userId: req.user?.uid || 'anonymous',
-    ip: req.ip || req.socket?.remoteAddress,
-    userAgent: req.get('User-Agent'),
-    endpoint: req.originalUrl,
-    method: req.method,
-    ...details
-  })
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function logSecurityEvent(_req: Request, _action: string, _details: Record<string, unknown> = {}): void {
+  // Disabled: too noisy for development
 }
 
 function parseLimit(value: unknown, defaultValue: number, min: number, max: number): { valid: true; value: number } | { valid: false; error: string } {
@@ -226,14 +219,14 @@ async function getMarketIndices(req: Request, res: Response, next: NextFunction)
     }
   } catch (error) {
     logger.error('Failed to fetch market indices', { error: error instanceof Error ? error.message : 'Unknown' })
-    res.status(500).json({ success: false, error: 'Failed to fetch market indices' })
+    next(new AppError('Failed to fetch market indices', 500, false))
   }
 }
 
 async function getTrendingStocks(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const limitResult = parseLimit(req.query.limit, LIMITS.DEFAULT_TRENDING, 1, LIMITS.MAX_TRENDING)
-    if (!limitResult.valid) { res.status(400).json({ success: false, error: limitResult.error }); return }
+    if (!limitResult.valid) throw new AppError(limitResult.error, 400, true)
 
     const cacheKey = `trending_stocks:${limitResult.value}`
     
@@ -252,22 +245,23 @@ async function getTrendingStocks(req: Request, res: Response, next: NextFunction
       throw new Error('No trending stocks data available')
     }
   } catch (error) {
+    if (error instanceof AppError) { next(error); return }
     logger.error('Failed to fetch trending stocks', { error: error instanceof Error ? error.message : 'Unknown' })
-    res.status(500).json({ success: false, error: 'Failed to fetch trending stocks' })
+    next(new AppError('Failed to fetch trending stocks', 500, false))
   }
 }
 
 async function searchStocksHandler(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { q } = req.query
-    if (!q || typeof q !== 'string') { res.status(400).json({ success: false, error: 'Search query is required' }); return }
-    if (q.length < 1 || q.length > 50) { res.status(400).json({ success: false, error: 'Search query must be between 1 and 50 characters' }); return }
-    
+    if (!q || typeof q !== 'string') throw new AppError('Search query is required', 400, true)
+    if (q.length < 1 || q.length > 50) throw new AppError('Search query must be between 1 and 50 characters', 400, true)
+
     const sanitizedQuery = sanitizeSearchQuery(q)
-    if (!sanitizedQuery.length) { res.status(400).json({ success: false, error: 'Invalid search query format' }); return }
-    
+    if (!sanitizedQuery.length) throw new AppError('Invalid search query format', 400, true)
+
     const limitResult = parseLimit(req.query.limit, LIMITS.DEFAULT_SEARCH, 1, LIMITS.MAX_SEARCH)
-    if (!limitResult.valid) { res.status(400).json({ success: false, error: limitResult.error }); return }
+    if (!limitResult.valid) throw new AppError(limitResult.error, 400, true)
 
     const searchResult = await searchSymbols(sanitizedQuery)
     
@@ -286,8 +280,9 @@ async function searchStocksHandler(req: Request, res: Response, next: NextFuncti
     // Return empty array for no results - this is a valid outcome, not an error
     res.json({ success: true, data: [] })
   } catch (error) {
+    if (error instanceof AppError) { next(error); return }
     logger.error('Stock search failed', { error: error instanceof Error ? error.message : 'Unknown' })
-    res.status(500).json({ success: false, error: 'Stock search failed' })
+    next(new AppError('Stock search failed', 500, false))
   }
 }
 
@@ -295,13 +290,14 @@ async function getStockData(req: Request, res: Response, next: NextFunction): Pr
   try {
     const { symbol } = req.params
     if (!symbol || !STOCK_SYMBOL_PATTERN.test(symbol.toUpperCase())) {
-      res.status(400).json({ success: false, error: 'Invalid stock symbol format' }); return
+      throw new AppError('Invalid stock symbol format', 400, true)
     }
     const stock = await getFullStockData(symbol.toUpperCase(), true)
     res.json({ success: true, data: stock })
   } catch (error) {
+    if (error instanceof AppError) { next(error); return }
     logger.error('Failed to fetch stock data', { symbol: req.params.symbol, error: error instanceof Error ? error.message : 'Unknown' })
-    res.status(500).json({ success: false, error: `Failed to fetch data for ${req.params.symbol}` })
+    next(new AppError(`Failed to fetch data for ${req.params.symbol}`, 500, false))
   }
 }
 
@@ -309,10 +305,8 @@ async function getUserPortfolio(req: Request, res: Response, next: NextFunction)
   // userId is derived from authenticated user's token - prevents IDOR vulnerabilities
   const userId = req.user?.uid
   try {
-    if (!userId) {
-      res.status(401).json({ success: false, error: 'Unauthorized: User ID missing' }); return
-    }
-    
+    if (!userId) throw new AppError('Unauthorized: User ID missing', 401, true)
+
     const cacheKey = buildPortfolioCacheKey(userId)
     
     // Try distributed cache first with short TTL for portfolio
@@ -333,9 +327,10 @@ async function getUserPortfolio(req: Request, res: Response, next: NextFunction)
     
     res.json(result)
   } catch (error) {
+    if (error instanceof AppError) { next(error); return }
     logger.error('Failed to fetch user portfolio', { userId, error: error instanceof Error ? error.message : 'Unknown' })
     logSecurityEvent(req, 'PORTFOLIO_ACCESS_FAILED', { userId, error: error instanceof Error ? error.message : 'Unknown' })
-    res.status(500).json({ success: false, error: 'Failed to fetch user portfolio' })
+    next(new AppError('Failed to fetch user portfolio', 500, false))
   }
 }
 
@@ -344,35 +339,50 @@ async function executeTransaction(req: Request, res: Response, next: NextFunctio
     const { symbol, type, amount, price } = req.body
     const userId = req.user?.uid
     
-    if (!userId) { res.status(401).json({ success: false, error: 'Authentication required' }); return }
-    if (!symbol || !type || !amount || !price) { res.status(400).json({ success: false, error: 'Missing required fields: symbol, type, amount, price' }); return }
-    if (type !== 'buy' && type !== 'sell') { res.status(400).json({ success: false, error: 'Transaction type must be buy or sell' }); return }
-    
+    if (!userId) throw new AppError('Authentication required', 401, true)
+    if (!symbol || !type || !amount || !price) throw new AppError('Missing required fields: symbol, type, amount, price', 400, true)
+    if (type !== 'buy' && type !== 'sell') throw new AppError('Transaction type must be buy or sell', 400, true)
+
     const numericAmount = parseFloat(amount), numericPrice = parseFloat(price)
-    if (isNaN(numericAmount) || numericAmount <= 0) { res.status(400).json({ success: false, error: 'Amount must be a positive number' }); return }
-    if (isNaN(numericPrice) || numericPrice <= 0) { res.status(400).json({ success: false, error: 'Price must be a positive number' }); return }
-    
+    if (isNaN(numericAmount) || numericAmount <= 0) throw new AppError('Amount must be a positive number', 400, true)
+    if (isNaN(numericPrice) || numericPrice <= 0) throw new AppError('Price must be a positive number', 400, true)
+
     const shares = Math.floor(numericAmount / numericPrice * 100) / 100
-    if (shares <= 0) { res.status(400).json({ success: false, error: 'Transaction amount is too small to purchase any shares' }); return }
-    
-    let sanitizedSymbol: string
-    try { sanitizedSymbol = sanitizeStockSymbol(symbol) } catch (e) { res.status(400).json({ success: false, error: e instanceof Error ? e.message : 'Invalid symbol' }); return }
+    if (shares <= 0) throw new AppError('Transaction amount is too small to purchase any shares', 400, true)
+
+    const sanitizedSymbol = sanitizeStockSymbol(symbol)
     
     const now = Timestamp.now()
     const nowISO = new Date().toISOString()
     
     if (type === 'sell') {
       // Use Firestore transaction to prevent TOCTOU race condition
-      // This ensures atomic check-and-write to prevent overselling
+      // Read holdings using transaction.get() so the read is part of the transaction
       if (!db) throw new Error('Firestore not initialized')
-      await db.runTransaction(async (transaction) => {
-      const portfolio = await calculateUserPortfolioFromFirebase(userId)
-      const holding = portfolio.find(s => s.symbol === sanitizedSymbol)
-        if (!holding) throw new Error(`Cannot sell ${sanitizedSymbol} - you don't own any shares`)
-        if (holding.shares < shares) throw new Error(`Cannot sell ${shares} shares of ${sanitizedSymbol} - you only own ${holding.shares} shares`)
-        
+      await db.runTransaction(async (firestoreTransaction) => {
+        // Read transactions for this symbol using the transaction object
+        const txQuery = db!.collection('stockTransactions')
+          .where('userId', '==', userId)
+          .where('symbol', '==', sanitizedSymbol)
+          .orderBy('timestamp', 'asc')
+        const txSnapshot = await firestoreTransaction.get(txQuery)
+
+        // Calculate holdings for this symbol
+        let shares_held = 0
+        for (const doc of txSnapshot.docs) {
+          const data = doc.data()
+          if (data.transactionType === 'buy') {
+            shares_held += data.shares
+          } else if (data.transactionType === 'sell') {
+            shares_held -= data.shares
+          }
+        }
+
+        if (shares_held <= 0) throw new Error(`Cannot sell ${sanitizedSymbol} - you don't own any shares`)
+        if (shares_held < shares) throw new Error(`Cannot sell ${shares} shares of ${sanitizedSymbol} - you only own ${shares_held} shares`)
+
         const txRef = db!.collection('stockTransactions').doc()
-        transaction.set(txRef, {
+        firestoreTransaction.set(txRef, {
           userId, symbol: sanitizedSymbol, transactionType: type, shares,
           pricePerShare: numericPrice, totalAmount: shares * numericPrice,
           transactionDate: nowISO, createdAt: nowISO, timestamp: now
@@ -399,14 +409,15 @@ async function executeTransaction(req: Request, res: Response, next: NextFunctio
       data: { symbol: sanitizedSymbol, type, shares, price: numericPrice, totalValue: shares * numericPrice }
     })
   } catch (error) {
+    if (error instanceof AppError) { next(error); return }
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     logger.error('Transaction failed', { error: errorMessage, stack: error instanceof Error ? error.stack : undefined })
-    
+
     // Return validation errors with 400 status, server errors with 500
     if (errorMessage.includes('don\'t own') || errorMessage.includes('only own') || errorMessage.includes('Invalid')) {
-      res.status(400).json({ success: false, error: errorMessage })
+      next(new AppError(errorMessage, 400, true))
     } else {
-      res.status(500).json({ success: false, error: 'Transaction failed' })
+      next(new AppError('Transaction failed', 500, false))
     }
   }
 }
@@ -416,12 +427,11 @@ async function getMaxSellAmount(req: Request, res: Response, next: NextFunction)
     const { symbol } = req.params
     const userId = req.user?.uid
     
-    if (!userId) { res.status(401).json({ success: false, error: 'Authentication required' }); return }
-    if (!symbol) { res.status(400).json({ success: false, error: 'Stock symbol is required' }); return }
-    
-    let sanitizedSymbol: string
-    try { sanitizedSymbol = sanitizeStockSymbol(symbol) } catch (e) { res.status(400).json({ success: false, error: e instanceof Error ? e.message : 'Invalid symbol' }); return }
-    
+    if (!userId) throw new AppError('Authentication required', 401, true)
+    if (!symbol) throw new AppError('Stock symbol is required', 400, true)
+
+    const sanitizedSymbol = sanitizeStockSymbol(symbol)
+
     const portfolio = await calculateUserPortfolioFromFirebase(userId)
     const holding = portfolio.find(s => s.symbol === sanitizedSymbol)
     
@@ -434,18 +444,19 @@ async function getMaxSellAmount(req: Request, res: Response, next: NextFunction)
       res.json({ success: true, data: { shares: holding.shares, value: holding.shares * holding.purchasePrice, price: holding.purchasePrice } })
     }
   } catch (error) {
+    if (error instanceof AppError) { next(error); return }
     logger.error('Failed to get max sell amount', { error: error instanceof Error ? error.message : 'Unknown' })
-    res.status(500).json({ success: false, error: 'Failed to get maximum sell amount' })
+    next(new AppError('Failed to get maximum sell amount', 500, false))
   }
 }
 
 async function getTransactionHistory(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const userId = req.user?.uid
-    if (!userId) { res.status(401).json({ success: false, error: 'Authentication required' }); return }
-    
+    if (!userId) throw new AppError('Authentication required', 401, true)
+
     const limitResult = parseLimit(req.query.limit, LIMITS.DEFAULT_TRANSACTION_HISTORY, 1, LIMITS.MAX_TRANSACTION_HISTORY)
-    if (!limitResult.valid) { res.status(400).json({ success: false, error: limitResult.error }); return }
+    if (!limitResult.valid) throw new AppError(limitResult.error, 400, true)
 
     const cacheKey = buildTransactionHistoryCacheKey(userId, limitResult.value)
     
@@ -496,8 +507,9 @@ async function getTransactionHistory(req: Request, res: Response, next: NextFunc
     
     res.json(result)
   } catch (error) {
+    if (error instanceof AppError) { next(error); return }
     logger.error('Failed to get transaction history', { error: error instanceof Error ? error.message : 'Unknown' })
-    res.status(500).json({ success: false, error: 'Failed to get transaction history' })
+    next(new AppError('Failed to get transaction history', 500, false))
   }
 }
 
@@ -518,10 +530,7 @@ function buildWatchlistCacheKey(userId: string): string {
 async function getUserWatchlist(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const userId = req.user?.uid
-    if (!userId) {
-      res.status(401).json({ success: false, error: 'Authentication required' })
-      return
-    }
+    if (!userId) throw new AppError('Authentication required', 401, true)
 
     const cacheKey = buildWatchlistCacheKey(userId)
     
@@ -543,7 +552,7 @@ async function getUserWatchlist(req: Request, res: Response, next: NextFunction)
       symbols = (data?.symbols || []) as string[]
     } else {
       // Create empty watchlist document for new users
-      await db.collection('watchlists').doc(userId).set({ symbols: [], updatedAt: new Date().toISOString() })
+      await db.collection('watchlists').doc(userId).set({ userId, symbols: [], updatedAt: new Date().toISOString() })
     }
 
     const result = { success: true, data: { symbols } }
@@ -553,11 +562,12 @@ async function getUserWatchlist(req: Request, res: Response, next: NextFunction)
 
     res.json(result)
   } catch (error) {
+    if (error instanceof AppError) { next(error); return }
     logger.error('Failed to get user watchlist', {
       userId: req.user?.uid,
       error: error instanceof Error ? error.message : 'Unknown'
     })
-    res.status(500).json({ success: false, error: 'Failed to get user watchlist' })
+    next(new AppError('Failed to get user watchlist', 500, false))
   }
 }
 
@@ -567,27 +577,12 @@ async function getUserWatchlist(req: Request, res: Response, next: NextFunction)
 async function addToWatchlist(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const userId = req.user?.uid
-    if (!userId) {
-      res.status(401).json({ success: false, error: 'Authentication required' })
-      return
-    }
+    if (!userId) throw new AppError('Authentication required', 401, true)
 
     const { symbol } = req.body
-    if (!symbol || typeof symbol !== 'string') {
-      res.status(400).json({ success: false, error: 'Symbol is required' })
-      return
-    }
+    if (!symbol || typeof symbol !== 'string') throw new AppError('Symbol is required', 400, true)
 
-    let sanitizedSymbol: string
-    try {
-      sanitizedSymbol = sanitizeStockSymbol(symbol)
-    } catch (e) {
-      res.status(400).json({
-        success: false,
-        error: e instanceof Error ? e.message : 'Invalid symbol'
-      })
-      return
-    }
+    const sanitizedSymbol = sanitizeStockSymbol(symbol)
 
     if (!db) throw new Error('Firestore not initialized')
 
@@ -606,6 +601,7 @@ async function addToWatchlist(req: Request, res: Response, next: NextFunction): 
       if (!symbols.includes(sanitizedSymbol)) {
         symbols.push(sanitizedSymbol)
         transaction.set(watchlistRef, {
+          userId,
           symbols,
           updatedAt: new Date().toISOString()
         }, { merge: true })
@@ -618,11 +614,12 @@ async function addToWatchlist(req: Request, res: Response, next: NextFunction): 
     logSecurityEvent(req, 'WATCHLIST_UPDATED', { userId, action: 'add', symbol: sanitizedSymbol })
     res.json({ success: true, message: `Added ${sanitizedSymbol} to watchlist` })
   } catch (error) {
+    if (error instanceof AppError) { next(error); return }
     logger.error('Failed to add to watchlist', {
       userId: req.user?.uid,
       error: error instanceof Error ? error.message : 'Unknown'
     })
-    res.status(500).json({ success: false, error: 'Failed to add to watchlist' })
+    next(new AppError('Failed to add to watchlist', 500, false))
   }
 }
 
@@ -632,27 +629,12 @@ async function addToWatchlist(req: Request, res: Response, next: NextFunction): 
 async function removeFromWatchlist(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const userId = req.user?.uid
-    if (!userId) {
-      res.status(401).json({ success: false, error: 'Authentication required' })
-      return
-    }
+    if (!userId) throw new AppError('Authentication required', 401, true)
 
     const { symbol } = req.params
-    if (!symbol) {
-      res.status(400).json({ success: false, error: 'Symbol is required' })
-      return
-    }
+    if (!symbol) throw new AppError('Symbol is required', 400, true)
 
-    let sanitizedSymbol: string
-    try {
-      sanitizedSymbol = sanitizeStockSymbol(symbol)
-    } catch (e) {
-      res.status(400).json({
-        success: false,
-        error: e instanceof Error ? e.message : 'Invalid symbol'
-      })
-      return
-    }
+    const sanitizedSymbol = sanitizeStockSymbol(symbol)
 
     if (!db) throw new Error('Firestore not initialized')
 
@@ -669,6 +651,7 @@ async function removeFromWatchlist(req: Request, res: Response, next: NextFuncti
       const symbols = ((data?.symbols || []) as string[]).filter(s => s !== sanitizedSymbol)
       
       transaction.set(watchlistRef, {
+        userId,
         symbols,
         updatedAt: new Date().toISOString()
       }, { merge: true })
@@ -680,11 +663,12 @@ async function removeFromWatchlist(req: Request, res: Response, next: NextFuncti
     logSecurityEvent(req, 'WATCHLIST_UPDATED', { userId, action: 'remove', symbol: sanitizedSymbol })
     res.json({ success: true, message: `Removed ${sanitizedSymbol} from watchlist` })
   } catch (error) {
+    if (error instanceof AppError) { next(error); return }
     logger.error('Failed to remove from watchlist', {
       userId: req.user?.uid,
       error: error instanceof Error ? error.message : 'Unknown'
     })
-    res.status(500).json({ success: false, error: 'Failed to remove from watchlist' })
+    next(new AppError('Failed to remove from watchlist', 500, false))
   }
 }
 
@@ -694,29 +678,15 @@ async function removeFromWatchlist(req: Request, res: Response, next: NextFuncti
 async function updateWatchlist(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const userId = req.user?.uid
-    if (!userId) {
-      res.status(401).json({ success: false, error: 'Authentication required' })
-      return
-    }
+    if (!userId) throw new AppError('Authentication required', 401, true)
 
     const { symbols } = req.body
-    if (!Array.isArray(symbols)) {
-      res.status(400).json({ success: false, error: 'Symbols must be an array' })
-      return
-    }
+    if (!Array.isArray(symbols)) throw new AppError('Symbols must be an array', 400, true)
 
     // Validate and sanitize all symbols
     const sanitizedSymbols: string[] = []
     for (const symbol of symbols) {
-      try {
-        sanitizedSymbols.push(sanitizeStockSymbol(symbol))
-      } catch (e) {
-        res.status(400).json({
-          success: false,
-          error: `Invalid symbol: ${symbol}. ${e instanceof Error ? e.message : 'Invalid format'}`
-        })
-        return
-      }
+      sanitizedSymbols.push(sanitizeStockSymbol(symbol))
     }
 
     // Remove duplicates
@@ -726,6 +696,7 @@ async function updateWatchlist(req: Request, res: Response, next: NextFunction):
 
     // Update watchlist
     await db.collection('watchlists').doc(userId).set({
+      userId,
       symbols: uniqueSymbols,
       updatedAt: new Date().toISOString()
     }, { merge: true })
@@ -736,11 +707,12 @@ async function updateWatchlist(req: Request, res: Response, next: NextFunction):
     logSecurityEvent(req, 'WATCHLIST_UPDATED', { userId, action: 'update', count: uniqueSymbols.length })
     res.json({ success: true, message: 'Watchlist updated successfully' })
   } catch (error) {
+    if (error instanceof AppError) { next(error); return }
     logger.error('Failed to update watchlist', {
       userId: req.user?.uid,
       error: error instanceof Error ? error.message : 'Unknown'
     })
-    res.status(500).json({ success: false, error: 'Failed to update watchlist' })
+    next(new AppError('Failed to update watchlist', 500, false))
   }
 }
 

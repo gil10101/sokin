@@ -24,8 +24,7 @@ const writeRateLimit = createRateLimiter.api();
  */
 router.post(
   '/process',
-  writeRateLimit,
-  auth,
+  auth, writeRateLimit,
   uploadMiddleware,
   asyncHandler(processReceipt)
 );

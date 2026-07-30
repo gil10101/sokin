@@ -136,8 +136,8 @@ export function DashboardSidebar({ collapsed, setCollapsed }: DashboardSidebarPr
             </Tooltip>
           ) : (
             <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <Avatar className="h-8 w-8 mr-3">
+              <div className="flex items-center min-w-0 flex-1">
+                <Avatar className="h-8 w-8 mr-3 shrink-0">
                   {user?.photoURL ? (
                     <AvatarImage src={user.photoURL} alt={user?.displayName || "User"} />
                   ) : null}
@@ -145,12 +145,12 @@ export function DashboardSidebar({ collapsed, setCollapsed }: DashboardSidebarPr
                     {user?.displayName?.charAt(0) || "U"}
                   </AvatarFallback>
                 </Avatar>
-                <div>
-                  <p className="text-sm font-medium font-outfit">{user?.displayName || "User"}</p>
-                  <p className="text-xs text-cream/60">{user?.email || "user@example.com"}</p>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium font-outfit truncate">{user?.displayName || "User"}</p>
+                  <p className="text-xs text-cream/60 truncate">{user?.email || "user@example.com"}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 <button
                   className="h-8 w-8 rounded-full flex items-center justify-center text-cream/60 hover:text-cream hover:bg-cream/5 transition-colors"
                   onClick={handleSignOut}

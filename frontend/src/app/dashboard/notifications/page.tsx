@@ -20,7 +20,7 @@ interface NotificationsPageProps {
 
 export default function NotificationsPage(props: NotificationsPageProps) {
   const [collapsed, setCollapsed] = useState(false)
-  const { notifications, markAsRead, markAllAsRead, dismissNotification, dismissAllNotifications, deleteNotification } =
+  const { notifications, isLoading, markAsRead, markAllAsRead, dismissNotification, dismissAllNotifications, deleteNotification } =
     useNotifications()
   const [activeTab, setActiveTab] = useState("all")
   const [mounted, setMounted] = useState(false)
@@ -28,6 +28,12 @@ export default function NotificationsPage(props: NotificationsPageProps) {
   React.useEffect(() => {
     setMounted(true)
   }, [])
+
+  const formatNotificationDate = (value: string): string => {
+    const date = new Date(value)
+    if (isNaN(date.getTime())) return ""
+    return format(date, "MMM d, yyyy h:mm a")
+  }
 
   const getNotificationIcon = (type: NotificationType) => {
     switch (type) {
@@ -128,7 +134,7 @@ export default function NotificationsPage(props: NotificationsPageProps) {
                               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                                 <h4 className="font-medium">{notification.title}</h4>
                                 <span className="text-xs text-cream/40">
-                                  {format(new Date(notification.createdAt), "MMM d, yyyy h:mm a")}
+                                  {formatNotificationDate(notification.createdAt)}
                                 </span>
                               </div>
                               <p className="text-cream/70 mt-2">{notification.message}</p>
@@ -175,6 +181,10 @@ export default function NotificationsPage(props: NotificationsPageProps) {
                           </div>
                         </MotionDiv>
                       ))}
+                    </div>
+                  ) : isLoading ? (
+                    <div className="flex justify-center py-12">
+                      <LoadingSpinner size="lg" />
                     </div>
                   ) : (
                     <div className="text-center py-12">

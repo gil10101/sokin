@@ -19,10 +19,6 @@ export function NotificationsDropdown() {
 
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen)
-    if (isOpen && unreadCount > 0) {
-      // Mark all as read when opening the dropdown
-      markAllAsRead()
-    }
   }
 
   const getNotificationIcon = (type: NotificationType) => {
@@ -98,6 +94,9 @@ export function NotificationsDropdown() {
             </TabsTrigger>
             <TabsTrigger value="system" className="flex-1 data-[state=active]:bg-cream/10">
               System
+            </TabsTrigger>
+            <TabsTrigger value="info" className="flex-1 data-[state=active]:bg-cream/10">
+              Info
             </TabsTrigger>
           </TabsList>
 

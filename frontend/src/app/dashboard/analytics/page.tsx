@@ -84,7 +84,7 @@ export default function AnalyticsPage(props: AnalyticsPageProps) {
             transition={{ duration: 0.5 }}
           >
             <div>
-              <h1 className="text-2xl md:text-3xl font-medium font-outfit">Analytics</h1>
+              <h1 className="ml-12 md:ml-0 text-2xl md:text-3xl font-medium font-outfit">Analytics</h1>
               <p className="text-cream/60 text-sm mt-1 font-outfit">Detailed insights into your spending patterns</p>
             </div>
             <div>

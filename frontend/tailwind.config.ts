@@ -81,8 +81,8 @@ const config = {
         sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
-        outfit: ["Outfit", "sans-serif"],
-        "roboto-mono": ["Roboto Mono", "monospace"],
+        outfit: ["var(--font-outfit)", "Outfit", "sans-serif"],
+        "roboto-mono": ["var(--font-roboto-mono)", "Roboto Mono", "monospace"],
       },
       keyframes: {
         "accordion-down": {

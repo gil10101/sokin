@@ -43,7 +43,7 @@ const writeLimit = createRateLimiter.api();
  * @desc    Get user notifications
  * @access  Private
  */
-router.get('/', readLimit, auth, asyncHandler(getUserNotifications));
+router.get('/', auth, readLimit, asyncHandler(getUserNotifications));
 
 /**
  * @route   POST /api/notifications
@@ -52,8 +52,7 @@ router.get('/', readLimit, auth, asyncHandler(getUserNotifications));
  */
 router.post(
   '/',
-  writeLimit,
-  auth,
+  auth, writeLimit,
   validate(createNotificationSchema),
   asyncHandler(createNotification)
 );
@@ -65,8 +64,7 @@ router.post(
  */
 router.patch(
   '/:notificationId/read', 
-  writeLimit, 
-  auth, 
+  auth, writeLimit, 
   validateParams(markNotificationReadParamsSchema), 
   asyncHandler(markAsRead)
 );
@@ -76,7 +74,7 @@ router.patch(
  * @desc    Mark all notifications as read
  * @access  Private
  */
-router.patch('/read-all', writeLimit, auth, asyncHandler(markAllAsRead));
+router.patch('/read-all', auth, writeLimit, asyncHandler(markAllAsRead));
 
 /**
  * @route   PATCH /api/notifications/:notificationId/dismiss
@@ -85,8 +83,7 @@ router.patch('/read-all', writeLimit, auth, asyncHandler(markAllAsRead));
  */
 router.patch(
   '/:notificationId/dismiss',
-  writeLimit,
-  auth,
+  auth, writeLimit,
   validateParams(markNotificationReadParamsSchema),
   asyncHandler(dismissNotification)
 );
@@ -96,7 +93,7 @@ router.patch(
  * @desc    Dismiss all notifications
  * @access  Private
  */
-router.patch('/dismiss-all', writeLimit, auth, asyncHandler(dismissAllNotifications));
+router.patch('/dismiss-all', auth, writeLimit, asyncHandler(dismissAllNotifications));
 
 /**
  * @route   DELETE /api/notifications/:notificationId
@@ -105,8 +102,7 @@ router.patch('/dismiss-all', writeLimit, auth, asyncHandler(dismissAllNotificati
  */
 router.delete(
   '/:notificationId',
-  writeLimit,
-  auth,
+  auth, writeLimit,
   validateParams(markNotificationReadParamsSchema),
   asyncHandler(deleteNotification)
 );
@@ -118,8 +114,7 @@ router.delete(
  */
 router.put(
   '/preferences', 
-  writeLimit, 
-  auth, 
+  auth, writeLimit, 
   validate(updateNotificationPreferencesSchema), 
   asyncHandler(updatePreferences)
 );
@@ -129,7 +124,7 @@ router.put(
  * @desc    Get notification preferences
  * @access  Private
  */
-router.get('/preferences', readLimit, auth, asyncHandler(getPreferences));
+router.get('/preferences', auth, readLimit, asyncHandler(getPreferences));
 
 /**
  * @route   POST /api/notifications/fcm-token
@@ -138,21 +133,29 @@ router.get('/preferences', readLimit, auth, asyncHandler(getPreferences));
  */
 router.post(
   '/fcm-token', 
-  writeLimit, 
-  auth, 
+  auth, writeLimit, 
   validate(registerFcmTokenSchema), 
   asyncHandler(registerFCMToken)
 );
 
 /**
- * @route   POST /api/notifications/check-budget-alerts
+ * @route   GET|POST /api/notifications/check-budget-alerts
  * @desc    Check budget alerts (for scheduled tasks) - internal only
  * @access  Internal (cron job authentication)
+ *
+ * GET exists because Vercel Cron invokes cron paths with GET and
+ * authenticates via Authorization: Bearer <CRON_SECRET>.
  */
 router.post(
-  '/check-budget-alerts', 
-  cronRateLimiter, 
-  requireCronAuth, 
+  '/check-budget-alerts',
+  cronRateLimiter,
+  requireCronAuth,
+  asyncHandler(checkBudgetAlerts)
+);
+router.get(
+  '/check-budget-alerts',
+  cronRateLimiter,
+  requireCronAuth,
   asyncHandler(checkBudgetAlerts)
 );
 

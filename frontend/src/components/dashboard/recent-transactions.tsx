@@ -57,10 +57,14 @@ const getCategoryIcon = (category: string): LucideIcon => {
   return categoryIcons[category.toLowerCase()] || Home
 }
 
-export function RecentTransactions() {
+interface RecentTransactionsProps {
+  expenses?: Transaction[]
+}
+
+export function RecentTransactions({ expenses: parentExpenses }: RecentTransactionsProps = {}) {
   const { user } = useAuth()
   const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(!parentExpenses)
 
   const fetchRecentTransactions = useCallback(async () => {
     if (!user) return
@@ -93,10 +97,15 @@ export function RecentTransactions() {
   }, [user])
 
   useEffect(() => {
+    if (parentExpenses) {
+      setTransactions(parentExpenses)
+      setLoading(false)
+      return
+    }
     if (user) {
       fetchRecentTransactions()
     }
-  }, [user, fetchRecentTransactions])
+  }, [user, parentExpenses, fetchRecentTransactions])
 
   if (loading) {
     return (

@@ -1,3 +1,4 @@
+import React from "react"
 import { ArrowUpRight, ArrowDownRight } from "lucide-react"
 
 interface MetricCardProps {
@@ -6,11 +7,24 @@ interface MetricCardProps {
   secondaryValue?: string
   change?: string
   trend?: "up" | "down" | "neutral"
+  /**
+   * How to color the trend. "spend" metrics (default) treat "up" as bad;
+   * "growth" metrics (net worth, savings) treat "up" as good.
+   */
+  polarity?: "spend" | "growth"
   period?: string
   icon: React.ReactElement
 }
 
-export function MetricCard({ title, value, secondaryValue, change, trend, period, icon }: MetricCardProps) {
+export const MetricCard = React.memo(function MetricCard({ title, value, secondaryValue, change, trend, polarity = "spend", period, icon }: MetricCardProps) {
+  const upIsGood = polarity === "growth"
+  const trendColor =
+    trend === "up"
+      ? upIsGood ? "text-green-400" : "text-red-400"
+      : trend === "down"
+        ? upIsGood ? "text-red-400" : "text-green-400"
+        : "text-cream/60"
+
   return (
     <div className="bg-cream/5 rounded-xl border border-cream/10 p-5 hover:bg-cream/10 transition-colors">
       <div className="flex items-center justify-between mb-3">
@@ -25,11 +39,7 @@ export function MetricCard({ title, value, secondaryValue, change, trend, period
         {secondaryValue && <p className="text-sm text-cream/60">{secondaryValue}</p>}
         {change && (
           <div className="flex items-center">
-            <span className={`text-sm flex items-center ${
-              trend === "up" ? "text-red-400" : 
-              trend === "down" ? "text-green-400" : 
-              "text-cream/60"
-            }`}>
+            <span className={`text-sm flex items-center ${trendColor}`}>
               {trend === "up" ? (
                 <ArrowUpRight className="h-3 w-3 mr-1" />
               ) : trend === "down" ? (
@@ -45,5 +55,4 @@ export function MetricCard({ title, value, secondaryValue, change, trend, period
       </div>
     </div>
   )
-}
-
+})

@@ -77,7 +77,7 @@ export const getDashboard = async (
     }
 
     // Fetch all dashboard data in parallel for optimal performance
-    const [expensesSnap, budgetsSnap, notificationsSnap] = await Promise.all([
+    const [expensesResult, budgetsResult, notificationsResult] = await Promise.allSettled([
       db
         .collection('expenses')
         .where('userId', '==', userId)
@@ -97,9 +97,26 @@ export const getDashboard = async (
         .get(),
     ]);
 
-    const expenses = expensesSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-    const budgets = budgetsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-    const notifications = notificationsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    let expenses: Array<{ id: string; [key: string]: unknown }> = [];
+    if (expensesResult.status === 'fulfilled') {
+      expenses = expensesResult.value.docs.map((d) => ({ id: d.id, ...d.data() }));
+    } else {
+      logger.warn('Failed to fetch dashboard expenses', { userId, error: expensesResult.reason?.message });
+    }
+
+    let budgets: Array<{ id: string; [key: string]: unknown }> = [];
+    if (budgetsResult.status === 'fulfilled') {
+      budgets = budgetsResult.value.docs.map((d) => ({ id: d.id, ...d.data() }));
+    } else {
+      logger.warn('Failed to fetch dashboard budgets', { userId, error: budgetsResult.reason?.message });
+    }
+
+    let notifications: Array<{ id: string; [key: string]: unknown }> = [];
+    if (notificationsResult.status === 'fulfilled') {
+      notifications = notificationsResult.value.docs.map((d) => ({ id: d.id, ...d.data() }));
+    } else {
+      logger.warn('Failed to fetch dashboard notifications', { userId, error: notificationsResult.reason?.message });
+    }
 
     const payload: DashboardPayload = { expenses, budgets, notifications };
     

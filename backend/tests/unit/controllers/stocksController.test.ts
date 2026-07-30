@@ -10,6 +10,7 @@
 
 import { Request, Response, NextFunction } from 'express';
 import stocksController from '../../../src/controllers/stocksController';
+import { AppError } from '../../../src/middleware/errorHandler';
 
 /** Extended Request type with authenticated user */
 interface AuthenticatedRequest extends Request {
@@ -278,13 +279,9 @@ describe('Stocks Controller', () => {
         mockNext
       );
 
-      expect(statusMock).toHaveBeenCalledWith(400);
-      expect(jsonMock).toHaveBeenCalledWith(
-        expect.objectContaining({
-          success: false,
-          error: expect.stringContaining('limit'),
-        })
-      );
+      expect(mockNext).toHaveBeenCalledWith(expect.any(AppError));
+      const error = (mockNext as jest.Mock).mock.calls[0][0] as AppError;
+      expect(error.statusCode).toBe(400);
     });
   });
 
@@ -317,13 +314,9 @@ describe('Stocks Controller', () => {
         mockNext
       );
 
-      expect(statusMock).toHaveBeenCalledWith(400);
-      expect(jsonMock).toHaveBeenCalledWith(
-        expect.objectContaining({
-          success: false,
-          error: expect.stringContaining('symbol'),
-        })
-      );
+      expect(mockNext).toHaveBeenCalledWith(expect.any(AppError));
+      const error = (mockNext as jest.Mock).mock.calls[0][0] as AppError;
+      expect(error.statusCode).toBe(400);
     });
 
     it('should accept valid stock symbols', async () => {
@@ -373,7 +366,9 @@ describe('Stocks Controller', () => {
         mockNext
       );
 
-      expect(statusMock).toHaveBeenCalledWith(400);
+      expect(mockNext).toHaveBeenCalledWith(expect.any(AppError));
+      const error = (mockNext as jest.Mock).mock.calls[0][0] as AppError;
+      expect(error.statusCode).toBe(400);
     });
 
     it('should reject query that is too long', async () => {
@@ -385,7 +380,9 @@ describe('Stocks Controller', () => {
         mockNext
       );
 
-      expect(statusMock).toHaveBeenCalledWith(400);
+      expect(mockNext).toHaveBeenCalledWith(expect.any(AppError));
+      const error = (mockNext as jest.Mock).mock.calls[0][0] as AppError;
+      expect(error.statusCode).toBe(400);
     });
   });
 
@@ -441,7 +438,9 @@ describe('Stocks Controller', () => {
         mockNext
       );
 
-      expect(statusMock).toHaveBeenCalledWith(401);
+      expect(mockNext).toHaveBeenCalledWith(expect.any(AppError));
+      const error = (mockNext as jest.Mock).mock.calls[0][0] as AppError;
+      expect(error.statusCode).toBe(401);
     });
 
     it('should reject invalid transaction type', async () => {
@@ -458,7 +457,9 @@ describe('Stocks Controller', () => {
         mockNext
       );
 
-      expect(statusMock).toHaveBeenCalledWith(400);
+      expect(mockNext).toHaveBeenCalledWith(expect.any(AppError));
+      const error = (mockNext as jest.Mock).mock.calls[0][0] as AppError;
+      expect(error.statusCode).toBe(400);
     });
 
     it('should accept valid buy transaction', async () => {
@@ -492,7 +493,9 @@ describe('Stocks Controller', () => {
         mockNext
       );
 
-      expect(statusMock).toHaveBeenCalledWith(400);
+      expect(mockNext).toHaveBeenCalledWith(expect.any(AppError));
+      const error = (mockNext as jest.Mock).mock.calls[0][0] as AppError;
+      expect(error.statusCode).toBe(400);
     });
 
     it('should reject missing required fields', async () => {
@@ -507,7 +510,9 @@ describe('Stocks Controller', () => {
         mockNext
       );
 
-      expect(statusMock).toHaveBeenCalledWith(400);
+      expect(mockNext).toHaveBeenCalledWith(expect.any(AppError));
+      const error = (mockNext as jest.Mock).mock.calls[0][0] as AppError;
+      expect(error.statusCode).toBe(400);
     });
   });
 
@@ -522,7 +527,9 @@ describe('Stocks Controller', () => {
         mockNext
       );
 
-      expect(statusMock).toHaveBeenCalledWith(401);
+      expect(mockNext).toHaveBeenCalledWith(expect.any(AppError));
+      const error = (mockNext as jest.Mock).mock.calls[0][0] as AppError;
+      expect(error.statusCode).toBe(401);
     });
 
     it('should return zero shares for stocks not owned', async () => {
@@ -555,7 +562,9 @@ describe('Stocks Controller', () => {
         mockNext
       );
 
-      expect(statusMock).toHaveBeenCalledWith(401);
+      expect(mockNext).toHaveBeenCalledWith(expect.any(AppError));
+      const error = (mockNext as jest.Mock).mock.calls[0][0] as AppError;
+      expect(error.statusCode).toBe(401);
     });
 
     it('should return transaction history for authenticated user', async () => {
@@ -584,7 +593,9 @@ describe('Stocks Controller', () => {
         mockNext
       );
 
-      expect(statusMock).toHaveBeenCalledWith(400);
+      expect(mockNext).toHaveBeenCalledWith(expect.any(AppError));
+      const error = (mockNext as jest.Mock).mock.calls[0][0] as AppError;
+      expect(error.statusCode).toBe(400);
     });
 
     it('should accept valid limit parameters', async () => {

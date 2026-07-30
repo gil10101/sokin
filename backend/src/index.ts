@@ -6,13 +6,14 @@ import dotenv from 'dotenv';
 // Load environment variables
 dotenv.config();
 
-// Set NODE_ENV to development if not set
+const isServerless = process.env.VERCEL === '1';
+
+// Default NODE_ENV by environment: production on Vercel, development locally
 if (!process.env.NODE_ENV) {
-  process.env.NODE_ENV = 'development';
+  process.env.NODE_ENV = isServerless ? 'production' : 'development';
 }
 
 const isProduction = process.env.NODE_ENV === 'production';
-const isServerless = process.env.VERCEL === '1';
 
 // Import utilities
 import logger from './utils/logger';
@@ -24,6 +25,16 @@ import { auth, db, storage } from './config/firebase';
 import { rateLimiter, clearRateLimits } from './middleware/rateLimiter';
 import { errorHandler } from './middleware/errorHandler';
 import { validateAuthConfig } from './middleware/auth';
+
+// Abort startup on misconfiguration: throw in serverless (fails the
+// function init), exit locally.
+const fatalConfig = (message: string): never => {
+  logger.error(message);
+  if (isServerless) {
+    throw new Error(message);
+  }
+  process.exit(1);
+};
 
 const validateCriticalConfig = (): void => {
   if (!isProduction) return;
@@ -67,11 +78,7 @@ const validateCriticalConfig = (): void => {
   }
 
   if (errors.length > 0) {
-    logger.error('Critical configuration errors detected', { errors });
-    if (isServerless) {
-      throw new Error(`Critical configuration errors:\n${errors.join('\n')}`);
-    }
-    process.exit(1);
+    fatalConfig(`Critical configuration errors:\n${errors.join('\n')}`);
   }
 };
 
@@ -79,31 +86,34 @@ const validateCriticalConfig = (): void => {
 const app = express();
 const port = process.env.PORT || '5001';
 
+// Behind Vercel's proxy req.ip must come from X-Forwarded-For, otherwise
+// rate-limit keys and IP allowlists see the platform's internal address.
+app.set('trust proxy', 1);
+
 // Parse and validate CORS origins
 const corsOrigins = process.env.CORS_ORIGIN?.split(',').map(o => o.trim()).filter(Boolean);
 
 // Validate no wildcards when credentials are enabled (required by CORS spec)
 if (corsOrigins?.includes('*')) {
-  logger.error('CORS_ORIGIN cannot contain "*" when credentials are enabled - browsers will block all requests');
-  process.exit(1);
+  fatalConfig('CORS_ORIGIN cannot contain "*" when credentials are enabled - browsers will block all requests');
 }
 
 // In production, CORS must be explicitly configured
-if (process.env.NODE_ENV === 'production' && (!corsOrigins || corsOrigins.length === 0)) {
-  logger.error('CORS_ORIGIN environment variable must be configured in production');
-  process.exit(1);
+if (isProduction && (!corsOrigins || corsOrigins.length === 0)) {
+  fatalConfig('CORS_ORIGIN environment variable must be configured in production');
 }
 
 // Basic middleware
 app.use(helmet());
 app.use(cors({
   origin: corsOrigins && corsOrigins.length > 0 ? corsOrigins : false,
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Client-Version', 'X-Platform'],
-  credentials: true
+  credentials: true,
+  optionsSuccessStatus: 200
 }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
 // Apply rate limiting to all requests
 // More lenient in development mode
@@ -145,6 +155,16 @@ app.get('/health', (req: Request, res: Response) => {
   res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Root route
+app.get('/', (req: Request, res: Response) => {
+  res.json({
+    name: 'Sokin Backend API',
+    status: 'running',
+    endpoints: { health: '/health', api: '/api/*' },
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Development endpoint to clear rate limits
 if (process.env.NODE_ENV === 'development') {
   app.post('/dev/clear-rate-limits', async (req: Request, res: Response) => {
@@ -160,7 +180,7 @@ if (process.env.NODE_ENV === 'development') {
 
 // 404 handler
 app.use((req: Request, res: Response) => {
-  res.status(404).json({ error: 'Route not found' });
+  res.status(404).json({ success: false, error: 'Route not found' });
 });
 
 // Global error handler
@@ -174,7 +194,6 @@ if (!isServerless) {
   app.listen(Number(port), () => {
     logger.info(`Server running on port ${port}`);
     if (process.env.NODE_ENV === 'development') {
-      logger.info('Running in development mode with mock data');
       logger.info(`CORS configured for: ${process.env.CORS_ORIGIN || 'configured origin'}`);
     }
   });
@@ -182,17 +201,19 @@ if (!isServerless) {
   // Handle unhandled promise rejections
   process.on('unhandledRejection', (err: Error) => {
     logger.error('Unhandled Promise Rejection', { error: err });
-    // In production, consider graceful shutdown:
-    // process.exit(1);
+    if (isProduction) {
+      process.exit(1);
+    }
   });
 
   // Handle uncaught exceptions
   process.on('uncaughtException', (err: Error) => {
     logger.error('Uncaught Exception', { error: err });
-    // In production, consider graceful shutdown:
-    // process.exit(1);
+    if (isProduction) {
+      process.exit(1);
+    }
   });
 }
 
 // Export for Vercel serverless
-export default app; 
+export default app;

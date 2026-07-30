@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/auth-context'
 import { addDays, isBefore, isAfter, parseISO, isWithinInterval } from 'date-fns'
 import { logger } from '@/lib/logger'
+import { API } from '@/lib/api'
 
 /**
  * Hook for fetching upcoming bills data for analytics cards
@@ -51,8 +52,6 @@ export function useUpcomingBills() {
       }
 
       try {
-        // Import the API service dynamically to avoid circular dependencies
-        const { API } = await import('../lib/api')
         const bills = await API.billReminders.getBillReminders() as BillReminder[]
 
         const now = new Date()

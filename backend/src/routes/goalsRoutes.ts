@@ -16,8 +16,10 @@ import {
   deleteGoal 
 } from '../controllers/goalsController';
 import { auth } from '../middleware/auth';
+import { validate, validateParams } from '../middleware/validation';
 import { createRateLimiter } from '../middleware/rateLimiter';
 import { asyncHandler } from '../middleware/errorHandler';
+import { createGoalSchema, updateGoalSchema, contributeGoalSchema, goalIdParamsSchema } from '../models/schemas';
 
 const router = Router();
 
@@ -30,34 +32,34 @@ const writeRateLimit = createRateLimiter.api();
  * @desc    Get user's savings goals
  * @access  Private
  */
-router.get('/', readRateLimit, auth, asyncHandler(getUserGoals));
+router.get('/', auth, readRateLimit, asyncHandler(getUserGoals));
 
 /**
  * @route   POST /api/goals
  * @desc    Create new savings goal
  * @access  Private
  */
-router.post('/', writeRateLimit, auth, asyncHandler(createGoal));
+router.post('/', auth, writeRateLimit, validate(createGoalSchema), asyncHandler(createGoal));
 
 /**
  * @route   POST /api/goals/:goalId/contribute
  * @desc    Add contribution to goal
  * @access  Private
  */
-router.post('/:goalId/contribute', writeRateLimit, auth, asyncHandler(addContribution));
+router.post('/:goalId/contribute', auth, writeRateLimit, validateParams(goalIdParamsSchema), validate(contributeGoalSchema), asyncHandler(addContribution));
 
 /**
  * @route   PUT /api/goals/:goalId
  * @desc    Update goal
  * @access  Private
  */
-router.put('/:goalId', writeRateLimit, auth, asyncHandler(updateGoal));
+router.put('/:goalId', auth, writeRateLimit, validateParams(goalIdParamsSchema), validate(updateGoalSchema), asyncHandler(updateGoal));
 
 /**
  * @route   DELETE /api/goals/:goalId
  * @desc    Delete goal
  * @access  Private
  */
-router.delete('/:goalId', writeRateLimit, auth, asyncHandler(deleteGoal));
+router.delete('/:goalId', auth, writeRateLimit, validateParams(goalIdParamsSchema), asyncHandler(deleteGoal));
 
 export default router; 

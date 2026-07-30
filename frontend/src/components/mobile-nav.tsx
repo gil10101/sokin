@@ -3,11 +3,12 @@
 import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, CreditCard, Wallet, Repeat, BarChart3, PlusCircle, User, Settings, Menu, X, Target, Calendar, TrendingUp, Building } from "lucide-react"
+import { Home, CreditCard, Wallet, Repeat, BarChart3, PlusCircle, User, Settings, Menu, LogOut, Target, Calendar, TrendingUp, Building } from "lucide-react"
 import { Button } from "./ui/button"
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "./ui/sheet"
 import { ScrollArea } from "./ui/scroll-area"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/contexts/auth-context"
 
 const navigationItems = [
   {
@@ -75,6 +76,10 @@ const navigationItems = [
 export function MobileNav() {
   const [open, setOpen] = React.useState(false)
   const pathname = usePathname()
+  const { signOut } = useAuth()
+
+  const isActive = (href: string) =>
+    href === "/dashboard" ? pathname === href : !!pathname?.startsWith(href)
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -117,8 +122,9 @@ export function MobileNav() {
                   className={cn(
                     "flex items-center px-3 py-3 rounded-lg text-sm font-medium transition-colors",
                     "text-cream/60 hover:text-cream hover:bg-cream/5",
-                    pathname === item.href && "bg-cream/5 text-cream"
+                    isActive(item.href) && "bg-cream/5 text-cream"
                   )}
+                  aria-current={isActive(item.href) ? "page" : undefined}
                 >
                   <item.icon className="h-5 w-5 mr-3" />
                   {item.title}
@@ -126,6 +132,16 @@ export function MobileNav() {
               ))}
             </nav>
           </ScrollArea>
+
+          <div className="border-t border-cream/10 p-4">
+            <button
+              onClick={() => { setOpen(false); signOut() }}
+              className="flex w-full items-center px-3 py-3 rounded-lg text-sm font-medium text-cream/60 hover:text-cream hover:bg-cream/5 transition-colors"
+            >
+              <LogOut className="h-5 w-5 mr-3" />
+              Sign out
+            </button>
+          </div>
         </div>
       </SheetContent>
     </Sheet>

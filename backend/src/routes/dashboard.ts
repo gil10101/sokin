@@ -23,6 +23,6 @@ const readRateLimit = createRateLimiter.read(); // 200 requests per 15 minutes
  * @desc    Get dashboard summary data (expenses, budgets, notifications)
  * @access  Private
  */
-router.get('/', readRateLimit, auth, asyncHandler(getDashboard));
+router.get('/', auth, readRateLimit, asyncHandler(getDashboard));
 
 export default router;

@@ -82,6 +82,15 @@ export interface FinnhubSymbolLookup {
   result: Array<{ description: string; displaySymbol: string; symbol: string; type: string }>
 }
 
+export interface FinnhubMetrics {
+  metric?: {
+    '52WeekHigh'?: number
+    '52WeekLow'?: number
+    '52WeekPriceReturnDaily'?: number
+    '10DayAverageTradingVolume'?: number
+  }
+}
+
 export interface AggregatedHolding {
   shares: number; totalInvested: number; avgPrice: number
 }
@@ -100,7 +109,7 @@ async function callFinnhubAPI<T>(endpoint: string, cacheDuration?: number): Prom
   validateFinnhubConfig()
 
   const cacheKey = `finnhub:${endpoint}`
-  const cachedData = cache.get<T>(cacheKey)
+  const cachedData = await cache.getAsync<T>(cacheKey)
   if (cachedData) return cachedData
 
   return new Promise((resolve, reject) => {
@@ -117,7 +126,7 @@ async function callFinnhubAPI<T>(endpoint: string, cacheDuration?: number): Prom
     }, (res) => {
       let data = ''
       res.on('data', (chunk) => { data += chunk })
-      res.on('end', () => {
+      res.on('end', async () => {
         try {
           if (res.statusCode !== 200) {
             reject(new Error(`Finnhub API error: ${res.statusCode} - ${res.statusMessage}`))
@@ -128,7 +137,7 @@ async function callFinnhubAPI<T>(endpoint: string, cacheDuration?: number): Prom
             reject(new Error(`Finnhub API error: ${jsonData.error}`))
             return
           }
-          if (cacheDuration) cache.set(cacheKey, jsonData, cacheDuration)
+          if (cacheDuration) await cache.setAsync(cacheKey, jsonData, cacheDuration)
           resolve(jsonData)
         } catch (error) {
           reject(new Error(`Invalid response from Finnhub API: ${error instanceof Error ? error.message : 'Unknown error'}`))
@@ -195,15 +204,30 @@ function formatMarketCap(marketCapInMillions: number | undefined): string {
 }
 
 function convertFinnhubToStockData(
-  symbol: string, 
-  quote: FinnhubQuote, 
+  symbol: string,
+  quote: FinnhubQuote,
   profile?: FinnhubProfile,
-  candles?: FinnhubCandle
+  candles?: FinnhubCandle,
+  metrics?: FinnhubMetrics
 ): StockData {
   const change = quote.c - quote.pc
   const changePercent = quote.pc !== 0 ? (change / quote.pc) * 100 : 0
 
   let weekHigh52 = quote.h, weekLow52 = quote.l, volume = 0, avgVolume = 0, weekChange52 = 0, chart: number[] = []
+
+  // /stock/metric supplies true 52-week stats and average volume on the free
+  // tier (the bare /quote has neither - its h/l are just today's range)
+  const m = metrics?.metric
+  if (m) {
+    if (typeof m['52WeekHigh'] === 'number') weekHigh52 = m['52WeekHigh']
+    if (typeof m['52WeekLow'] === 'number') weekLow52 = m['52WeekLow']
+    if (typeof m['52WeekPriceReturnDaily'] === 'number') weekChange52 = m['52WeekPriceReturnDaily']
+    if (typeof m['10DayAverageTradingVolume'] === 'number') {
+      // Finnhub reports this in millions of shares
+      avgVolume = Math.round(m['10DayAverageTradingVolume'] * 1_000_000)
+      volume = avgVolume
+    }
+  }
 
   if (candles && candles.s === 'ok' && candles.c.length > 0) {
     weekHigh52 = Math.max(...candles.h)

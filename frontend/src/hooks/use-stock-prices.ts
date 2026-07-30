@@ -1,10 +1,17 @@
 /**
- * Real-time stock price hooks.
+ * Periodic stock price updates.
+ *
+ * Polls the backend quote API every 30 seconds via React Query (matching the
+ * backend's 30s quote cache TTL). Replaces the old socket.io subscription,
+ * which targeted a websocket server that no longer exists.
  */
 
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useCallback, useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { StockAPI } from '@/lib/stock-api'
-import { logger } from '@/lib/logger'
+
+const REFRESH_INTERVAL_MS = 30_000
+const VALID_SYMBOL = /^[A-Z0-9.^-]{1,10}$/
 
 interface StockPriceUpdate {
   symbol: string
@@ -30,234 +37,67 @@ interface UseStockPricesReturn {
   reconnect: () => void
 }
 
-export function useStockPrices({ 
-  symbols, 
-  enabled = true, 
-  onError,
-  onConnectionChange 
+export function useStockPrices({
+  symbols,
+  enabled = true,
 }: UseStockPricesOptions): UseStockPricesReturn {
-  const [prices, setPrices] = useState<Record<string, StockPriceUpdate>>({})
-  const [connected, setConnected] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const unsubscribeRef = useRef<(() => void) | null>(null)
-  const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const validSymbols = useMemo(
+    () => [...new Set(symbols.filter(s => VALID_SYMBOL.test(s)))].sort(),
+    [symbols]
+  )
 
-  const handlePriceUpdate = useCallback((symbol: string, data: { price: number; change?: number; changePercent?: number; timestamp?: number }) => {
-    try {
-      if (!data || typeof data.price !== 'number') {
-        return
-      }
+  const query = useQuery({
+    queryKey: ['stock-prices', validSymbols],
+    enabled: enabled && validSymbols.length > 0,
+    refetchInterval: REFRESH_INTERVAL_MS,
+    refetchIntervalInBackground: false,
+    staleTime: REFRESH_INTERVAL_MS,
+    queryFn: async (): Promise<Record<string, StockPriceUpdate>> => {
+      const results = await Promise.allSettled(
+        validSymbols.map(symbol => StockAPI.getStockData(symbol))
+      )
 
-      setPrices(prev => ({
-        ...prev,
-        [symbol]: {
-          symbol,
-          price: data.price,
-          change: data.change || 0,
-          changePercent: data.changePercent || 0,
-          timestamp: data.timestamp ? new Date(data.timestamp).toISOString() : new Date().toISOString(),
+      const prices: Record<string, StockPriceUpdate> = {}
+      results.forEach((result, index) => {
+        if (result.status === 'fulfilled' && typeof result.value?.price === 'number') {
+          const symbol = validSymbols[index]
+          prices[symbol] = {
+            symbol,
+            price: result.value.price,
+            change: result.value.change ?? 0,
+            changePercent: result.value.changePercent ?? 0,
+            timestamp: new Date().toISOString(),
+          }
         }
-      }))
-      
-      if (!connected) {
-        setConnected(true)
-        setError(null)
-        onConnectionChange?.(true)
-      }
-    } catch (err) {
-      logger.error('Failed to process price update', {
-        error: err instanceof Error ? err.message : 'Unknown error',
-        symbols
       })
-      setError('Failed to process price update')
-      onError?.('Failed to process price update')
-    }
-  }, [connected, onConnectionChange, onError, symbols])
+      return prices
+    },
+  })
 
-  const reconnect = useCallback(() => {
-    if (unsubscribeRef.current) {
-      unsubscribeRef.current()
-      unsubscribeRef.current = null
-    }
-    
-    setConnected(false)
-    setError(null)
-    
-    if (connectionTimeoutRef.current) {
-      clearTimeout(connectionTimeoutRef.current)
-    }
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current)
-    }
-    
-    reconnectTimeoutRef.current = setTimeout(() => {
-      if (enabled && symbols.length > 0) {
-        try {
-          const unsubscribe = StockAPI.subscribeToStockPrices(symbols, handlePriceUpdate)
-          unsubscribeRef.current = unsubscribe
-        } catch (err) {
-          const errorMsg = err instanceof Error ? err.message : 'Failed to reconnect'
-          setError(errorMsg)
-          onError?.(errorMsg)
-        }
+  const prices = query.data ?? {}
+
+  const getPrice = useCallback(
+    (symbol: string) => prices[symbol] ?? null,
+    [prices]
+  )
+
+  const getPrices = useCallback(
+    (requested: string[]) => {
+      const subset: Record<string, StockPriceUpdate> = {}
+      for (const symbol of requested) {
+        if (prices[symbol]) subset[symbol] = prices[symbol]
       }
-    }, 2000) // 2s
-  }, [enabled, symbols, handlePriceUpdate, onError])
-
-  const hasReceivedDataRef = useRef(false)
-  
-  useEffect(() => {
-    if (Object.keys(prices).length > 0) {
-      hasReceivedDataRef.current = true
-    }
-  }, [prices])
-
-  useEffect(() => {
-    if (unsubscribeRef.current) {
-      unsubscribeRef.current()
-      unsubscribeRef.current = null
-    }
-    
-    if (connectionTimeoutRef.current) {
-      clearTimeout(connectionTimeoutRef.current)
-    }
-
-    if (!enabled || symbols.length === 0) {
-      setConnected(false)
-      onConnectionChange?.(false)
-      return
-    }
-
-    const invalidSymbols = symbols.filter(symbol => 
-      !symbol || typeof symbol !== 'string' || !/^[A-Z^]{1,10}$/.test(symbol)
-    )
-    
-    if (invalidSymbols.length > 0) {
-      const errorMsg = `Invalid stock symbols: ${invalidSymbols.join(', ')}`
-      setError(errorMsg)
-      onError?.(errorMsg)
-      return
-    }
-
-    // Limit number of symbols to prevent abuse
-    if (symbols.length > 20) {
-      const errorMsg = 'Too many symbols (maximum 20 allowed)'
-      setError(errorMsg)
-      onError?.(errorMsg)
-      return
-    }
-
-    try {
-      setError(null)
-      hasReceivedDataRef.current = false
-      
-      // Subscribe to price updates
-      const unsubscribe = StockAPI.subscribeToStockPrices(symbols, handlePriceUpdate)
-      unsubscribeRef.current = unsubscribe
-
-      // Set a timeout to detect if connection is working
-      connectionTimeoutRef.current = setTimeout(() => {
-        if (!hasReceivedDataRef.current) {
-          setConnected(false)
-          onConnectionChange?.(false)
-          const errorMsg = 'Real-time price updates not available'
-          setError(errorMsg)
-          onError?.(errorMsg)
-        }
-      }, 10000) // 10 second timeout
-
-      return () => {
-        if (unsubscribeRef.current) {
-          unsubscribeRef.current()
-          unsubscribeRef.current = null
-        }
-        if (connectionTimeoutRef.current) {
-          clearTimeout(connectionTimeoutRef.current)
-          connectionTimeoutRef.current = null
-        }
-        if (reconnectTimeoutRef.current) {
-          clearTimeout(reconnectTimeoutRef.current)
-          reconnectTimeoutRef.current = null
-        }
-        setConnected(false)
-        onConnectionChange?.(false)
-      }
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'Failed to connect to price updates'
-      setError(errorMsg)
-      onError?.(errorMsg)
-      setConnected(false)
-      onConnectionChange?.(false)
-    }
-
-    // Cleanup function
-    return () => {
-      if (unsubscribeRef.current) {
-        unsubscribeRef.current()
-        unsubscribeRef.current = null
-      }
-      if (connectionTimeoutRef.current) {
-        clearTimeout(connectionTimeoutRef.current)
-      }
-    }
-  }, [symbols, enabled, handlePriceUpdate, onError, onConnectionChange])
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (unsubscribeRef.current) {
-        unsubscribeRef.current()
-      }
-      if (connectionTimeoutRef.current) {
-        clearTimeout(connectionTimeoutRef.current)
-      }
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current)
-      }
-    }
-  }, [])
-
-  const getPrice = useCallback((symbol: string): StockPriceUpdate | null => {
-    if (!symbol || typeof symbol !== 'string') {
-      return null
-    }
-    return prices[symbol] || null
-  }, [prices])
-
-  const getPrices = useCallback((symbolList: string[]): Record<string, StockPriceUpdate> => {
-    if (!Array.isArray(symbolList)) {
-      return {}
-    }
-    
-    const result: Record<string, StockPriceUpdate> = {}
-    symbolList.forEach(symbol => {
-      if (typeof symbol === 'string' && prices[symbol]) {
-        result[symbol] = prices[symbol]
-      }
-    })
-    return result
-  }, [prices])
+      return subset
+    },
+    [prices]
+  )
 
   return {
     prices,
-    connected,
-    error,
+    connected: query.isSuccess,
+    error: query.isError ? 'Price updates unavailable' : null,
     getPrice,
     getPrices,
-    reconnect,
+    reconnect: query.refetch,
   }
 }
-
-export function useStockPrice(symbol: string, enabled = true) {
-  const { connected, error, getPrice } = useStockPrices({ 
-    symbols: symbol ? [symbol] : [], 
-    enabled: enabled && !!symbol 
-  })
-
-  return {
-    price: getPrice(symbol),
-    connected,
-    error,
-  }
-} 

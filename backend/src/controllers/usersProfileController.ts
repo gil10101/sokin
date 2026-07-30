@@ -18,6 +18,7 @@ import { db } from '../config/firebase';
 import { AppError } from '../middleware/errorHandler';
 import logger from '../utils/logger';
 import cache from '../utils/cache';
+import { userProfileCacheKey } from './users';
 
 /** Cache TTL for user profile data in seconds */
 const USER_PROFILE_CACHE_TTL = 300; // 5 minutes
@@ -108,13 +109,10 @@ export const getUserProfile = async (
     }
 
     // Check cache first
-    const cacheKey = `user_profile:${userId}`;
-    const cachedProfile = await cache.getAsync<UserProfile>(cacheKey);
+    const cacheKey = userProfileCacheKey(userId);
+    const cachedProfile = await cache.getAsync<{ success: boolean; data: UserProfile }>(cacheKey);
     if (cachedProfile) {
-      res.status(200).json({
-        success: true,
-        data: cachedProfile,
-      });
+      res.status(200).json(cachedProfile);
       return;
     }
 
@@ -126,14 +124,12 @@ export const getUserProfile = async (
     }
 
     const profileData = userDoc.data() as UserProfile;
+    const result = { success: true, data: profileData };
 
     // Cache the profile
-    await cache.setAsync(cacheKey, profileData, USER_PROFILE_CACHE_TTL);
+    await cache.setAsync(cacheKey, result, USER_PROFILE_CACHE_TTL);
 
-    res.status(200).json({
-      success: true,
-      data: profileData,
-    });
+    res.status(200).json(result);
   } catch (error) {
     if (error instanceof AppError) {
       next(error);
@@ -352,7 +348,7 @@ export const updateUserProfile = async (
     await db.collection('users').doc(userId).update(updateData);
 
     // Invalidate cache
-    await cache.delAsync(`user_profile:${userId}`);
+    await cache.delAsync(userProfileCacheKey(userId));
 
     // Return updated profile
     const updatedProfile = {

@@ -6,7 +6,7 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import {
   updateProfile,
-  updateEmail,
+  verifyBeforeUpdateEmail,
   updatePassword,
   EmailAuthProvider,
   reauthenticateWithCredential,
@@ -47,13 +47,6 @@ export default function ProfilePage(props: ProfilePageProps) {
   const [userData, setUserData] = useState<UserProfile | null>(null)
   const [isInitialized, setIsInitialized] = useState(false)
 
-  // Redirect if not logged in
-  useEffect(() => {
-    if (!loading && !user) {
-      router.push("/login")
-    }
-  }, [user, loading, router])
-
   // Fetch user data only once when component mounts and user is available
   useEffect(() => {
     if (!user || isInitialized) return
@@ -78,7 +71,7 @@ export default function ProfilePage(props: ProfilePageProps) {
     }
 
     fetchUserData()
-  }, [user, toast, isInitialized])
+  }, [user, isInitialized])
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -86,18 +79,24 @@ export default function ProfilePage(props: ProfilePageProps) {
 
     setUpdating(true)
     try {
-      // Update display name in Firebase Auth
-      await updateProfile(user, { displayName: name })
-
-      // Update email if changed
-      if (email !== user.email) {
-        await updateEmail(user, email)
-      }
-
+      // Backend first: if this fails nothing has changed anywhere
       await userProfileAPI.updateProfile(user.uid, {
         name,
-        email,
       })
+
+      // Then mirror the display name into Firebase Auth
+      await updateProfile(user, { displayName: name })
+
+      // Email changes go through Firebase's verification flow - the address
+      // only switches after the user clicks the link (works with email
+      // enumeration protection, unlike the deprecated updateEmail)
+      if (email !== user.email) {
+        await verifyBeforeUpdateEmail(user, email)
+        toast({
+          title: "Confirm your new email",
+          description: `We sent a verification link to ${email}. Your email updates once you confirm it.`,
+        })
+      }
 
       toast({
         title: "Profile updated",
@@ -180,7 +179,7 @@ export default function ProfilePage(props: ProfilePageProps) {
       <main className="flex-1 overflow-auto p-6 md:p-8 lg:p-10">
         <div className="max-w-3xl mx-auto">
           <header className="mb-8">
-            <h1 className="text-2xl md:text-3xl font-medium font-outfit">Profile</h1>
+            <h1 className="ml-12 md:ml-0 text-2xl md:text-3xl font-medium font-outfit">Profile</h1>
             <p className="text-cream/60 text-sm mt-1 font-outfit">Manage your account settings and preferences</p>
           </header>
 
@@ -211,12 +210,6 @@ export default function ProfilePage(props: ProfilePageProps) {
                         {name ? name.charAt(0).toUpperCase() : user?.displayName?.charAt(0)?.toUpperCase() || "U"}
                       </AvatarFallback>
                     </Avatar>
-                    <Button
-                      variant="outline"
-                      className="text-xs bg-cream/5 border-cream/10 text-cream hover:bg-cream/10 hover:text-cream"
-                    >
-                      Change Avatar
-                    </Button>
                   </div>
                   <div className="flex-1">
                     <h2 className="text-xl font-medium mb-2">{name || "User"}</h2>
@@ -239,6 +232,8 @@ export default function ProfilePage(props: ProfilePageProps) {
                     </label>
                     <Input
                       id="name"
+                      name="name"
+                      autoComplete="name"
                       type="text"
                       value={name}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
@@ -254,6 +249,8 @@ export default function ProfilePage(props: ProfilePageProps) {
                     </label>
                     <Input
                       id="email"
+                      name="email"
+                      autoComplete="email"
                       type="email"
                       value={email}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
@@ -293,6 +290,8 @@ export default function ProfilePage(props: ProfilePageProps) {
                     <div className="relative">
                       <Input
                         id="current-password"
+                        name="current-password"
+                        autoComplete="current-password"
                         type={showCurrentPassword ? "text" : "password"}
                         value={currentPassword}
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCurrentPassword(e.target.value)}
@@ -317,6 +316,8 @@ export default function ProfilePage(props: ProfilePageProps) {
                     <div className="relative">
                       <Input
                         id="new-password"
+                        name="new-password"
+                        autoComplete="new-password"
                         type={showNewPassword ? "text" : "password"}
                         value={newPassword}
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewPassword(e.target.value)}
@@ -342,6 +343,8 @@ export default function ProfilePage(props: ProfilePageProps) {
                     <div className="relative">
                       <Input
                         id="confirm-password"
+                        name="confirm-password"
+                        autoComplete="new-password"
                         type={showConfirmPassword ? "text" : "password"}
                         value={confirmPassword}
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfirmPassword(e.target.value)}

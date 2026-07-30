@@ -165,6 +165,11 @@ jest.mock('../../../src/utils/logger', () => ({
   },
 }));
 
+// Mock dashboard cache invalidation
+jest.mock('../../../src/controllers/dashboardController', () => ({
+  invalidateDashboardCache: jest.fn().mockResolvedValue(undefined),
+}));
+
 const firebaseMocks = require('../../../src/config/firebase').__mocks;
 
 describe('Notification Controller', () => {
@@ -411,9 +416,7 @@ describe('Notification Controller', () => {
   });
 
   describe('checkBudgetAlerts', () => {
-    it('should check budget alerts for user', async () => {
-      mockRequest.body = { userId: 'user-123' };
-
+    it('should check budget alerts for all users with active budgets', async () => {
       await checkBudgetAlerts(
         mockRequest as Request,
         mockResponse as Response,
@@ -423,12 +426,15 @@ describe('Notification Controller', () => {
       expect(jsonMock).toHaveBeenCalledWith(
         expect.objectContaining({
           success: true,
-          data: expect.any(Array),
+          data: expect.objectContaining({
+            usersProcessed: expect.any(Number),
+            alertsGenerated: expect.any(Number),
+          }),
         })
       );
     });
 
-    it('should call next with error when userId is missing', async () => {
+    it('should not require userId in request body', async () => {
       mockRequest.body = {};
 
       await checkBudgetAlerts(
@@ -437,7 +443,12 @@ describe('Notification Controller', () => {
         mockNext
       );
 
-      expect(mockNext).toHaveBeenCalledWith(expect.any(Error));
+      // Should succeed without userId since it now queries all active budgets
+      expect(jsonMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+        })
+      );
     });
   });
 });

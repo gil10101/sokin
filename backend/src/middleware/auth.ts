@@ -198,11 +198,20 @@ export const requireCronAuth = async (req: Request, res: Response, next: NextFun
       }
     }
 
-    // Get the expected secret (validated at startup)
-    const expectedSecret = process.env.CRON_SECRET!; // Safe due to startup validation
+    // Fail closed if the secret is not configured: without this check a
+    // missing CRON_SECRET would compare against the string "undefined" and
+    // make the cron endpoints publicly callable.
+    const expectedSecret = process.env.CRON_SECRET;
+    if (!expectedSecret) {
+      logger.error('CRON_SECRET is not configured - rejecting cron request');
+      throw new AppError('Cron authentication unavailable', 503, true);
+    }
 
-    // Get the cron secret from header (returns string | undefined)
-    const cronSecretHeader = req.get('x-cron-secret');
+    // Accept the secret from either the x-cron-secret header (manual/external
+    // schedulers) or Authorization: Bearer (the convention Vercel Cron uses
+    // when a CRON_SECRET env var is configured).
+    const bearerMatch = req.headers.authorization?.match(/^Bearer (.+)$/);
+    const cronSecretHeader = req.get('x-cron-secret') || bearerMatch?.[1];
 
     if (!cronSecretHeader) {
       const rawIp = req.ip || req.socket.remoteAddress;

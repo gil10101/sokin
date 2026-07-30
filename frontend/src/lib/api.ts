@@ -113,7 +113,7 @@ export interface ReceiptProcessingResult {
 
 /** Expense structure */
 export interface Expense {
-  id?: string
+  id: string
   userId: string
   name: string
   amount: number
@@ -165,20 +165,26 @@ export interface PaginatedResponse<T> {
 }
 
 /** Budget structure */
+export type BudgetPeriod = 'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom'
+
 export interface Budget {
-  id?: string
+  id: string
   userId: string
   name: string
   amount: number
   spent?: number
   category?: string
   categories?: string[]
-  period: 'daily' | 'weekly' | 'monthly' | 'yearly'
+  period: BudgetPeriod
   startDate: string
-  endDate?: string
+  endDate?: string | null
   notes?: string | null
   createdAt: string
   updatedAt?: string
+  /** Server-computed spend against this budget for the current period */
+  currentSpent?: number
+  remainingAmount?: number
+  isActive?: boolean
 }
 
 /** Budget creation payload */
@@ -187,9 +193,9 @@ export interface CreateBudgetPayload {
   amount: number
   category?: string
   categories?: string[]
-  period: 'daily' | 'weekly' | 'monthly' | 'yearly'
+  period: BudgetPeriod
   startDate: string
-  endDate?: string
+  endDate?: string | null
   notes?: string | null
 }
 
@@ -237,9 +243,9 @@ export interface Subscription {
 
 /** User profile structure */
 export interface UserProfile {
-  id?: string
+  id: string
   email: string
-  name?: string
+  name: string
   createdAt: string
   updatedAt?: string
   settings?: {

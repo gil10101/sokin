@@ -2,10 +2,10 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
-import { format } from "date-fns"
+import { format, startOfDay } from "date-fns"
 import { CalendarIcon, Check, ChevronsUpDown, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { DashboardSidebar } from "@/components/dashboard/sidebar"
@@ -20,7 +20,9 @@ import { MotionContainer } from "@/components/ui/motion-container"
 import { ReceiptScanner } from "@/components/dashboard/receipt-scanner"
 import { useQueryClient } from "@tanstack/react-query"
 import { logger } from "@/lib/logger"
-import { expensesAPI, userProfileAPI } from "@/lib/api"
+import { expensesAPI } from "@/lib/api"
+import { useCategories } from "@/hooks/use-categories"
+import { validateExpenseAmount, isValidAmountInput } from "@/lib/expense-validation"
 
 // Import the ParsedReceiptData type from receipt-scanner
 interface ParsedReceiptData {
@@ -44,20 +46,6 @@ interface ReceiptData extends ParsedReceiptData {
   [key: string]: unknown
 }
 
-// Default categories if we can't fetch from Firestore
-const DEFAULT_CATEGORIES = [
-  "Dining",
-  "Shopping",
-  "Transport",
-  "Utilities",
-  "Entertainment",
-  "Health",
-  "Travel",
-  "Housing",
-  "Food",
-  "Other",
-]
-
 interface AddExpensePageProps {
   params?: Promise<Record<string, string>>;
   searchParams?: Promise<Record<string, string>>;
@@ -76,34 +64,14 @@ export default function AddExpensePage(props: AddExpensePageProps) {
   const [name, setName] = useState("")
   const [amount, setAmount] = useState("")
   const [description, setDescription] = useState("")
-  const [date, setDate] = useState<Date>(new Date())
+  const [date, setDate] = useState<Date>(() => startOfDay(new Date()))
   const [category, setCategory] = useState("")
-  const [categories, setCategories] = useState<string[]>(DEFAULT_CATEGORIES)
+  const { categories } = useCategories()
   const [loading, setLoading] = useState(false)
   const [openCategoryPopover, setOpenCategoryPopover] = useState(false)
   const [openDatePopover, setOpenDatePopover] = useState(false)
   const [receiptImageUrl, setReceiptImageUrl] = useState("")
   const [receiptData, setReceiptData] = useState<ReceiptData | null>(null)
-
-  useEffect(() => {
-    // Fetch categories from Firestore
-    const fetchCategories = async () => {
-      if (!user) return
-
-      try {
-        const userCategories = await userProfileAPI.getCategories(user.uid)
-        if (userCategories.length > 0) {
-          setCategories(userCategories)
-          return
-        }
-        setCategories(DEFAULT_CATEGORIES)
-      } catch (error) {
-        setCategories(DEFAULT_CATEGORIES)
-      }
-    }
-
-    fetchCategories()
-  }, [user])
 
   const handleReceiptData = (data: ParsedReceiptData) => {
     // Auto-fill form with receipt data
@@ -112,11 +80,9 @@ export default function AddExpensePage(props: AddExpensePageProps) {
     if (data.suggestedCategory) setCategory(data.suggestedCategory)
     if (data.suggestedDescription) setDescription(data.suggestedDescription)
     if (data.date) {
-      try {
-        setDate(new Date(data.date))
-      } catch (e) {
-        // Keep current date if parsing fails
-      }
+      // Guard against unparseable dates so format() doesn't crash the render
+      const parsedDate = new Date(data.date)
+      setDate(isNaN(parsedDate.getTime()) ? startOfDay(new Date()) : parsedDate)
     }
     if (data.imageUrl) setReceiptImageUrl(data.imageUrl || "")
     if (data) setReceiptData(data as ReceiptData)
@@ -144,11 +110,11 @@ export default function AddExpensePage(props: AddExpensePageProps) {
     }
 
     // Validate amount
-    const parsedAmount = Number.parseFloat(amount)
-    if (isNaN(parsedAmount) || parsedAmount <= 0) {
+    const amountValidation = validateExpenseAmount(amount)
+    if (!amountValidation.ok) {
       toast({
         title: "Invalid amount",
-        description: "Please enter a valid amount greater than 0",
+        description: amountValidation.error,
         variant: "destructive",
       })
       return
@@ -157,27 +123,27 @@ export default function AddExpensePage(props: AddExpensePageProps) {
     setLoading(true)
 
     try {
-      // Prepare receipt data for API payload
+      // Prepare receipt data for API payload, omitting empty values
       const serializableReceiptData = receiptData ? {
-        merchant: receiptData.merchant || null,
-        amount: receiptData.amount || null,
-        date: receiptData.date || null,
-        items: receiptData.items || [],
         confidence: receiptData.confidence || 0,
-        suggestedName: receiptData.suggestedName || null,
-        suggestedCategory: receiptData.suggestedCategory || null,
-        suggestedDescription: receiptData.suggestedDescription || null,
-        imageUrl: receiptData.imageUrl || null,
+        ...(receiptData.merchant ? { merchant: receiptData.merchant } : {}),
+        ...(receiptData.amount ? { amount: receiptData.amount } : {}),
+        ...(receiptData.date ? { date: receiptData.date } : {}),
+        ...(receiptData.items && receiptData.items.length > 0 ? { items: receiptData.items } : {}),
+        ...(receiptData.suggestedName ? { suggestedName: receiptData.suggestedName } : {}),
+        ...(receiptData.suggestedCategory ? { suggestedCategory: receiptData.suggestedCategory } : {}),
+        ...(receiptData.suggestedDescription ? { suggestedDescription: receiptData.suggestedDescription } : {}),
+        ...(receiptData.imageUrl ? { imageUrl: receiptData.imageUrl } : {}),
       } : null
 
       await expensesAPI.createExpense({
         name: name.trim(),
-        amount: parsedAmount,
+        amount: amountValidation.value,
         description: description?.trim() || "",
         category: category.trim(),
         date: date.toISOString(),
-        receiptImageUrl: receiptImageUrl?.trim() || "",
-        receiptData: serializableReceiptData,
+        ...(receiptImageUrl?.trim() ? { receiptImageUrl: receiptImageUrl.trim() } : {}),
+        ...(serializableReceiptData ? { receiptData: serializableReceiptData } : {}),
       })
 
       toast({
@@ -186,9 +152,11 @@ export default function AddExpensePage(props: AddExpensePageProps) {
       })
 
       // Invalidate and refetch expenses data to update all components that use expense data
-      await queryClient.invalidateQueries({ 
-        queryKey: ['expenses'] 
-      })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['expenses'] }),
+        queryClient.invalidateQueries({ queryKey: ['dashboard'] }),
+        queryClient.invalidateQueries({ queryKey: ['analytics'] }),
+      ])
 
       // Add notification
       await addNotification({
@@ -203,7 +171,7 @@ export default function AddExpensePage(props: AddExpensePageProps) {
       setAmount("")
       setDescription("")
       setCategory("")
-      setDate(new Date())
+      setDate(startOfDay(new Date()))
       setReceiptImageUrl("")
       setReceiptData(null)
 
@@ -279,7 +247,7 @@ export default function AddExpensePage(props: AddExpensePageProps) {
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                       const value = e.target.value
                       // Allow empty string or valid positive numbers with up to 2 decimal places
-                      if (value === "" || /^\d*\.?\d{0,2}$/.test(value)) {
+                      if (isValidAmountInput(value)) {
                         setAmount(value)
                       }
                     }}
@@ -358,7 +326,7 @@ export default function AddExpensePage(props: AddExpensePageProps) {
                         mode="single"
                         selected={date}
                         onSelect={(selectedDate) => {
-                          setDate(selectedDate || new Date())
+                          setDate(selectedDate || startOfDay(new Date()))
                           setOpenDatePopover(false)
                         }}
                       />

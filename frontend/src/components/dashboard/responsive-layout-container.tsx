@@ -1,7 +1,7 @@
 "use client"
 
 import React from "react"
-import { usePortfolioState } from "@/hooks/use-portfolio-state"
+import { PortfolioState } from "@/hooks/use-portfolio-state"
 
 interface ResponsiveLayoutContainerProps {
   stockMarketSection: React.ReactNode
@@ -9,6 +9,7 @@ interface ResponsiveLayoutContainerProps {
   recentTransactionsSection: React.ReactNode
   billsSection?: React.ReactNode
   className?: string
+  portfolioState: PortfolioState
 }
 
 /**
@@ -21,8 +22,8 @@ export function ResponsiveLayoutContainer({
   recentTransactionsSection,
   billsSection,
   className = "",
+  portfolioState,
 }: ResponsiveLayoutContainerProps) {
-  const portfolioState = usePortfolioState()
 
   // If portfolio is empty or loading, use compact layout
   const shouldUseCompactLayout = portfolioState.isEmpty && !portfolioState.isLoading

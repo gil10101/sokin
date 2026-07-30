@@ -2,10 +2,10 @@
 
 import type React from "react"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
-import { format, parseISO } from "date-fns"
+import { format, parseISO, startOfDay } from "date-fns"
 import { CalendarIcon, Check, ChevronsUpDown } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/sidebar"
 import { Input } from "@/components/ui/input"
@@ -17,21 +17,9 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { useToast } from "@/hooks/use-toast"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { useNotifications } from "@/contexts/notifications-context"
-import { expensesAPI, userProfileAPI } from "@/lib/api"
-
-// Default categories if we can't fetch from Firestore
-const DEFAULT_CATEGORIES = [
-  "Dining",
-  "Shopping",
-  "Transport",
-  "Utilities",
-  "Entertainment",
-  "Health",
-  "Travel",
-  "Housing",
-  "Food",
-  "Other",
-]
+import { expensesAPI } from "@/lib/api"
+import { useCategories } from "@/hooks/use-categories"
+import { validateExpenseAmount, isValidAmountInput } from "@/lib/expense-validation"
 
 interface EditExpensePageProps {
   params?: Promise<{ id: string }>;
@@ -41,6 +29,8 @@ interface EditExpensePageProps {
 export default function EditExpensePage(props: EditExpensePageProps) {
   const [collapsed, setCollapsed] = useState(false)
   const { user } = useAuth()
+  const userRef = useRef(user)
+  useEffect(() => { userRef.current = user }, [user])
   const router = useRouter()
   const params = useParams()
   const { toast } = useToast()
@@ -50,55 +40,61 @@ export default function EditExpensePage(props: EditExpensePageProps) {
   const [name, setName] = useState("")
   const [amount, setAmount] = useState("")
   const [description, setDescription] = useState("")
-  const [date, setDate] = useState<Date>(new Date())
+  const [date, setDate] = useState<Date>(() => startOfDay(new Date()))
   const [category, setCategory] = useState("")
-  const [categories, setCategories] = useState<string[]>(DEFAULT_CATEGORIES)
+  const { categories } = useCategories()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [openCategoryPopover, setOpenCategoryPopover] = useState(false)
   const [openDatePopover, setOpenDatePopover] = useState(false)
   const [mounted, setMounted] = useState(false)
 
+  // Snapshot of the loaded expense, used for the unsaved-changes check on Cancel
+  const initialFormRef = useRef<{
+    name: string
+    amount: string
+    description: string
+    category: string
+    date: string
+  } | null>(null)
+
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  const fetchCategories = useCallback(async () => {
-    if (!user) return
-
-    try {
-      const userCategories = await userProfileAPI.getCategories(user.uid)
-      if (userCategories.length > 0) {
-        setCategories(userCategories)
-        return
-      }
-      setCategories(DEFAULT_CATEGORIES)
-    } catch (error) {
-      // Use default categories if there's an error
-      setCategories(DEFAULT_CATEGORIES)
-    }
-  }, [user])
-
   const fetchExpense = useCallback(async () => {
-    if (!user || !expenseId) return
+    if (!userRef.current || !expenseId) return
 
     try {
       const expenseData = await expensesAPI.getExpenseById(expenseId)
 
-      // Set form data
-      setName(expenseData.name || "")
-      setAmount(expenseData.amount?.toString() || "")
-      setDescription(expenseData.description || "")
-      setCategory(expenseData.category || "")
+      const initialName = expenseData.name || ""
+      const initialAmount = expenseData.amount?.toString() || ""
+      const initialDescription = expenseData.description || ""
+      const initialCategory = expenseData.category || ""
 
       // Parse date with robust handling
+      let initialDate = startOfDay(new Date())
       if (expenseData.date) {
-        try {
-          const parsedDate = parseISO(String(expenseData.date))
-          setDate(isNaN(parsedDate.getTime()) ? new Date() : parsedDate)
-        } catch (error) {
-          setDate(new Date())
+        const parsedDate = parseISO(String(expenseData.date))
+        if (!isNaN(parsedDate.getTime())) {
+          initialDate = parsedDate
         }
+      }
+
+      // Set form data
+      setName(initialName)
+      setAmount(initialAmount)
+      setDescription(initialDescription)
+      setCategory(initialCategory)
+      setDate(initialDate)
+
+      initialFormRef.current = {
+        name: initialName,
+        amount: initialAmount,
+        description: initialDescription,
+        category: initialCategory,
+        date: initialDate.toISOString(),
       }
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : "There was an error loading the expense"
@@ -111,14 +107,33 @@ export default function EditExpensePage(props: EditExpensePageProps) {
     } finally {
       setLoading(false)
     }
-  }, [user, expenseId, router, toast])
+  }, [expenseId])
 
   useEffect(() => {
     if (user && mounted) {
       fetchExpense()
-      fetchCategories()
     }
-  }, [user, mounted, fetchExpense, fetchCategories])
+  }, [user, mounted])
+
+  const hasUnsavedChanges = () => {
+    const initial = initialFormRef.current
+    if (!initial) return false
+
+    return (
+      name !== initial.name ||
+      amount !== initial.amount ||
+      description !== initial.description ||
+      category !== initial.category ||
+      date.toISOString() !== initial.date
+    )
+  }
+
+  const handleCancel = () => {
+    if (hasUnsavedChanges() && !window.confirm("You have unsaved changes. Are you sure you want to discard them?")) {
+      return
+    }
+    router.push("/dashboard/expenses")
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -141,12 +156,23 @@ export default function EditExpensePage(props: EditExpensePageProps) {
       return
     }
 
+    // Validate amount
+    const amountValidation = validateExpenseAmount(amount)
+    if (!amountValidation.ok) {
+      toast({
+        title: "Invalid amount",
+        description: amountValidation.error,
+        variant: "destructive",
+      })
+      return
+    }
+
     setSaving(true)
 
     try {
       await expensesAPI.updateExpense(expenseId, {
         name,
-        amount: Number.parseFloat(amount),
+        amount: amountValidation.value,
         description: description || "",
         category,
         date: date.toISOString(),
@@ -225,7 +251,13 @@ export default function EditExpensePage(props: EditExpensePageProps) {
                     id="amount"
                     type="number"
                     value={amount}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAmount(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                      const value = e.target.value
+                      // Allow empty string or valid positive numbers with up to 2 decimal places
+                      if (isValidAmountInput(value)) {
+                        setAmount(value)
+                      }
+                    }}
                     placeholder="0.00"
                     step="0.01"
                     min="0"
@@ -294,7 +326,7 @@ export default function EditExpensePage(props: EditExpensePageProps) {
                         mode="single"
                         selected={date}
                         onSelect={(date) => {
-                          setDate(date || new Date())
+                          setDate(date || startOfDay(new Date()))
                           setOpenDatePopover(false)
                         }}
                         initialFocus
@@ -322,7 +354,7 @@ export default function EditExpensePage(props: EditExpensePageProps) {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => router.push("/dashboard/expenses")}
+                  onClick={handleCancel}
                   className="bg-transparent border-cream/10 text-cream hover:bg-cream/10"
                 >
                   Cancel

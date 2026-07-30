@@ -1,8 +1,8 @@
 "use client"
 
-import React, { useState, useEffect, useCallback } from "react"
+import React, { useState, useEffect, useCallback, useMemo } from "react"
 
-import { isBefore, isAfter } from "date-fns"
+import { isBefore, isAfter, startOfDay } from "date-fns"
 import { DashboardSidebar } from "@/components/dashboard/sidebar"
 import { BillReminders } from "@/components/dashboard/bill-reminders"
 import { MetricCard } from "@/components/dashboard/metric-card"
@@ -19,6 +19,7 @@ import { MotionDiv, MotionMain, MotionHeader } from "@/components/ui/dynamic-mot
 import { useToast } from "@/hooks/use-toast"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { AddButton } from "@/components/ui/add-button"
+import { API } from "@/lib/api"
 
 interface BillReminder {
   id: string
@@ -51,14 +52,6 @@ interface BillsPageProps {
 
 export default function BillsPage(props: BillsPageProps) {
   const [bills, setBills] = useState<BillReminder[]>([])
-  const [stats, setStats] = useState<BillStats>({
-    totalBills: 0,
-    upcomingBills: 0,
-    overdueBills: 0,
-    monthlyTotal: 0,
-    monthlyPaid: 0,
-    categoryBreakdown: []
-  })
   const [loading, setLoading] = useState(true)
   const [filterStatus, setFilterStatus] = useState<'all' | 'upcoming' | 'overdue' | 'paid'>('all')
   const [sortBy, setSortBy] = useState<'dueDate' | 'amount' | 'name'>('dueDate')
@@ -69,11 +62,9 @@ export default function BillsPage(props: BillsPageProps) {
   const fetchBills = useCallback(async () => {
     setLoading(true)
     try {
-      const { API } = await import('../../../lib/api')
       const billsData = await API.billReminders.getBillReminders()
       setBills(billsData)
     } catch (error) {
-
       toast({
         title: "Error",
         description: "Failed to load bill reminders",
@@ -82,9 +73,9 @@ export default function BillsPage(props: BillsPageProps) {
     } finally {
       setLoading(false)
     }
-  }, [toast])
+  }, [])
 
-  const calculateStats = useCallback(() => {
+  const stats = useMemo(() => {
     const today = new Date()
     const currentMonth = today.getMonth()
     const currentYear = today.getFullYear()
@@ -94,6 +85,7 @@ export default function BillsPage(props: BillsPageProps) {
     let overdueBills = 0
     let monthlyTotal = 0
     let monthlyPaid = 0
+    let monthlyBillCount = 0
 
     const categoryMap = new Map<string, { amount: number; count: number }>()
 
@@ -102,24 +94,22 @@ export default function BillsPage(props: BillsPageProps) {
       const billMonth = dueDate.getMonth()
       const billYear = dueDate.getFullYear()
 
-      // Count upcoming and overdue
       if (!bill.isPaid) {
-        if (isBefore(dueDate, today)) {
+        if (isBefore(startOfDay(dueDate), startOfDay(today))) {
           overdueBills++
-        } else if (isAfter(dueDate, today)) {
+        } else {
           upcomingBills++
         }
       }
 
-      // Monthly totals
       if (billMonth === currentMonth && billYear === currentYear) {
         monthlyTotal += bill.amount
+        monthlyBillCount++
         if (bill.isPaid) {
           monthlyPaid += bill.amount
         }
       }
 
-      // Category breakdown
       const categoryKey = bill.category || 'Other'
       const existing = categoryMap.get(categoryKey) || { amount: 0, count: 0 }
       categoryMap.set(categoryKey, {
@@ -133,40 +123,28 @@ export default function BillsPage(props: BillsPageProps) {
       ...data
     }))
 
-    setStats({
-      totalBills,
-      upcomingBills,
-      overdueBills,
-      monthlyTotal,
-      monthlyPaid,
-      categoryBreakdown
-    })
+    return { totalBills, upcomingBills, overdueBills, monthlyTotal, monthlyPaid, monthlyBillCount, categoryBreakdown }
   }, [bills])
 
   useEffect(() => {
     fetchBills()
   }, [fetchBills])
 
-  useEffect(() => {
-    calculateStats()
-  }, [calculateStats])
-
-  const getFilteredAndSortedBills = () => {
+  const filteredAndSortedBills = useMemo(() => {
     const today = new Date()
     let filtered = [...bills]
 
-    // Filter
     switch (filterStatus) {
       case 'upcoming':
         filtered = filtered.filter(bill => {
           const dueDate = new Date(bill.dueDate)
-          return !bill.isPaid && isAfter(dueDate, today)
+          return !bill.isPaid && !isBefore(startOfDay(dueDate), startOfDay(today))
         })
         break
       case 'overdue':
         filtered = filtered.filter(bill => {
           const dueDate = new Date(bill.dueDate)
-          return !bill.isPaid && isBefore(dueDate, today)
+          return !bill.isPaid && isBefore(startOfDay(dueDate), startOfDay(today))
         })
         break
       case 'paid':
@@ -174,7 +152,6 @@ export default function BillsPage(props: BillsPageProps) {
         break
     }
 
-    // Sort
     filtered.sort((a, b) => {
       switch (sortBy) {
         case 'dueDate':
@@ -189,7 +166,7 @@ export default function BillsPage(props: BillsPageProps) {
     })
 
     return filtered
-  }
+  }, [bills, filterStatus, sortBy])
 
   if (loading) {
     return (
@@ -236,7 +213,7 @@ export default function BillsPage(props: BillsPageProps) {
               <MetricCard
                 title="Total Bills"
                 value={stats.totalBills.toString()}
-                secondaryValue={`$${stats.totalBills > 0 ? (stats.monthlyTotal / stats.totalBills).toFixed(0) : 0} avg amount`}
+                secondaryValue={`$${stats.monthlyBillCount > 0 ? (stats.monthlyTotal / stats.monthlyBillCount).toFixed(0) : 0} avg this month`}
                 icon={<Bell className="h-5 w-5" />}
               />
             </MotionContainer>
@@ -244,7 +221,7 @@ export default function BillsPage(props: BillsPageProps) {
               <MetricCard
                 title="Upcoming"
                 value={stats.upcomingBills.toString()}
-                secondaryValue={`$${bills.filter(bill => !bill.isPaid && isAfter(new Date(bill.dueDate), new Date())).reduce((sum, bill) => sum + bill.amount, 0).toFixed(2)} due`}
+                secondaryValue={`$${bills.filter(bill => !bill.isPaid && !isBefore(startOfDay(new Date(bill.dueDate)), startOfDay(new Date()))).reduce((sum, bill) => sum + bill.amount, 0).toFixed(2)} due`}
                 icon={<Clock className="h-5 w-5" />}
               />
             </MotionContainer>
@@ -252,7 +229,7 @@ export default function BillsPage(props: BillsPageProps) {
               <MetricCard
                 title="Overdue"
                 value={stats.overdueBills.toString()}
-                secondaryValue={`$${bills.filter(bill => !bill.isPaid && isBefore(new Date(bill.dueDate), new Date())).reduce((sum, bill) => sum + bill.amount, 0).toFixed(2)} overdue`}
+                secondaryValue={`$${bills.filter(bill => !bill.isPaid && isBefore(startOfDay(new Date(bill.dueDate)), startOfDay(new Date()))).reduce((sum, bill) => sum + bill.amount, 0).toFixed(2)} overdue`}
                 icon={<AlertCircle className="h-5 w-5" />}
               />
             </MotionContainer>
@@ -339,7 +316,7 @@ export default function BillsPage(props: BillsPageProps) {
               </div>
 
               <div className="text-sm text-cream/60 font-outfit">
-                Showing {getFilteredAndSortedBills().length} of {bills.length} bills
+                Showing {filteredAndSortedBills.length} of {bills.length} bills
               </div>
             </div>
             </div>
@@ -351,10 +328,15 @@ export default function BillsPage(props: BillsPageProps) {
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-medium font-outfit">Bills</h2>
               </div>
-              <BillReminders 
+              <BillReminders
                 externalShowCreate={showCreateBill}
                 onExternalShowCreateChange={setShowCreateBill}
                 hideInternalAddButton={true}
+                limit={Number.POSITIVE_INFINITY}
+                filterStatus={filterStatus}
+                sortBy={sortBy}
+                hideInternalFilters={true}
+                onBillsChanged={fetchBills}
               />
             </div>
           </MotionContainer>

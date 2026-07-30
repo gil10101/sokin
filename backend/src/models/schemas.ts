@@ -10,10 +10,10 @@ export const createExpenseSchema = Joi.object({
   tags: Joi.array().items(Joi.string()),
   receiptImageUrl: Joi.string().uri().allow(''),
   receiptData: Joi.object({
-    merchant: Joi.string().allow(''),
+    merchant: Joi.string().allow(null, ''),
     confidence: Joi.number().min(0).max(1),
     items: Joi.array().items(Joi.string()),
-    rawText: Joi.string().allow('')
+    rawText: Joi.string().allow(null, '')
   }).allow(null)
 });
 
@@ -26,10 +26,10 @@ export const updateExpenseSchema = Joi.object({
   tags: Joi.array().items(Joi.string()),
   receiptImageUrl: Joi.string().uri().allow(''),
   receiptData: Joi.object({
-    merchant: Joi.string().allow(''),
+    merchant: Joi.string().allow(null, ''),
     confidence: Joi.number().min(0).max(1),
     items: Joi.array().items(Joi.string()),
-    rawText: Joi.string().allow('')
+    rawText: Joi.string().allow(null, '')
   }).allow(null)
 }).min(1);
 
@@ -38,22 +38,28 @@ export const createBudgetSchema = Joi.object({
   name: Joi.string().trim(),
   category: Joi.string().required().trim(),
   amount: Joi.number().required().positive(),
-  period: Joi.string().valid('daily', 'weekly', 'monthly', 'yearly').required(),
+  period: Joi.string().valid('daily', 'weekly', 'monthly', 'yearly', 'custom').required(),
   categories: Joi.array().items(Joi.string()),
   startDate: Joi.string().isoDate().required(),
-  endDate: Joi.string().isoDate(),
-  notes: Joi.string().allow('').max(1000)
+  endDate: Joi.string().isoDate().allow(null, '').when('period', {
+    is: 'custom',
+    then: Joi.string().isoDate().disallow(null, '').required()
+  }),
+  notes: Joi.string().allow(null, '').max(1000)
 });
 
 export const updateBudgetSchema = Joi.object({
   name: Joi.string().trim(),
   category: Joi.string().trim(),
   amount: Joi.number().positive(),
-  period: Joi.string().valid('daily', 'weekly', 'monthly', 'yearly'),
+  period: Joi.string().valid('daily', 'weekly', 'monthly', 'yearly', 'custom'),
   categories: Joi.array().items(Joi.string()),
   startDate: Joi.string().isoDate(),
-  endDate: Joi.string().isoDate(),
-  notes: Joi.string().allow('').max(1000)
+  endDate: Joi.string().isoDate().allow(null, '').when('period', {
+    is: 'custom',
+    then: Joi.string().isoDate().disallow(null, '').required()
+  }),
+  notes: Joi.string().allow(null, '').max(1000)
 }).min(1);
 
 // User schemas
@@ -92,21 +98,17 @@ export const registerFcmTokenSchema = Joi.object({
 
 export const createNotificationSchema = Joi.object({
   title: Joi.string().trim().min(1).max(200).required(),
-  message: Joi.string().trim().min(1).max(2000).required(),
+  message: Joi.string().trim().min(1).max(1000).required(),
   type: Joi.string().valid(
-    'info',
-    'success',
-    'warning',
-    'error',
-    'system',
-    'budget_warning',
-    'budget_exceeded',
-    'bill_reminder',
-    'goal_milestone',
-    'spending_insight'
+    'budget_warning', 'budget_exceeded', 'bill_reminder',
+    'goal_milestone', 'goal_achieved', 'spending_insight',
+    'monthly_report', 'info', 'warning', 'error', 'success', 'system'
   ).required(),
-  data: Joi.object().optional(),
-  link: Joi.string().uri().optional()
+  data: Joi.object().pattern(Joi.string(), Joi.string().max(500)).optional(),
+  link: Joi.alternatives().try(
+    Joi.string().uri({ allowRelative: true }).max(500),
+    Joi.string().pattern(/^\/[\w\-./?=&#%]*$/).max(500)
+  ).optional()
 });
 
 export const createSubscriptionSchema = Joi.object({
@@ -140,6 +142,65 @@ export const updateSubscriptionSchema = Joi.object({
   website: Joi.string().uri().optional().allow(''),
   notes: Joi.string().allow('').max(2000).optional()
 }).min(1);
+
+// Bill reminder schemas
+export const createBillReminderSchema = Joi.object({
+  name: Joi.string().trim().min(1).max(120).required(),
+  amount: Joi.number().positive().required(),
+  dueDate: Joi.string().isoDate().required(),
+  frequency: Joi.string().valid('weekly', 'monthly', 'quarterly', 'yearly', 'one-time').required(),
+  category: Joi.string().trim().min(1).max(100).required(),
+  description: Joi.string().allow('').max(1000).optional(),
+  isPaid: Joi.boolean().optional(),
+  reminderDays: Joi.array().items(Joi.number().integer().min(0).max(60)).optional(),
+  autoPayEnabled: Joi.boolean().optional(),
+  linkedAccount: Joi.string().allow('').optional()
+});
+
+export const updateBillReminderSchema = Joi.object({
+  name: Joi.string().trim().min(1).max(120),
+  amount: Joi.number().positive(),
+  dueDate: Joi.string().isoDate(),
+  frequency: Joi.string().valid('weekly', 'monthly', 'quarterly', 'yearly', 'one-time'),
+  category: Joi.string().trim().min(1).max(100),
+  description: Joi.string().allow('').max(1000),
+  isPaid: Joi.boolean(),
+  reminderDays: Joi.array().items(Joi.number().integer().min(0).max(60)),
+  autoPayEnabled: Joi.boolean(),
+  linkedAccount: Joi.string().allow('')
+}).min(1);
+
+// Goal schemas
+export const createGoalSchema = Joi.object({
+  name: Joi.string().trim().min(1).max(120).required(),
+  targetAmount: Joi.number().positive().required(),
+  currentAmount: Joi.number().min(0).optional(),
+  targetDate: Joi.string().isoDate().required(),
+  category: Joi.string().valid('emergency', 'vacation', 'home', 'car', 'education', 'retirement', 'other').required(),
+  priority: Joi.string().valid('low', 'medium', 'high').optional(),
+  description: Joi.string().allow('').max(1000).optional(),
+  milestones: Joi.array().items(Joi.object({
+    percentage: Joi.number().min(0).max(100).required(),
+    amount: Joi.number().min(0).required()
+  })).optional()
+});
+
+export const updateGoalSchema = Joi.object({
+  name: Joi.string().trim().min(1).max(120),
+  targetAmount: Joi.number().positive(),
+  currentAmount: Joi.number().min(0),
+  targetDate: Joi.string().isoDate(),
+  category: Joi.string().valid('emergency', 'vacation', 'home', 'car', 'education', 'retirement', 'other'),
+  priority: Joi.string().valid('low', 'medium', 'high'),
+  description: Joi.string().allow('').max(1000)
+}).min(1);
+
+export const contributeGoalSchema = Joi.object({
+  amount: Joi.number().positive().required(),
+  note: Joi.string().allow('').optional(),
+  method: Joi.string().valid('manual', 'automatic', 'roundup').optional(),
+  source: Joi.string().allow('').optional()
+});
 
 // Asset schemas
 export const createAssetSchema = Joi.object({
@@ -309,6 +370,16 @@ export const updateLiabilitySchema = Joi.object({
 // ID validation schema for path parameters
 export const idParamsSchema = Joi.object({
   id: Joi.string().trim().min(8).max(128).required()
+});
+
+// Goal ID validation schema for path parameters
+export const goalIdParamsSchema = Joi.object({
+  goalId: Joi.string().trim().min(8).max(128).required()
+});
+
+// Bill reminder ID validation schema for path parameters
+export const billIdParamsSchema = Joi.object({
+  billId: Joi.string().trim().min(8).max(128).required()
 });
 
 // User ID validation schema for path parameters (Firebase UID format)

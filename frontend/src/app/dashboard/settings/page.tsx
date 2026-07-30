@@ -1,9 +1,8 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
-import { auth } from "@/lib/firebase"
-import { useAuthState } from "react-firebase-hooks/auth"
-import { MotionDiv, MotionMain } from "@/components/ui/dynamic-motion"
+import { useRouter } from "next/navigation"
+import { MotionDiv } from "@/components/ui/dynamic-motion"
 import { DashboardSidebar } from "@/components/dashboard/sidebar"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
@@ -12,32 +11,27 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Save, Moon, Globe, CreditCard } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { userProfileAPI } from "@/lib/api"
+import { notificationsAPI, type NotificationPreferences } from "@/lib/api"
+import { useAuth } from "@/contexts/auth-context"
+import { logger } from "@/lib/logger"
 
-// Properly typed UI components
-const TypedSelectTrigger = SelectTrigger
-const TypedSelectContent = SelectContent
-const TypedSelectItem = SelectItem
-const TypedTabsList = TabsList
-const TypedTabsTrigger = TabsTrigger
-const TypedTabsContent = TabsContent
-const TypedLabel = Label
-const TypedSwitch = Switch
-const TypedButton = Button
-
-interface Settings {
-  theme: string;
-  currency: string;
-  notifications: {
-    email: boolean;
-    push: boolean;
-    monthlyReport: boolean;
-    budgetAlerts: boolean;
-    expenseNotifications: boolean;
-  };
-  categories: string[];
-  budgets: Record<string, number>;
+const DEFAULT_PREFERENCES: NotificationPreferences = {
+  budgetAlerts: true,
+  billReminders: true,
+  goalMilestones: true,
+  spendingInsights: true,
+  pushNotifications: true,
+  emailNotifications: true,
 }
+
+const PREFERENCE_FIELDS: Array<{ key: keyof NotificationPreferences; label: string; description: string }> = [
+  { key: "budgetAlerts", label: "Budget Alerts", description: "Get notified when you're approaching your budget limits" },
+  { key: "billReminders", label: "Bill Reminders", description: "Get reminded before bills are due" },
+  { key: "goalMilestones", label: "Goal Milestones", description: "Celebrate progress on your savings goals" },
+  { key: "spendingInsights", label: "Spending Insights", description: "Periodic insights about your spending patterns" },
+  { key: "pushNotifications", label: "Push Notifications", description: "Receive push notifications in your browser" },
+  { key: "emailNotifications", label: "Email Notifications", description: "Receive notifications via email" },
+]
 
 interface SettingsPageProps {
   params?: Promise<Record<string, string>>;
@@ -46,22 +40,12 @@ interface SettingsPageProps {
 
 export default function SettingsPage(props: SettingsPageProps) {
   const [collapsed, setCollapsed] = useState(false)
-  const [user] = useAuthState(auth)
+  const { user, userData, updateUserSettings, refreshUserData } = useAuth()
   const { toast } = useToast()
+  const router = useRouter()
 
-  const [settings, setSettings] = useState<Settings>({
-    theme: "dark",
-    currency: "USD",
-    notifications: {
-      email: true,
-      push: true,
-      monthlyReport: true,
-      budgetAlerts: true,
-      expenseNotifications: true,
-    },
-    categories: [],
-    budgets: {},
-  })
+  const [currency, setCurrency] = useState("USD")
+  const [preferences, setPreferences] = useState<NotificationPreferences>(DEFAULT_PREFERENCES)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
@@ -71,16 +55,13 @@ export default function SettingsPage(props: SettingsPageProps) {
 
       setLoading(true)
       try {
-        const profile = await userProfileAPI.getProfile(user.uid)
-        if (profile.settings) {
-          setSettings(profile.settings as Settings)
-        }
+        const prefs = await notificationsAPI.getNotificationPreferences()
+        setPreferences({ ...DEFAULT_PREFERENCES, ...prefs })
       } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : "There was an error loading your settings"
-        toast({
-          title: "Error loading settings",
-          description: errorMessage,
-          variant: "destructive",
+        // Preferences endpoint returns defaults for new users; a failure here
+        // still leaves usable defaults in the form
+        logger.error("Failed to load notification preferences", {
+          error: error instanceof Error ? error.message : "Unknown error",
         })
       } finally {
         setLoading(false)
@@ -88,16 +69,24 @@ export default function SettingsPage(props: SettingsPageProps) {
     }
 
     fetchSettings()
-  }, [user, toast])
+  }, [user])
+
+  useEffect(() => {
+    if (userData?.settings?.currency) {
+      setCurrency(userData.settings.currency)
+    }
+  }, [userData?.settings?.currency])
 
   const handleSaveSettings = async () => {
     if (!user) return
 
     setSaving(true)
     try {
-      await userProfileAPI.updateProfile(user.uid, {
-        settings,
-      })
+      await Promise.all([
+        updateUserSettings({ currency }),
+        notificationsAPI.updateNotificationPreferences(preferences),
+      ])
+      await refreshUserData()
 
       toast({
         title: "Settings saved",
@@ -115,29 +104,8 @@ export default function SettingsPage(props: SettingsPageProps) {
     }
   }
 
-  const updateSetting = (path: string[], value: unknown) => {
-    setSettings((prevSettings) => {
-      const newSettings = { ...prevSettings }
-      let current: Record<string, unknown> = newSettings
-
-      // Navigate to the nested property
-      for (let i = 0; i < path.length - 1; i++) {
-        const key = path[i]
-        if (typeof current[key] === 'object' && current[key] !== null) {
-          current = current[key] as Record<string, unknown>
-        } else {
-          // Create nested object if it doesn't exist
-          current[key] = {}
-          current = current[key] as Record<string, unknown>
-        }
-      }
-
-      // Set the value
-      const lastKey = path[path.length - 1]
-      current[lastKey] = value
-
-      return newSettings
-    })
+  const setPreference = (key: keyof NotificationPreferences, value: boolean) => {
+    setPreferences((prev) => ({ ...prev, [key]: value }))
   }
 
   return (
@@ -147,7 +115,7 @@ export default function SettingsPage(props: SettingsPageProps) {
       <main className="flex-1 overflow-auto p-6 md:p-8 lg:p-10">
         <div className="max-w-3xl mx-auto">
           <header className="mb-8">
-            <h1 className="text-2xl md:text-3xl font-medium font-outfit">Settings</h1>
+            <h1 className="ml-12 md:ml-0 text-2xl md:text-3xl font-medium font-outfit">Settings</h1>
             <p className="text-cream/60 text-sm mt-1 font-outfit">Customize your application preferences</p>
           </header>
 
@@ -159,19 +127,19 @@ export default function SettingsPage(props: SettingsPageProps) {
             </div>
           ) : (
             <Tabs defaultValue="general" className="space-y-6">
-              <TypedTabsList className="bg-cream/5 text-cream">
-                <TypedTabsTrigger value="general" className="data-[state=active]:bg-cream/10">
+              <TabsList className="bg-cream/5 text-cream">
+                <TabsTrigger value="general" className="data-[state=active]:bg-cream/10">
                   General
-                </TypedTabsTrigger>
-                <TypedTabsTrigger value="notifications" className="data-[state=active]:bg-cream/10">
+                </TabsTrigger>
+                <TabsTrigger value="notifications" className="data-[state=active]:bg-cream/10">
                   Notifications
-                </TypedTabsTrigger>
-                <TypedTabsTrigger value="budgets" className="data-[state=active]:bg-cream/10">
+                </TabsTrigger>
+                <TabsTrigger value="budgets" className="data-[state=active]:bg-cream/10">
                   Budgets
-                </TypedTabsTrigger>
-              </TypedTabsList>
+                </TabsTrigger>
+              </TabsList>
 
-              <TypedTabsContent value="general">
+              <TabsContent value="general">
                 <MotionDiv
                   className="bg-cream/5 rounded-xl border border-cream/10 p-6"
                   initial={{ opacity: 0, y: 20 }}
@@ -185,64 +153,49 @@ export default function SettingsPage(props: SettingsPageProps) {
                       <div className="space-y-0.5">
                         <div className="flex items-center">
                           <Moon className="mr-2 h-4 w-4 text-cream/60" />
-                          <TypedLabel htmlFor="theme">Theme</TypedLabel>
+                          <Label>Theme</Label>
                         </div>
-                        <p className="text-cream/60 text-sm">Choose your preferred theme</p>
+                        <p className="text-cream/60 text-sm">Sokin currently ships in dark mode only</p>
                       </div>
-                      <Select value={settings.theme} onValueChange={(value) => updateSetting(["theme"], value)}>
-                        <TypedSelectTrigger className="w-[180px] bg-cream/5 border-cream/10 text-cream focus:ring-cream/20">
-                          <SelectValue placeholder="Select theme" />
-                        </TypedSelectTrigger>
-                        <TypedSelectContent className="bg-dark border-cream/10">
-                          <TypedSelectItem value="dark" className="text-cream hover:bg-cream/10">
-                            Dark
-                          </TypedSelectItem>
-                          <TypedSelectItem value="light" className="text-cream hover:bg-cream/10">
-                            Light
-                          </TypedSelectItem>
-                          <TypedSelectItem value="system" className="text-cream hover:bg-cream/10">
-                            System
-                          </TypedSelectItem>
-                        </TypedSelectContent>
-                      </Select>
+                      <span className="text-sm text-cream/80 bg-cream/10 rounded-md px-3 py-1.5">Dark</span>
                     </div>
 
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
                         <div className="flex items-center">
                           <Globe className="mr-2 h-4 w-4 text-cream/60" />
-                          <TypedLabel htmlFor="currency">Currency</TypedLabel>
+                          <Label htmlFor="currency">Currency</Label>
                         </div>
                         <p className="text-cream/60 text-sm">Set your preferred currency</p>
                       </div>
-                      <Select value={settings.currency} onValueChange={(value) => updateSetting(["currency"], value)}>
-                        <TypedSelectTrigger className="w-[180px] bg-cream/5 border-cream/10 text-cream focus:ring-cream/20">
+                      <Select value={currency} onValueChange={setCurrency}>
+                        <SelectTrigger className="w-[180px] bg-cream/5 border-cream/10 text-cream focus:ring-cream/20">
                           <SelectValue placeholder="Select currency" />
-                        </TypedSelectTrigger>
-                        <TypedSelectContent className="bg-dark border-cream/10">
-                          <TypedSelectItem value="USD" className="text-cream hover:bg-cream/10">
+                        </SelectTrigger>
+                        <SelectContent className="bg-dark border-cream/10">
+                          <SelectItem value="USD" className="text-cream hover:bg-cream/10">
                             USD ($)
-                          </TypedSelectItem>
-                          <TypedSelectItem value="EUR" className="text-cream hover:bg-cream/10">
+                          </SelectItem>
+                          <SelectItem value="EUR" className="text-cream hover:bg-cream/10">
                             EUR (€)
-                          </TypedSelectItem>
-                          <TypedSelectItem value="GBP" className="text-cream hover:bg-cream/10">
+                          </SelectItem>
+                          <SelectItem value="GBP" className="text-cream hover:bg-cream/10">
                             GBP (£)
-                          </TypedSelectItem>
-                          <TypedSelectItem value="JPY" className="text-cream hover:bg-cream/10">
+                          </SelectItem>
+                          <SelectItem value="JPY" className="text-cream hover:bg-cream/10">
                             JPY (¥)
-                          </TypedSelectItem>
-                          <TypedSelectItem value="CAD" className="text-cream hover:bg-cream/10">
+                          </SelectItem>
+                          <SelectItem value="CAD" className="text-cream hover:bg-cream/10">
                             CAD ($)
-                          </TypedSelectItem>
-                        </TypedSelectContent>
+                          </SelectItem>
+                        </SelectContent>
                       </Select>
                     </div>
                   </div>
                 </MotionDiv>
-              </TypedTabsContent>
+              </TabsContent>
 
-              <TypedTabsContent value="notifications">
+              <TabsContent value="notifications">
                 <MotionDiv
                   className="bg-cream/5 rounded-xl border border-cream/10 p-6"
                   initial={{ opacity: 0, y: 20 }}
@@ -252,58 +205,24 @@ export default function SettingsPage(props: SettingsPageProps) {
                   <h2 className="text-xl font-medium mb-6">Notification Settings</h2>
 
                   <div className="space-y-6">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <TypedLabel htmlFor="email-notifications">Email Notifications</TypedLabel>
-                        <p className="text-cream/60 text-sm">Receive notifications via email</p>
+                    {PREFERENCE_FIELDS.map((field) => (
+                      <div key={field.key} className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label htmlFor={`pref-${field.key}`}>{field.label}</Label>
+                          <p className="text-cream/60 text-sm">{field.description}</p>
+                        </div>
+                        <Switch
+                          id={`pref-${field.key}`}
+                          checked={Boolean(preferences[field.key])}
+                          onCheckedChange={(checked: boolean) => setPreference(field.key, checked)}
+                        />
                       </div>
-                      <TypedSwitch
-                        id="email-notifications"
-                        checked={settings.notifications?.email}
-                        onCheckedChange={(checked: boolean) => updateSetting(["notifications", "email"], checked)}
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <TypedLabel htmlFor="push-notifications">Push Notifications</TypedLabel>
-                        <p className="text-cream/60 text-sm">Receive push notifications in your browser</p>
-                      </div>
-                      <TypedSwitch
-                        id="push-notifications"
-                        checked={settings.notifications?.push}
-                        onCheckedChange={(checked: boolean) => updateSetting(["notifications", "push"], checked)}
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <TypedLabel htmlFor="budget-alerts">Budget Alerts</TypedLabel>
-                        <p className="text-cream/60 text-sm">Get notified when you&apos;re approaching your budget limits</p>
-                      </div>
-                      <TypedSwitch
-                        id="budget-alerts"
-                        checked={settings.notifications?.budgetAlerts}
-                        onCheckedChange={(checked: boolean) => updateSetting(["notifications", "budgetAlerts"], checked)}
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <TypedLabel htmlFor="expense-notifications">Expense Notifications</TypedLabel>
-                        <p className="text-cream/60 text-sm">Get notified about expense changes and updates</p>
-                      </div>
-                      <TypedSwitch
-                        id="expense-notifications"
-                        checked={settings.notifications?.expenseNotifications ?? true}
-                        onCheckedChange={(checked: boolean) => updateSetting(["notifications", "expenseNotifications"], checked)}
-                      />
-                    </div>
+                    ))}
                   </div>
                 </MotionDiv>
-              </TypedTabsContent>
+              </TabsContent>
 
-              <TypedTabsContent value="budgets">
+              <TabsContent value="budgets">
                 <MotionDiv
                   className="bg-cream/5 rounded-xl border border-cream/10 p-6"
                   initial={{ opacity: 0, y: 20 }}
@@ -317,34 +236,37 @@ export default function SettingsPage(props: SettingsPageProps) {
                       Set monthly budget limits for different categories to help manage your spending.
                     </p>
 
-                    {/* Budget settings would go here */}
                     <div className="bg-cream/10 rounded-lg p-6 text-center">
                       <CreditCard className="h-12 w-12 mx-auto mb-4 text-cream/40" />
                       <h3 className="text-lg font-medium mb-2">Budget Management</h3>
                       <p className="text-cream/60 mb-4">
                         Set up and manage your category budgets to track your spending goals.
                       </p>
-                      <TypedButton className="bg-cream text-dark hover:bg-cream/90">Set Up Budgets</TypedButton>
+                      <Button
+                        onClick={() => router.push("/dashboard/budgets")}
+                        className="bg-cream text-dark hover:bg-cream/90"
+                      >
+                        Set Up Budgets
+                      </Button>
                     </div>
                   </div>
                 </MotionDiv>
-              </TypedTabsContent>
+              </TabsContent>
             </Tabs>
           )}
 
           <div className="mt-8 flex justify-end">
-            <TypedButton
+            <Button
               onClick={handleSaveSettings}
               disabled={saving || loading}
               className="bg-cream text-dark hover:bg-cream/90 font-medium"
             >
               {saving ? "Saving..." : "Save Settings"}
               {!saving && <Save className="ml-2 h-4 w-4" />}
-            </TypedButton>
+            </Button>
           </div>
         </div>
       </main>
     </div>
   )
 }
-

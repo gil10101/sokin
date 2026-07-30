@@ -19,17 +19,7 @@ interface AdvancedAnalyticsProps {
   timeframe?: string
 }
 
-interface Budget {
-  id: string
-  name?: string
-  amount: number
-  currentSpent?: number
-  period?: string
-  categories?: string[]
-  startDate?: string
-  endDate?: string
-  userId?: string
-}
+import type { Budget } from "@/lib/api"
 
 interface Expense {
   id: string

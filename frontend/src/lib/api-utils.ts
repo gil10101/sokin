@@ -4,7 +4,7 @@ export async function checkBackendConnectivity(): Promise<boolean> {
     if (!API_BASE_URL) {
       throw new Error('NEXT_PUBLIC_API_URL environment variable is not configured');
     }
-    const HEALTH_ENDPOINT = `${API_BASE_URL.replace('/api', '')}/health`;
+    const HEALTH_ENDPOINT = `${API_BASE_URL.replace(/\/api\/?$/, '')}/health`;
     
     const response = await fetch(HEALTH_ENDPOINT, {
       method: 'GET',

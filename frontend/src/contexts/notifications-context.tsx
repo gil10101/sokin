@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { createContext, useContext, useState, useEffect, useCallback } from "react"
+import { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from "react"
 import { useAuth } from "@/contexts/auth-context"
 import { logger } from "@/lib/logger"
 import { notificationsAPI } from "@/lib/api"
@@ -22,6 +22,7 @@ export interface Notification {
 interface NotificationsContextType {
   notifications: Notification[]
   unreadCount: number
+  isLoading: boolean
   addNotification: (notification: Omit<Notification, "id" | "read" | "dismissed" | "createdAt">) => Promise<void>
   markAsRead: (id: string) => Promise<void>
   markAllAsRead: () => Promise<void>
@@ -43,7 +44,10 @@ export const useNotifications = () => {
 export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const { user } = useAuth()
+  const userRef = useRef(user)
+  useEffect(() => { userRef.current = user }, [user])
   const [unreadCount, setUnreadCount] = useState(0)
+  const [isLoading, setIsLoading] = useState(true)
 
   const normalizeType = (type: string): NotificationType => {
     switch (type) {
@@ -78,7 +82,7 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
   }
 
   const refreshNotifications = useCallback(async () => {
-    if (!user) return
+    if (!userRef.current) return
     try {
       const data = await notificationsAPI.getNotifications()
       const normalized = data.map((notification) => ({
@@ -93,30 +97,34 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
       }))
       setNotifications(normalized)
       setUnreadCount(normalized.filter((n) => !n.read).length)
+      setIsLoading(false)
     } catch (error: unknown) {
+      setIsLoading(false)
       logger.error("Failed to fetch notifications", {
         error: error instanceof Error ? error.message : "Unknown error",
-        userId: user?.uid
+        userId: userRef.current?.uid
       })
     }
-  }, [user])
+  }, [])
 
   // Fetch notifications when user changes
   useEffect(() => {
     if (!user) {
       setNotifications([])
       setUnreadCount(0)
+      setIsLoading(false)
       return
     }
 
+    setIsLoading(true)
     refreshNotifications()
     const intervalId = setInterval(refreshNotifications, 30000)
 
     return () => clearInterval(intervalId)
-  }, [user, refreshNotifications])
+  }, [user])
 
-  const addNotification = async (notification: Omit<Notification, "id" | "read" | "dismissed" | "createdAt">) => {
-    if (!user) return
+  const addNotification = useCallback(async (notification: Omit<Notification, "id" | "read" | "dismissed" | "createdAt">) => {
+    if (!userRef.current) return
 
     try {
       await notificationsAPI.createNotification({
@@ -131,13 +139,13 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
       // Failed to add notification - user will not see this notification
       logger.error('Failed to add notification', {
         error: error instanceof Error ? error.message : 'Unknown error',
-        userId: user?.uid
+        userId: userRef.current?.uid
       });
     }
-  }
+  }, [])
 
-  const markAsRead = async (id: string) => {
-    if (!user) return
+  const markAsRead = useCallback(async (id: string) => {
+    if (!userRef.current) return
 
     try {
       await notificationsAPI.markAsRead(id)
@@ -152,13 +160,13 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
       logger.error('Failed to mark notification as read', {
         error: error instanceof Error ? error.message : 'Unknown error',
         notificationId: id,
-        userId: user?.uid
+        userId: userRef.current?.uid
       });
     }
-  }
+  }, [])
 
-  const markAllAsRead = async () => {
-    if (!user) return
+  const markAllAsRead = useCallback(async () => {
+    if (!userRef.current) return
 
     try {
       await notificationsAPI.markAllAsRead()
@@ -170,29 +178,35 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
       // Failed to mark all notifications as read - some may remain unread
       logger.error('Failed to mark all notifications as read', {
         error: error instanceof Error ? error.message : 'Unknown error',
-        userId: user?.uid
+        userId: userRef.current?.uid
       });
     }
-  }
+  }, [])
 
-  const dismissNotification = async (id: string) => {
-    if (!user) return
+  const dismissNotification = useCallback(async (id: string) => {
+    if (!userRef.current) return
 
     try {
       await notificationsAPI.dismissNotification(id)
-      setNotifications((prev) => prev.filter((notification) => notification.id !== id))
+      setNotifications((prev) => {
+        const dismissed = prev.find((notification) => notification.id === id)
+        if (dismissed && !dismissed.read) {
+          setUnreadCount((count) => Math.max(0, count - 1))
+        }
+        return prev.filter((notification) => notification.id !== id)
+      })
     } catch (error: unknown) {
       // Failed to dismiss notification - will remain visible
       logger.error('Failed to dismiss notification', {
         error: error instanceof Error ? error.message : 'Unknown error',
         notificationId: id,
-        userId: user?.uid
+        userId: userRef.current?.uid
       });
     }
-  }
+  }, [])
 
-  const dismissAllNotifications = async () => {
-    if (!user) return
+  const dismissAllNotifications = useCallback(async () => {
+    if (!userRef.current) return
 
     try {
       await notificationsAPI.dismissAllNotifications()
@@ -202,40 +216,47 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
       // Failed to dismiss all notifications - some may remain visible
       logger.error('Failed to dismiss all notifications', {
         error: error instanceof Error ? error.message : 'Unknown error',
-        userId: user?.uid
+        userId: userRef.current?.uid
       });
     }
-  }
+  }, [])
 
-  const deleteNotification = async (id: string) => {
-    if (!user) return
+  const deleteNotification = useCallback(async (id: string) => {
+    if (!userRef.current) return
 
     try {
       await notificationsAPI.deleteNotification(id)
-      setNotifications((prev) => prev.filter((notification) => notification.id !== id))
+      setNotifications((prev) => {
+        const deleted = prev.find((notification) => notification.id === id)
+        if (deleted && !deleted.read) {
+          setUnreadCount((count) => Math.max(0, count - 1))
+        }
+        return prev.filter((notification) => notification.id !== id)
+      })
     } catch (error: unknown) {
       // Failed to delete notification - will remain in system
       logger.error('Failed to delete notification', {
         error: error instanceof Error ? error.message : 'Unknown error',
         notificationId: id,
-        userId: user?.uid
+        userId: userRef.current?.uid
       });
     }
-  }
+  }, [])
+
+  const value = useMemo(() => ({
+    notifications,
+    unreadCount,
+    isLoading,
+    addNotification,
+    markAsRead,
+    markAllAsRead,
+    dismissNotification,
+    dismissAllNotifications,
+    deleteNotification,
+  }), [notifications, unreadCount, isLoading, addNotification, markAsRead, markAllAsRead, dismissNotification, dismissAllNotifications, deleteNotification])
 
   return (
-    <NotificationsContext.Provider
-      value={{
-        notifications,
-        unreadCount,
-        addNotification,
-        markAsRead,
-        markAllAsRead,
-        dismissNotification,
-        dismissAllNotifications,
-        deleteNotification,
-      }}
-    >
+    <NotificationsContext.Provider value={value}>
       {children}
     </NotificationsContext.Provider>
   )

@@ -16,8 +16,10 @@ import {
   deleteBillReminder 
 } from '../controllers/billRemindersController';
 import { auth } from '../middleware/auth';
+import { validate, validateParams } from '../middleware/validation';
 import { createRateLimiter } from '../middleware/rateLimiter';
 import { asyncHandler } from '../middleware/errorHandler';
+import { createBillReminderSchema, updateBillReminderSchema, billIdParamsSchema } from '../models/schemas';
 
 const router = Router();
 
@@ -30,34 +32,34 @@ const writeRateLimit = createRateLimiter.api();
  * @desc    Get user's bill reminders
  * @access  Private
  */
-router.get('/', readRateLimit, auth, asyncHandler(getUserBillReminders));
+router.get('/', auth, readRateLimit, asyncHandler(getUserBillReminders));
 
 /**
  * @route   POST /api/bill-reminders
  * @desc    Create new bill reminder
  * @access  Private
  */
-router.post('/', writeRateLimit, auth, asyncHandler(createBillReminder));
+router.post('/', auth, writeRateLimit, validate(createBillReminderSchema), asyncHandler(createBillReminder));
 
 /**
  * @route   POST /api/bill-reminders/:billId/pay
  * @desc    Mark bill as paid
  * @access  Private
  */
-router.post('/:billId/pay', writeRateLimit, auth, asyncHandler(markBillAsPaid));
+router.post('/:billId/pay', auth, writeRateLimit, validateParams(billIdParamsSchema), asyncHandler(markBillAsPaid));
 
 /**
  * @route   PUT /api/bill-reminders/:billId
  * @desc    Update bill reminder
  * @access  Private
  */
-router.put('/:billId', writeRateLimit, auth, asyncHandler(updateBillReminder));
+router.put('/:billId', auth, writeRateLimit, validateParams(billIdParamsSchema), validate(updateBillReminderSchema), asyncHandler(updateBillReminder));
 
 /**
  * @route   DELETE /api/bill-reminders/:billId
  * @desc    Delete bill reminder
  * @access  Private
  */
-router.delete('/:billId', writeRateLimit, auth, asyncHandler(deleteBillReminder));
+router.delete('/:billId', auth, writeRateLimit, validateParams(billIdParamsSchema), asyncHandler(deleteBillReminder));
 
 export default router; 

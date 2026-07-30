@@ -15,10 +15,11 @@ import cache, { CACHE_TTL } from '../utils/cache';
 
 /**
  * Build cache key for user profile
+ *
+ * Shared by all controllers that read or write the cached user profile
+ * so a single key covers reads, writes, and invalidation.
  */
-function buildUserCacheKey(userId: string): string {
-  return `user:${userId}:profile`;
-}
+export const userProfileCacheKey = (userId: string): string => `user:${userId}:profile`;
 
 /**
  * Get user profile for the authenticated user
@@ -51,7 +52,7 @@ export const getUserProfile = async (
     }
 
     const userId = req.user.uid;
-    const cacheKey = buildUserCacheKey(userId);
+    const cacheKey = userProfileCacheKey(userId);
     
     // Try distributed cache first
     const cachedUser = await cache.getAsync<{ success: boolean; data: Record<string, unknown> }>(cacheKey);
@@ -196,7 +197,7 @@ export const updateUserProfile = async (
     await db.collection('users').doc(userId).update(updateData);
     
     // Clear cache from distributed cache
-    await cache.delAsync(buildUserCacheKey(userId));
+    await cache.delAsync(userProfileCacheKey(userId));
     
     // Get updated user data
     const updatedUserDoc = await db.collection('users').doc(userId).get();

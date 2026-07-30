@@ -633,7 +633,7 @@ export const getNetWorthHistory = async (
       throw new AppError('Database not initialized', 500, false);
     }
 
-    const limit = parseInt(req.query.limit as string) || 12; // Default 12 months
+    const limit = Math.min(Math.max(1, parseInt(req.query.limit as string) || 12), 60); // Default 12 months, clamped 1-60
     const cacheKey = buildNetWorthHistoryCacheKey(userId, limit);
     
     // Try distributed cache first
@@ -694,7 +694,7 @@ export const getNetWorthTrends = async (
       return;
     }
 
-    const months = parseInt(req.query.months as string) || 12;
+    const months = Math.min(Math.max(1, parseInt(req.query.months as string) || 12), 60);
     const cacheKey = buildNetWorthTrendsCacheKey(userId, months);
     
     // Try distributed cache first
@@ -927,11 +927,15 @@ export const calculateUserNetWorth = async (userId: string): Promise<NetWorthCal
   const prevMonth = new Date();
   prevMonth.setMonth(prevMonth.getMonth() - 1);
   const prevMonthStr = prevMonth.toISOString().substring(0, 7);
+  // Compute the first day of the current month as the upper bound
+  const nextMonth = new Date();
+  nextMonth.setDate(1); // First day of current month
+  const nextMonthStr = nextMonth.toISOString().substring(0, 10);
 
   const prevSnapshot = await db.collection('netWorthSnapshots')
     .where('userId', '==', userId)
     .where('date', '>=', prevMonthStr)
-    .where('date', '<', prevMonthStr + '-32')
+    .where('date', '<', nextMonthStr)
     .limit(1)
     .get();
 
@@ -964,21 +968,23 @@ export const calculateUserNetWorth = async (userId: string): Promise<NetWorthCal
 /**
  * Update/create monthly net worth snapshot
  */
-export const updateNetWorthSnapshot = async (userId: string): Promise<void> => {
+export const updateNetWorthSnapshot = async (userId: string, precomputed?: NetWorthCalculation): Promise<void> => {
   try {
     if (!db) {
       throw new AppError('Database not initialized', 500, false);
     }
 
-    const calculation = await calculateUserNetWorth(userId);
+    const calculation = precomputed || await calculateUserNetWorth(userId);
     const now = new Date();
     const currentMonth = now.toISOString().substring(0, 7); // YYYY-MM
+    const nextMonthDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const nextMonthStr = nextMonthDate.toISOString().substring(0, 10);
 
     // Check if snapshot exists for current month
     const existingSnapshot = await db.collection('netWorthSnapshots')
       .where('userId', '==', userId)
       .where('date', '>=', currentMonth)
-      .where('date', '<', currentMonth + '-32')
+      .where('date', '<', nextMonthStr)
       .limit(1)
       .get();
 

@@ -1,6 +1,6 @@
 "use client"
 
-import React, { createContext, useContext, useEffect, useState, useRef } from "react"
+import React, { createContext, useContext, useEffect, useState, useRef, useMemo, useCallback } from "react"
 import {
   type User,
   onAuthStateChanged,
@@ -12,6 +12,9 @@ import {
 import { auth } from "@/lib/firebase"
 import { logger } from "@/lib/logger"
 import { useRouter } from "next/navigation"
+import { useQueryClient } from "@tanstack/react-query"
+import { clearApiCache } from "@/lib/api"
+import { StockAPI } from "@/lib/stock-api"
 
 interface UserData {
   name: string
@@ -112,6 +115,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [userData, setUserData] = useState<UserData | null>(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
+  const queryClient = useQueryClient()
   const unsubscribeRef = useRef<(() => void) | null>(null)
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -149,16 +153,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const refreshUserData = async (): Promise<void> => {
+  const refreshUserData = useCallback(async (): Promise<void> => {
     if (!user) return
 
     const profile = await fetchUserProfile(user.uid)
     if (profile) {
       setUserData(profile)
     }
-  }
+  }, [user])
 
-  const updateUserSettings = async (settings: Partial<UserData['settings']>): Promise<void> => {
+  const updateUserSettings = useCallback(async (settings: Partial<UserData['settings']>): Promise<void> => {
     if (!user) {
       throw new Error('User not authenticated')
     }
@@ -179,16 +183,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       })
       throw error
     }
-  }
+  }, [user])
 
   useEffect(() => {
-    // Set a timeout to prevent infinite loading
+    // Fallback so the app never hangs on the loading screen if Firebase
+    // fails to initialize. Long (30s) on purpose: flipping loading=false
+    // before onAuthStateChanged has restored the session makes
+    // ProtectedRoute eject a signed-in user to /login on slow cold starts.
     timeoutRef.current = setTimeout(() => {
+      logger.error("Auth state resolution timed out")
       setLoading(false)
-    }, 5000) // 5 second timeout
+    }, 30000)
 
     // Only set up the listener once
     unsubscribeRef.current = onAuthStateChanged(auth, async (currentUser) => {
+      // Auth state resolved - the fallback timeout is no longer needed
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+        timeoutRef.current = null
+      }
+
       setUser(currentUser)
 
       if (currentUser) {
@@ -215,12 +229,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  const signUp = async (name: string, email: string, password: string) => {
-    try {
-      // Create Firebase auth user
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password)
-      const firebaseUser = userCredential.user
+  const signUp = useCallback(async (name: string, email: string, password: string) => {
+    // Create Firebase auth user
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password)
+    const firebaseUser = userCredential.user
 
+    try {
       // Update Firebase profile with display name
       await updateProfile(firebaseUser, {
         displayName: name,
@@ -239,11 +253,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         error: error instanceof Error ? error.message : 'Unknown error',
         email
       })
+      // The auth account was created but the backend profile was not.
+      // Delete the orphan so the user can retry signup - otherwise every
+      // retry fails with auth/email-already-in-use against a half-created
+      // account.
+      await firebaseUser.delete().catch(() => {
+        logger.error("Failed to roll back orphaned auth account", { email })
+      })
       throw error
     }
-  }
+  }, [router])
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = useCallback(async (email: string, password: string) => {
     try {
       await signInWithEmailAndPassword(auth, email, password)
       router.push("/dashboard")
@@ -254,23 +275,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       })
       throw error
     }
-  }
+  }, [router])
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
+    // Drop every cache layer that may hold the outgoing user's data,
+    // so the next sign-in on this browser cannot see it.
+    const clearClientCaches = async () => {
+      queryClient.clear()
+      clearApiCache()
+      StockAPI.clearCache()
+      if (typeof caches !== "undefined") {
+        try {
+          const keys = await caches.keys()
+          await Promise.all(keys.map((key) => caches.delete(key)))
+        } catch {
+          // Cache Storage unavailable (e.g. insecure context) — nothing to clear
+        }
+      }
+    }
+
     try {
       await firebaseSignOut(auth)
       setUserData(null)
+      await clearClientCaches()
       router.push("/")
     } catch (error) {
       logger.error("Sign out error", {
         error: error instanceof Error ? error.message : 'Unknown error'
       })
-      // Still redirect even if sign out fails
+      // Still clear caches and redirect even if sign out fails
+      await clearClientCaches().catch(() => {})
       router.push("/")
     }
-  }
+  }, [router, queryClient])
 
-  const value = {
+  const value = useMemo(() => ({
     user,
     loading,
     signUp,
@@ -279,7 +318,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     userData,
     refreshUserData,
     updateUserSettings,
-  }
+  }), [user, loading, signUp, signIn, signOut, userData, refreshUserData, updateUserSettings])
 
   return (
     <AuthContext.Provider value={value}>

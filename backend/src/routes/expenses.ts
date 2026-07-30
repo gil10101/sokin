@@ -34,7 +34,7 @@ const writeRateLimit = createRateLimiter.api(); // 100 requests per 15 minutes
  * @query   endDate - Filter by end date (ISO)
  * @access  Private
  */
-router.get('/', readRateLimit, auth, validateQuery(expensesPaginationSchema), asyncHandler(getAllExpenses));
+router.get('/', auth, readRateLimit, validateQuery(expensesPaginationSchema), asyncHandler(getAllExpenses));
 
 /**
  * @route   GET /api/expenses/analytics
@@ -42,34 +42,34 @@ router.get('/', readRateLimit, auth, validateQuery(expensesPaginationSchema), as
  * @query   timeframe - Timeframe: '3months', '6months', or '12months' (default: '6months')
  * @access  Private
  */
-router.get('/analytics', readRateLimit, auth, asyncHandler(getExpenseAnalytics));
+router.get('/analytics', auth, readRateLimit, asyncHandler(getExpenseAnalytics));
 
 /**
  * @route   GET /api/expenses/:id
  * @desc    Get a specific expense by ID
  * @access  Private (owner only)
  */
-router.get('/:id', readRateLimit, auth, validateParams(idParamsSchema), asyncHandler(getExpenseById));
+router.get('/:id', auth, readRateLimit, validateParams(idParamsSchema), asyncHandler(getExpenseById));
 
 /**
  * @route   POST /api/expenses
  * @desc    Create a new expense
  * @access  Private
  */
-router.post('/', writeRateLimit, auth, validate(createExpenseSchema), asyncHandler(createExpense));
+router.post('/', auth, writeRateLimit, validate(createExpenseSchema), asyncHandler(createExpense));
 
 /**
  * @route   PUT /api/expenses/:id
  * @desc    Update an existing expense
  * @access  Private (owner only)
  */
-router.put('/:id', writeRateLimit, auth, validateParams(idParamsSchema), validate(updateExpenseSchema), asyncHandler(updateExpense));
+router.put('/:id', auth, writeRateLimit, validateParams(idParamsSchema), validate(updateExpenseSchema), asyncHandler(updateExpense));
 
 /**
  * @route   DELETE /api/expenses/:id
  * @desc    Delete an expense
  * @access  Private (owner only)
  */
-router.delete('/:id', writeRateLimit, auth, validateParams(idParamsSchema), asyncHandler(deleteExpense));
+router.delete('/:id', auth, writeRateLimit, validateParams(idParamsSchema), asyncHandler(deleteExpense));
 
 export default router; 

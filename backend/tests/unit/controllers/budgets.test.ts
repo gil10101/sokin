@@ -121,6 +121,11 @@ jest.mock('../../../src/utils/logger', () => ({
   },
 }));
 
+// Mock dashboard controller (imported by budgets for cache invalidation)
+jest.mock('../../../src/controllers/dashboardController', () => ({
+  invalidateDashboardCache: jest.fn().mockResolvedValue(undefined),
+}));
+
 // Import cache after mocking
 import cache from '../../../src/utils/cache';
 const firebaseMocks = require('../../../src/config/firebase').__mocks;

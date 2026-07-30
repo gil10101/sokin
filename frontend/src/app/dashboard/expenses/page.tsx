@@ -2,7 +2,7 @@
 
 import React from "react"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { useAuth } from "@/contexts/auth-context"
 import { format, isValid, parseISO } from "date-fns"
 import { DashboardSidebar } from "@/components/dashboard/sidebar"
@@ -105,6 +105,8 @@ interface ExpensesPageProps {
 export default function ExpensesPage(props: ExpensesPageProps) {
   const [collapsed, setCollapsed] = useState(false)
   const { user } = useAuth()
+  const userRef = useRef(user)
+  useEffect(() => { userRef.current = user }, [user])
   const { toast } = useToast()
   const router = useRouter()
   // Add the useNotifications hook to the component
@@ -133,7 +135,7 @@ export default function ExpensesPage(props: ExpensesPageProps) {
 
 
   const fetchExpenses = useCallback(async () => {
-    if (!user) return
+    if (!userRef.current) return
 
     setLoading(true)
     try {
@@ -171,13 +173,13 @@ export default function ExpensesPage(props: ExpensesPageProps) {
     } finally {
       setLoading(false)
     }
-  }, [user, toast])
+  }, [])
 
   useEffect(() => {
     if (user && mounted) {
       fetchExpenses()
     }
-  }, [user, mounted, fetchExpenses])
+  }, [user, mounted])
 
   useEffect(() => {
     // Apply filters and sorting

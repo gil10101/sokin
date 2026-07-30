@@ -29,7 +29,7 @@ export const normalizeDateValue = (
   return undefined;
 };
 
-export const normalizeDateFields = <T extends Record<string, unknown>>(
+export const normalizeDateFields = <T extends object>(
   data: T,
   fields: (keyof T)[]
 ): T => {

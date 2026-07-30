@@ -55,36 +55,12 @@ const DEFAULT_CATEGORIES = [
   "Other",
 ]
 
-interface Budget {
-  id: string
-  amount: number
-  category: string
-  period: string
-  startDate: string
-  endDate: string | null
-  notes: string | null
-  createdAt: string
-  updatedAt: string
-  userId: string
-}
-
-interface Expense {
-  id: string
-  userId: string
-  name: string
-  amount: number
-  date: string
-  category: string
-  description?: string
-  tags?: string[]
-  createdAt: string
-  updatedAt?: string
-}
+import type { Budget, Expense, BudgetPeriod } from "@/lib/api"
 
 interface BudgetFormData {
   amount: string
   category: string
-  period: string
+  period: BudgetPeriod
   startDate: Date
   endDate: Date | null
   notes: string
@@ -246,6 +222,10 @@ export default function BudgetsPage(props: BudgetsPageProps) {
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
+  const handlePeriodChange = (value: string) => {
+    setFormData((prev) => ({ ...prev, period: value as BudgetPeriod }))
+  }
+
   const handleDateChange = (name: "startDate" | "endDate", date: Date | undefined) => {
     setFormData((prev) => ({ ...prev, [name]: date || null }))
   }
@@ -372,8 +352,8 @@ export default function BudgetsPage(props: BudgetsPageProps) {
         category: formData.category,
         period: formData.period,
         startDate: formData.startDate.toISOString(),
-        endDate: formData.endDate ? formData.endDate.toISOString() : null,
-        notes: formData.notes || null,
+        ...(formData.endDate ? { endDate: formData.endDate.toISOString() } : {}),
+        ...(formData.notes ? { notes: formData.notes } : {}),
       }
 
       if (editingBudget) {
@@ -501,7 +481,7 @@ export default function BudgetsPage(props: BudgetsPageProps) {
                       onClick={() => {
                         resetForm()
                         if (activeTab !== "all") {
-                          setFormData((prev) => ({ ...prev, period: activeTab }))
+                          setFormData((prev) => ({ ...prev, period: activeTab as BudgetPeriod }))
                         }
                         setOpenDialog(true)
                       }}
@@ -592,11 +572,17 @@ export default function BudgetsPage(props: BudgetsPageProps) {
 
             <div className="space-y-2">
               <label className="text-sm font-outfit block">Budget Period *</label>
-              <Select value={formData.period} onValueChange={(value) => handleSelectChange("period", value)} required>
+              <Select value={formData.period} onValueChange={handlePeriodChange} required>
                 <SelectTrigger className="bg-cream/5 border-cream/10 text-cream focus:ring-cream/20">
                   <SelectValue placeholder="Select period" />
                 </SelectTrigger>
                 <SelectContent className="bg-dark border-cream/10">
+                  <SelectItem value="daily" className="text-cream hover:bg-cream/10">
+                    Daily
+                  </SelectItem>
+                  <SelectItem value="weekly" className="text-cream hover:bg-cream/10">
+                    Weekly
+                  </SelectItem>
                   <SelectItem value="monthly" className="text-cream hover:bg-cream/10">
                     Monthly
                   </SelectItem>

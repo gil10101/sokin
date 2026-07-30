@@ -127,9 +127,35 @@ class UpstashCache {
   }
 
   /**
+   * Whether Upstash is currently reachable. Callers can use this to
+   * distinguish "cache miss" from "cache down" (fail-closed decisions).
+   */
+  isAvailable(): boolean {
+    return this.isUpstashAvailable;
+  }
+
+  /**
+   * In serverless there are no long-lived timers, so recovery from an
+   * Upstash outage happens lazily: after 30s of being marked down, the next
+   * command is allowed to try again.
+   */
+  private maybeLazyReprobe(): void {
+    if (
+      !this.isUpstashAvailable &&
+      this.restUrl &&
+      this.restToken &&
+      Date.now() - this.lastHealthCheck >= 30000
+    ) {
+      this.isUpstashAvailable = true;
+      this.lastHealthCheck = Date.now();
+    }
+  }
+
+  /**
    * Execute an Upstash Redis command via REST API
    */
   private async executeCommand<T>(command: string[]): Promise<T | null> {
+    this.maybeLazyReprobe();
     if (!this.isUpstashAvailable || !this.restUrl || !this.restToken) {
       return null;
     }
@@ -179,14 +205,105 @@ class UpstashCache {
       this.isUpstashAvailable = false;
       this.lastHealthCheck = Date.now();
 
-      // Schedule health check to re-enable (clear existing timer to prevent leaks)
-      if (this.healthCheckTimer) {
-        clearTimeout(this.healthCheckTimer);
+      // Long-running processes probe on a timer; serverless instances rely on
+      // the lazy re-probe in executeCommand (a pending timer would keep the
+      // function instance from freezing cleanly).
+      if (process.env.VERCEL !== '1') {
+        if (this.healthCheckTimer) {
+          clearTimeout(this.healthCheckTimer);
+        }
+        this.healthCheckTimer = setTimeout(() => this.checkUpstashHealth(), 30000);
       }
-      this.healthCheckTimer = setTimeout(() => this.checkUpstashHealth(), 30000);
 
       return null;
     }
+  }
+
+  /**
+   * Execute several commands atomically-ish in one round trip via the
+   * Upstash REST pipeline endpoint. Returns per-command results, or null
+   * when Upstash is unreachable.
+   */
+  private async executePipeline(commands: string[][]): Promise<Array<UpstashResponse> | null> {
+    this.maybeLazyReprobe();
+    if (!this.isUpstashAvailable || !this.restUrl || !this.restToken) {
+      return null;
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), CACHE_CONFIG.REQUEST_TIMEOUT);
+
+    try {
+      const response = await fetch(`${this.restUrl}/pipeline`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.restToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(commands),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`Upstash pipeline failed: ${response.status} ${response.statusText}`);
+      }
+
+      return await response.json() as Array<UpstashResponse>;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      logger.error('Upstash pipeline failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      this.isUpstashAvailable = false;
+      this.lastHealthCheck = Date.now();
+      if (process.env.VERCEL !== '1') {
+        if (this.healthCheckTimer) {
+          clearTimeout(this.healthCheckTimer);
+        }
+        this.healthCheckTimer = setTimeout(() => this.checkUpstashHealth(), 30000);
+      }
+      return null;
+    }
+  }
+
+  /**
+   * Atomic fixed-window rate-limit increment.
+   *
+   * INCR + EXPIRE NX + PTTL in a single pipeline round trip, so every
+   * serverless instance shares one authoritative counter per key. Returns
+   * the post-increment count and the window's remaining time, or null when
+   * Upstash is unreachable (caller decides the fallback policy).
+   */
+  async rateLimitIncrement(
+    key: string,
+    windowSeconds: number
+  ): Promise<{ count: number; remainingMs: number } | null> {
+    const results = await this.executePipeline([
+      ['INCR', key],
+      ['EXPIRE', key, windowSeconds.toString(), 'NX'],
+      ['PTTL', key],
+    ]);
+
+    if (!results || results.length !== 3) return null;
+    if (results.some(r => r.error)) {
+      logger.warn('Rate limit pipeline returned an error', {
+        errors: results.map(r => r.error).filter(Boolean),
+      });
+      return null;
+    }
+
+    const count = Number(results[0].result);
+    let remainingMs = Number(results[2].result);
+    if (!Number.isFinite(count)) return null;
+    // PTTL returns -1 for keys without expiry (e.g. EXPIRE NX raced) — heal it
+    if (!Number.isFinite(remainingMs) || remainingMs < 0) {
+      await this.executeCommand(['EXPIRE', key, windowSeconds.toString()]);
+      remainingMs = windowSeconds * 1000;
+    }
+
+    return { count, remainingMs };
   }
 
   /**
@@ -273,30 +390,29 @@ class UpstashCache {
    * @param key - Cache key
    * @returns Cached value or null if not found/expired
    */
-  async get<T>(key: string): Promise<T | null> {
+  async get<T>(key: string, backfillTtlSeconds: number = 2): Promise<T | null> {
     // Try memory cache first (fastest)
     const memoryValue = this.getFromMemory<T>(key);
     if (memoryValue !== null) {
       return memoryValue;
     }
 
-    // Try Upstash if available
-    if (this.isUpstashAvailable) {
-      try {
-        const result = await this.executeCommand<string>(['GET', key]);
-        
-        if (result !== null) {
-          const parsed = JSON.parse(result) as T;
-          
-          // Cache in memory with fixed TTL to avoid extra network call
-          // Using 60s as safe default - eliminates latency from TTL query
-          this.setInMemory(key, parsed, 60);
-          
-          return parsed;
-        }
-      } catch {
-        logger.debug('Failed to parse cached value', { key });
+    // Try Upstash (executeCommand handles availability + lazy re-probe)
+    try {
+      const result = await this.executeCommand<string>(['GET', key]);
+
+      if (result !== null) {
+        const parsed = JSON.parse(result) as T;
+
+        // Short memory backfill only: a long TTL here would make
+        // cross-instance invalidation (DEL from another function instance)
+        // invisible until the local copy expired.
+        this.setInMemory(key, parsed, backfillTtlSeconds);
+
+        return parsed;
       }
+    } catch {
+      logger.debug('Failed to parse cached value', { key });
     }
 
     return null;
