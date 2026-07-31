@@ -37,6 +37,7 @@
     "minimatch": "^10.2.6",
     "js-yaml": "^5.2.2",
     "smol-toml": "^1.7.1",
+    "test-exclude": "^7.0.2",
     "sharp": "^0.35.3",
     "@vercel/node": {
       "ajv": "^8.20.0"

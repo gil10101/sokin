@@ -280,3 +280,65 @@ describe('CategoryBreakdown - rendered parts sum to the stated Total', () => {
     expect(screen.queryByText('Total')).not.toBeInTheDocument()
   })
 })
+
+/**
+ * The wiring, not the error surface in isolation.
+ *
+ * `ChartError` on its own cannot show that a chart actually reaches for it: the
+ * defect was that every chart defaulted `data` to `[]` and never read
+ * `isError`, so a 500 rendered exactly like an empty account. Only a test that
+ * drives the real component through a failing request can fail against that.
+ *
+ * These terminate: this file already renders `CategoryBreakdown` - recharts,
+ * dynamic imports and all - in the suites above, with `ResponsiveContainer`
+ * stubbed so it does not sit measuring a 0x0 jsdom parent forever.
+ */
+describe('CategoryBreakdown - a failed load is never drawn as zero', () => {
+  it('surfaces the failure instead of an empty breakdown', async () => {
+    getMock.mockRejectedValue(new Error('Request failed with status 500'))
+    const { container } = renderBreakdown()
+
+    await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
+
+    expect(screen.getByText(/Couldn't load category breakdown/)).toBeInTheDocument()
+    // The state being replaced was a confident zero, so the assertion that
+    // matters is the absence of any figure - not the presence of a message.
+    expect(container.textContent).not.toMatch(/\$/)
+    expect(screen.queryByText('Total')).not.toBeInTheDocument()
+    // And not the empty-account copy either: those are different claims.
+    expect(screen.queryByText('No expense data available')).not.toBeInTheDocument()
+  })
+
+  it('does not claim failure while the request is still in flight', async () => {
+    let release: (value: unknown) => void = () => {}
+    getMock.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          release = resolve
+        })
+    )
+    renderBreakdown()
+
+    await waitFor(() => expect(getMock).toHaveBeenCalled())
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.getByText('Loading category data...')).toBeInTheDocument()
+
+    release({ data: [], pagination: { hasMore: false, nextCursor: null, count: 0 } })
+
+    await waitFor(() => expect(screen.getByText('No expense data available')).toBeInTheDocument())
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('draws the breakdown once the retry succeeds', async () => {
+    getMock.mockRejectedValue(new Error('Request failed with status 500'))
+    renderBreakdown()
+    await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
+
+    serveCategories({ Dining: 500, Rent: 400 })
+    await userEvent.click(screen.getByRole('button', { name: /try again/i }))
+
+    await waitFor(() => expect(screen.getByText('Total')).toBeInTheDocument())
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(amountBesideLabel('Total')).toBe(900)
+  })
+})

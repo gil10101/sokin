@@ -62,7 +62,15 @@ export const MetricCard = React.memo(function MetricCard({ title, value, seconda
               {onRetry && (
                 <button
                   type="button"
-                  onClick={onRetry}
+                  onClick={(event) => {
+                    // The Net Worth card is wrapped in a <Link>. Without this the
+                    // click bubbles to the anchor and the user is navigated to
+                    // /dashboard/net-worth instead of the figure being refetched -
+                    // the retry looks like it did nothing but change the page.
+                    event.preventDefault()
+                    event.stopPropagation()
+                    onRetry()
+                  }}
                   className="text-xs text-cream/60 underline underline-offset-2 hover:text-cream"
                 >
                   Retry

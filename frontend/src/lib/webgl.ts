@@ -28,8 +28,18 @@ export function isWebGLAvailable(): boolean {
 
     // Release the probe context rather than waiting for GC; browsers cap the
     // number of live WebGL contexts and a leaked one can starve the real scene.
+    //
+    // Guarded on its own, deliberately. Failing to release is a leak, not an
+    // absence of WebGL - and canvas-fingerprinting defences do throw from
+    // getExtension. Sharing the outer catch would answer "no WebGL" for a
+    // browser that had just handed us a context, and because the answer is
+    // cached for the session that blanks the scene permanently.
     if (context && "getExtension" in context) {
-      ;(context as WebGLRenderingContext).getExtension("WEBGL_lose_context")?.loseContext()
+      try {
+        ;(context as WebGLRenderingContext).getExtension("WEBGL_lose_context")?.loseContext()
+      } catch {
+        // Leaked probe context; the answer above still stands.
+      }
     }
   } catch {
     cached = false

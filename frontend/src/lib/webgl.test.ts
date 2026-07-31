@@ -54,6 +54,34 @@ describe('isWebGLAvailable', () => {
     expect(loseContext).toHaveBeenCalledTimes(1)
   })
 
+  it('still reports true when releasing the probe throws', () => {
+    // Canvas-fingerprinting defences throw from getExtension. Failing to hand
+    // the probe context back is a leak; it is not evidence that the browser
+    // cannot do WebGL. Letting it decide the answer would blank the landing
+    // page for a machine that renders fine - and permanently, since the answer
+    // is cached for the rest of the session.
+    stubGetContext(() => ({
+      getExtension: () => {
+        throw new Error('getExtension blocked')
+      },
+    }))
+
+    expect(isWebGLAvailable()).toBe(true)
+    expect(isWebGLAvailable()).toBe(true)
+  })
+
+  it('still reports true when loseContext itself throws', () => {
+    stubGetContext(() => ({
+      getExtension: () => ({
+        loseContext: () => {
+          throw new Error('context already lost')
+        },
+      }),
+    }))
+
+    expect(isWebGLAvailable()).toBe(true)
+  })
+
   it('probes once and caches the answer', () => {
     stubGetContext(() => ({ getExtension: () => null }))
     isWebGLAvailable()

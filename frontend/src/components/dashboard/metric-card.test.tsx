@@ -61,6 +61,33 @@ describe('MetricCard - an unknown figure is never rendered as zero', () => {
     renderCard({ state: 'error' })
     expect(screen.queryByRole('button', { name: /retry/i })).not.toBeInTheDocument()
   })
+
+  it('retries in place rather than following the link it sits inside', async () => {
+    // The Net Worth card on the dashboard is wrapped in a <Link> to
+    // /dashboard/net-worth. A retry that bubbles navigates away, so the one
+    // control offered for recovering the figure instead changes the page and
+    // reads as broken.
+    const user = userEvent.setup()
+    const onRetry = vi.fn()
+    const followLink = vi.fn((event: React.MouseEvent) => event.preventDefault())
+
+    render(
+      <a href="/dashboard/net-worth" onClick={followLink}>
+        <MetricCard
+          title="Net Worth"
+          value="$0.00"
+          icon={icon}
+          state="error"
+          onRetry={onRetry}
+        />
+      </a>
+    )
+
+    await user.click(screen.getByRole('button', { name: /retry/i }))
+
+    expect(onRetry).toHaveBeenCalledTimes(1)
+    expect(followLink).not.toHaveBeenCalled()
+  })
 })
 
 describe('MetricCard - ready state', () => {

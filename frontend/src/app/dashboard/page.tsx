@@ -92,8 +92,11 @@ export default function DashboardPage(props: DashboardPageProps) {
   const [netWorth, setNetWorth] = useState<NetWorthCalculation | null>(null)
   const [notifications, setNotifications] = useState<Notification[]>([])
 
-  // Get upcoming bills data
-  const { data: billsData } = useUpcomingBills()
+  // Get upcoming bills data. The whole query is kept, not just its data: the
+  // card needs isLoading/isError to tell "no bills due" apart from "we could
+  // not find out", and refetch to offer a retry.
+  const billsQuery = useUpcomingBills()
+  const billsData = billsQuery.data
 
   // Helper function to safely parse expense dates
   const parseExpenseDate = useCallback((dateValue: any): Date => {
@@ -420,8 +423,8 @@ export default function DashboardPage(props: DashboardPageProps) {
                 state={cardState(netWorthQuery)}
                 onRetry={() => netWorthQuery.refetch()}
                 polarity="growth"
-                value={formatCurrency(netWorth ? netWorth.netWorth : 0, { decimals: 0 })}
-                change={netWorth?.monthlyChangePercent ? formatPercent(netWorth.monthlyChangePercent) : "0.0%"}
+                value={netWorth ? formatCurrency(netWorth.netWorth, { decimals: 0 }) : "—"}
+                change={formatChangePct(netWorth?.monthlyChangePercent)}
                 trend={
                   !netWorth?.monthlyChange || netWorth.monthlyChange === 0 ? "neutral" :
                   netWorth.monthlyChange > 0 ? "up" : "down"
@@ -434,8 +437,10 @@ export default function DashboardPage(props: DashboardPageProps) {
           <MotionContainer delay={0.4}>
             <MetricCard
               title="Upcoming Bills"
-              value={formatCurrency(billsData ? billsData.totalUpcoming : 0, { decimals: 0 })}
-              secondaryValue={billsData ? `${billsData.upcomingBills.length} bills due` : "No bills"}
+              state={cardState(billsQuery)}
+              onRetry={() => billsQuery.refetch()}
+              value={billsData ? formatCurrency(billsData.totalUpcoming, { decimals: 0 }) : "—"}
+              secondaryValue={billsData ? `${billsData.upcomingBills.length} bills due` : undefined}
               icon={<Calendar className="h-5 w-5" />}
             />
           </MotionContainer>

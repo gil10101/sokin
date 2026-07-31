@@ -132,7 +132,7 @@ export function ExpenseChart({ timeframe = "30days" }: ExpenseChartProps) {
   // A failed load must not fall through to a chart of zeros - an empty
   // result and a failed request are different claims about the user's money.
   if (expensesError) {
-    return <ChartError height={320} label="spending data" onRetry={() => refetchExpenses()} />
+    return <ChartError height={isMobile ? 280 : 400} label="spending data" onRetry={() => refetchExpenses()} />
   }
 
   if (!mounted || loading) {

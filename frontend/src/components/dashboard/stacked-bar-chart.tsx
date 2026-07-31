@@ -112,7 +112,6 @@ export function StackedBarChart({ timeframe = "year" }: StackedBarChartProps) {
       return
     }
 
-
     // Create a composite key to track if we need to reprocess
     const processKey = `${user.uid}-${timeframe}-${expensesKey}`
     
@@ -193,7 +192,7 @@ export function StackedBarChart({ timeframe = "year" }: StackedBarChartProps) {
   // A failed load must not fall through to a chart of zeros - an empty
   // result and a failed request are different claims about the user's money.
   if (expensesError) {
-    return <ChartError height={300} label="spending data" onRetry={() => refetchExpenses()} />
+    return <ChartError height="100%" label="spending data" onRetry={() => refetchExpenses()} />
   }
 
   if (!mounted || loading) {

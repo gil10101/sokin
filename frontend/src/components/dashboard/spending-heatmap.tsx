@@ -143,7 +143,7 @@ export function SpendingHeatmap() {
   }
 
   if (expensesError) {
-    return <ChartError height={240} label="spending data" onRetry={() => refetchExpenses()} />
+    return <ChartError height={heatmapConfig.height} label="spending data" onRetry={() => refetchExpenses()} />
   }
 
   return (

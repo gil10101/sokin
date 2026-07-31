@@ -258,7 +258,7 @@ export function CategoryBreakdown() {
   // A failed load must not fall through to a chart of zeros - an empty
   // result and a failed request are different claims about the user's money.
   if (expensesError) {
-    return <ChartError height={260} label="category breakdown" onRetry={() => refetchExpenses()} />
+    return <ChartError height={300} label="category breakdown" onRetry={() => refetchExpenses()} />
   }
 
   if (loading) {

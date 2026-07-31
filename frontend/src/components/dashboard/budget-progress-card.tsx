@@ -213,7 +213,7 @@ export function BudgetProgressCard({ refreshTrigger }: BudgetProgressCardProps) 
   // A failed load must not fall through to a chart of zeros - an empty
   // result and a failed request are different claims about the user's money.
   if (expensesError) {
-    return <ChartError height={240} label="budget progress" onRetry={() => refetchExpenses()} />
+    return <ChartError height={300} label="budget progress" onRetry={() => refetchExpenses()} />
   }
 
   if (loading || expensesLoading) {

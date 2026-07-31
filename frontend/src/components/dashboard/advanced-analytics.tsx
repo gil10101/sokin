@@ -207,13 +207,13 @@ export function AdvancedAnalytics({ budgets, timeframe = "6months" }: AdvancedAn
     }
   }
 
-  // Show loading state until mobile detection is initialized
   // A failed load must not fall through to a chart of zeros - an empty
   // result and a failed request are different claims about the user's money.
   if (expensesError) {
     return <ChartError height={240} label="analytics" onRetry={() => refetchExpenses()} />
   }
 
+  // Show loading state until mobile detection is initialized
   if (!mounted || typeof isMobile === 'undefined' || loading) {
     return (
       <div className="space-y-8 max-w-7xl mx-auto">
