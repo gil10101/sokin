@@ -2,11 +2,11 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { format, startOfDay } from "date-fns"
-import { CalendarIcon, Check, ChevronsUpDown, Plus } from "lucide-react"
+import { CalendarIcon, Check, ChevronsUpDown, Plus, Sparkles } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -19,7 +19,7 @@ import { MotionContainer } from "@/components/ui/motion-container"
 import { ReceiptScanner } from "@/components/dashboard/receipt-scanner"
 import { useQueryClient } from "@tanstack/react-query"
 import { logger } from "@/lib/logger"
-import { expensesAPI } from "@/lib/api"
+import { expensesAPI, api } from "@/lib/api"
 import { useCategories } from "@/hooks/use-categories"
 import { validateExpenseAmount, isValidAmountInput } from "@/lib/expense-validation"
 
@@ -68,6 +68,53 @@ export default function AddExpensePage(props: AddExpensePageProps) {
   const [loading, setLoading] = useState(false)
   const [openCategoryPopover, setOpenCategoryPopover] = useState(false)
   const [openDatePopover, setOpenDatePopover] = useState(false)
+
+  /**
+   * Category suggestion. Deliberately a suggestion the user applies, never an
+   * automatic write: silently setting a category on someone's expense is a
+   * change they did not make and might not notice.
+   */
+  const [suggesting, setSuggesting] = useState(false)
+  const [suggestion, setSuggestion] = useState<{ category: string; confidence: number; reasoning: string } | null>(null)
+  const [aiAvailable, setAiAvailable] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    const check = async () => {
+      try {
+        const token = await user?.getIdToken()
+        const res = (await api.get("ai/status", { token })) as { data?: { available?: boolean } }
+        if (!cancelled) setAiAvailable(Boolean(res.data?.available))
+      } catch {
+        if (!cancelled) setAiAvailable(false)
+      }
+    }
+    if (user) void check()
+    return () => { cancelled = true }
+  }, [user])
+
+  const handleSuggestCategory = async () => {
+    if (!name.trim() || !amount) return
+    setSuggesting(true)
+    setSuggestion(null)
+    try {
+      const token = await user?.getIdToken()
+      const res = (await api.post("ai/categorize", {
+        name: name.trim(),
+        amount: parseFloat(amount),
+        description: description.trim() || undefined,
+      }, { token })) as { data?: { category: string; confidence: number; reasoning: string } }
+      if (res.data) setSuggestion(res.data)
+    } catch {
+      toast({
+        title: "Couldn't suggest a category",
+        description: "Pick one manually - your entry is unaffected.",
+        variant: "destructive",
+      })
+    } finally {
+      setSuggesting(false)
+    }
+  }
   const [receiptImageUrl, setReceiptImageUrl] = useState("")
   const [receiptData, setReceiptData] = useState<ReceiptData | null>(null)
 
@@ -257,7 +304,51 @@ export default function AddExpensePage(props: AddExpensePageProps) {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label className="text-sm font-outfit block">Category *</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-outfit block">Category *</label>
+                  {aiAvailable && (
+                    <button
+                      type="button"
+                      onClick={handleSuggestCategory}
+                      disabled={suggesting || !name.trim() || !amount}
+                      className="text-xs text-cream/60 hover:text-cream disabled:opacity-40 disabled:hover:text-cream/60 flex items-center gap-1.5 transition-colors"
+                    >
+                      <Sparkles className={`h-3 w-3 ${suggesting ? "animate-pulse" : ""}`} />
+                      {suggesting ? "Thinking..." : "Suggest"}
+                    </button>
+                  )}
+                </div>
+
+                {suggestion && (
+                  <div className="flex items-start gap-2 rounded-lg border border-cream/15 bg-cream/5 p-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm text-cream">
+                        {suggestion.category}
+                        <span className="text-cream/40 text-xs ml-2 font-roboto-mono">
+                          {Math.round(suggestion.confidence * 100)}% confident
+                        </span>
+                      </p>
+                      <p className="text-xs text-cream/60 mt-0.5">{suggestion.reasoning}</p>
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => { setCategory(suggestion.category); setSuggestion(null) }}
+                        className="text-xs px-2 py-1 rounded bg-cream text-dark hover:bg-cream/90"
+                      >
+                        Use
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSuggestion(null)}
+                        className="text-xs px-2 py-1 rounded text-cream/60 hover:text-cream"
+                      >
+                        Dismiss
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <Popover open={openCategoryPopover} onOpenChange={setOpenCategoryPopover}>
                   <PopoverTrigger asChild>
                     <Button

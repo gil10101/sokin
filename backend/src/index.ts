@@ -135,6 +135,7 @@ import stocksRoutes from './routes/stocksRoutes';
 import netWorthRoutes from './routes/netWorthRoutes';
 import dashboardRoutes from './routes/dashboard';
 import subscriptionsRoutes from './routes/subscriptionsRoutes';
+import aiRoutes from './routes/aiRoutes';
 
 // Mount routes
 // Note: User routes consolidated - /api/users handles both profile and user management
@@ -149,6 +150,7 @@ app.use('/api/stocks', stocksRoutes);
 app.use('/api/net-worth', netWorthRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/subscriptions', subscriptionsRoutes);
+app.use('/api/ai', aiRoutes);
 
 // Health check route
 app.get('/health', (req: Request, res: Response) => {

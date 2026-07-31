@@ -4,7 +4,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { useEffect, useState } from "react"
 import { ArrowRight, Menu, X, ArrowDown, BarChart3, PieChart, Target, Wallet } from "lucide-react"
-import { motion } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
 import { useAuth } from "@/contexts/auth-context"
 import dynamic from "next/dynamic"
 
@@ -19,39 +19,50 @@ const MobileHero3DScene = dynamic(() => import("@/components/ui/mobile-hero-3d-s
 })
 import { useIsMobile } from "@/hooks/use-mobile"
 
-// Core features data - moved to top to prevent module loading issues
+/**
+ * Feature copy for the landing section.
+ *
+ * No imagery: the stock screenshots that used to sit here said nothing the
+ * words don't, and they competed with the 3D object for the same attention.
+ * Each entry carries a `metric` instead - a concrete detail that earns its
+ * place on the page in a fraction of the space.
+ */
 const coreFeatures = [
   {
-    title: "Expense Tracking",
+    id: "01",
+    title: "Expense tracking",
     description:
-      "Effortlessly track your expenses with automatic categorization and real-time updates. Our intuitive interface makes it simple to understand where your money is going and identify spending patterns over time.",
+      "Scan a receipt or type a line. Sokin reads the merchant, proposes a category, and files it - so the ledger stays current without becoming a chore.",
     icon: Wallet,
-    imageSrc: "expense-tracking.png",
-    tags: ["Auto-categorization", "Real-time updates", "Receipt scanning"],
+    metric: "Receipt to logged expense in one step",
+    tags: ["Receipt scanning", "AI categorization", "Instant search"],
   },
   {
-    title: "Data Visualization",
+    id: "02",
+    title: "Budgets that hold",
     description:
-      "Transform complex financial data into clear, actionable insights with our advanced visualization tools. Understand your spending patterns and financial health at a glance with beautiful charts and graphs.",
-    icon: BarChart3,
-    imageSrc: "data-visualization.png",
-    tags: ["Interactive charts", "Trend analysis", "Custom reports"],
-  },
-  {
-    title: "Budget Management",
-    description:
-      "Create and manage budgets that adapt to your spending habits and financial goals. Set limits, track progress, and receive gentle notifications when you're approaching your thresholds.",
+      "Set a limit per category and watch it against real spending, not a rounded guess. Alerts arrive while you can still act on them.",
     icon: PieChart,
-    imageSrc: "budget-tracking.png",
-    tags: ["Custom categories", "Spending alerts", "Flexible timeframes"],
+    metric: "Warns at 80%, not after you have overspent",
+    tags: ["Per-category limits", "Threshold alerts", "Any timeframe"],
   },
   {
-    title: "Goal Setting",
+    id: "03",
+    title: "Net worth over time",
     description:
-      "Define your financial aspirations and track your journey toward achieving them. Whether saving for a vacation or paying off debt, we'll help you stay focused and motivated with visual progress tracking.",
+      "Assets against liabilities, recorded monthly. Every point on the chart is a snapshot you actually have - nothing is interpolated to make the line look smoother.",
+    icon: BarChart3,
+    metric: "Only real snapshots are plotted",
+    tags: ["Assets & liabilities", "Monthly history", "Trend analysis"],
+  },
+  {
+    id: "04",
+    title: "Goals you reach",
+    description:
+      "Name the target, contribute toward it, and see the distance close. Progress is computed from what you have put in, not from what you intended to.",
     icon: Target,
-    imageSrc: "goal-setting.png",
-    tags: ["Progress tracking", "Milestone rewards", "Smart recommendations"],
+    metric: "Contributions recorded transactionally",
+    tags: ["Progress tracking", "Milestones", "Contribution history"],
   },
 ]
 
@@ -453,96 +464,118 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section id="features" className={`${isMobile ? 'py-16' : 'py-24'} bg-dark`}>
+        <section id="features" className={`${isMobile ? 'py-20' : 'py-32'} bg-dark`}>
+          {/*
+            Left-weighted on purpose. During this section the scroll-triggered
+            3D object animates to x: "25%", y: "-5%" - the right half, slightly
+            above centre. The previous layout put its copy exactly there, so the
+            text and the object fought for the same space. Holding the content
+            to the left column turns that overlap into deliberate negative
+            space, and the object becomes the section's right-hand mass instead
+            of an obstruction.
+          */}
           <div className="container mx-auto px-6 md:px-12 lg:px-16">
-            <div className="max-w-6xl mx-auto">
-              <motion.div
-                initial={isMobile ? { opacity: 0 } : { opacity: 0, y: 20 }}
-                whileInView={isMobile ? { opacity: 1 } : { opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={isMobile ? { duration: 0.6 } : { duration: 0.8 }}
-                className={`${isMobile ? 'mb-12 text-center' : 'mb-16'}`}
-              >
-                <p className={`text-sm font-roboto-mono text-cream/60 ${isMobile ? 'mb-6' : 'mb-4'}`}>02 / Features</p>
-                <h2 className={`${isMobile ? 'text-3xl' : 'text-3xl md:text-4xl lg:text-5xl'} font-medium tracking-tight font-outfit`}>
-                  Thoughtfully designed for your financial journey.
-                </h2>
-              </motion.div>
-
-              {/* Carousel Container */}
-              <div className="relative">
-                {/* Feature Cards */}
-                <div 
-                  className="overflow-hidden cursor-grab active:cursor-grabbing select-none"
-                  onTouchStart={handleTouchStart}
-                  onTouchMove={handleTouchMove}
-                  onTouchEnd={handleTouchEnd}
-                  onMouseDown={handleMouseDown}
-                  onMouseMove={handleMouseMove}
-                  onMouseUp={handleMouseUp}
-                  onMouseLeave={handleMouseUp}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+              <div className="lg:col-span-7 xl:col-span-6">
+                <motion.div
+                  initial={isMobile ? { opacity: 0 } : { opacity: 0, y: 20 }}
+                  whileInView={isMobile ? { opacity: 1 } : { opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: isMobile ? 0.6 : 0.8 }}
+                  className={isMobile ? 'mb-10' : 'mb-16'}
                 >
-                  <motion.div
-                    className="flex"
-                    animate={{ x: `-${currentFeature * 100}%` }}
-                    transition={{ duration: 0.6, ease: "easeInOut" }}
-                  >
-                    {coreFeatures.map((feature, index) => (
-                      <div
-                        key={feature.title}
-                        className="w-full flex-shrink-0"
-                      >
-                        <div className={`flex flex-col ${isMobile ? 'items-center text-center gap-6' : 'md:flex-row items-center gap-8 md:gap-16'}`}>
-                          <div className={`${isMobile ? 'w-full max-w-sm' : 'w-full md:w-1/2'}`}>
-                            <div className={`relative aspect-square w-full ${isMobile ? 'max-w-xs' : 'max-w-md'} mx-auto overflow-hidden rounded-2xl`}>
-                              <Image
-                                src={`/images/features/${feature.imageSrc}`}
-                                alt={feature.title}
-                                fill
-                                className="object-cover"
-                              />
-                            </div>
-                          </div>
-                          <div className={`${isMobile ? 'w-full' : 'w-full md:w-1/2'}`}>
-                            <div className={`${isMobile ? 'p-0' : 'p-4 md:p-8'}`}>
-                              <div className={`inline-flex items-center justify-center h-12 w-12 rounded-xl bg-cream/5 ${isMobile ? 'mb-4' : 'mb-6'}`}>
-                                <feature.icon className="h-6 w-6 text-cream/60" />
-                              </div>
-                              <h3 className={`${isMobile ? 'text-2xl mb-3' : 'text-2xl md:text-3xl mb-4'} font-medium font-outfit`}>{feature.title}</h3>
-                              <p className={`${isMobile ? 'text-base mb-4' : 'text-lg mb-6'} text-cream/70 font-outfit`}>{feature.description}</p>
-                              <div className={`flex flex-wrap ${isMobile ? 'gap-2 justify-center' : 'gap-3'}`}>
-                                {feature.tags.map((tag) => (
-                                  <span key={tag} className={`px-3 py-1 rounded-full bg-cream/5 text-cream/80 ${isMobile ? 'text-xs' : 'text-sm'}`}>
-                                    {tag}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </motion.div>
-                </div>
+                  <p className="text-sm font-roboto-mono text-cream/60 mb-4">02 / Features</p>
+                  <h2 className={`${isMobile ? 'text-3xl' : 'text-4xl lg:text-5xl'} font-medium tracking-tight font-outfit max-w-xl`}>
+                    Built to tell you the truth about your money.
+                  </h2>
+                </motion.div>
 
-                {/* Dots Indicator */}
-                <div className={`flex justify-center ${isMobile ? 'mt-8' : 'mt-12'}`}>
-                  <div className="flex gap-3">
-                    {coreFeatures.map((_, index) => (
-                      <button
-                        key={index}
-                        onClick={() => goToFeature(index)}
-                        className={`w-4 h-4 rounded-full transition-all duration-300 ${
-                          index === currentFeature
-                            ? 'bg-cream scale-110'
-                            : 'bg-cream/20 hover:bg-cream/40 hover:scale-105'
-                        }`}
-                        aria-label={`Go to feature ${index + 1}`}
-                      />
-                    ))}
-                  </div>
+                <div className="divide-y divide-cream/10 border-t border-cream/10">
+                  {coreFeatures.map((feature, index) => {
+                    const isOpen = index === currentFeature
+                    return (
+                      <motion.div
+                        key={feature.title}
+                        initial={{ opacity: 0 }}
+                        whileInView={{ opacity: 1 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.5, delay: index * 0.06 }}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => goToFeature(index)}
+                          aria-expanded={isOpen}
+                          className="w-full text-left py-6 group focus:outline-none focus-visible:ring-1 focus-visible:ring-cream/40 rounded-sm"
+                        >
+                          <div className="flex items-baseline gap-4 sm:gap-6">
+                            <span
+                              className={`font-roboto-mono text-xs tabular-nums transition-colors ${
+                                isOpen ? 'text-cream' : 'text-cream/35 group-hover:text-cream/60'
+                              }`}
+                            >
+                              {feature.id}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-3">
+                                <feature.icon
+                                  className={`h-4 w-4 shrink-0 transition-colors ${
+                                    isOpen ? 'text-cream' : 'text-cream/40 group-hover:text-cream/70'
+                                  }`}
+                                />
+                                <h3
+                                  className={`font-outfit tracking-tight transition-colors ${
+                                    isMobile ? 'text-xl' : 'text-2xl'
+                                  } ${isOpen ? 'text-cream' : 'text-cream/60 group-hover:text-cream/90'}`}
+                                >
+                                  {feature.title}
+                                </h3>
+                              </div>
+
+                              <AnimatePresence initial={false}>
+                                {isOpen && (
+                                  <motion.div
+                                    key="body"
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: 'auto', opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    transition={{ duration: 0.35, ease: 'easeInOut' }}
+                                    className="overflow-hidden"
+                                  >
+                                    <div className="pt-4 pl-7">
+                                      <p className="text-cream/70 font-outfit max-w-lg leading-relaxed">
+                                        {feature.description}
+                                      </p>
+                                      <p className="mt-4 font-roboto-mono text-xs text-cream/50">
+                                        {feature.metric}
+                                      </p>
+                                      <div className="mt-5 flex flex-wrap gap-2">
+                                        {feature.tags.map((tag) => (
+                                          <span
+                                            key={tag}
+                                            className="px-3 py-1 rounded-full border border-cream/15 text-cream/70 text-xs font-roboto-mono"
+                                          >
+                                            {tag}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </div>
+                          </div>
+                        </button>
+                      </motion.div>
+                    )
+                  })}
                 </div>
               </div>
+
+              {/*
+                Intentionally empty at lg and up: this is the column the 3D
+                object occupies once the features trigger fires.
+              */}
+              <div className="hidden lg:block lg:col-span-5 xl:col-span-6" aria-hidden="true" />
             </div>
           </div>
         </section>

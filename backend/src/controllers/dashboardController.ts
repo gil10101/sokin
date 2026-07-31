@@ -438,3 +438,92 @@ export const invalidateDashboardCache = async (userId: string): Promise<void> =>
     });
   }
 };
+
+/**
+ * Assembles the figures an AI summary is allowed to talk about.
+ *
+ * Deliberately returns aggregates, never raw transactions: the model summarizes
+ * numbers this backend already computed rather than doing arithmetic of its
+ * own, so a written insight cannot contradict the dashboard rendered beside it.
+ * Returns null when there is nothing worth summarizing.
+ */
+export async function buildSpendingFacts(
+  userId: string,
+  now: Date = new Date()
+): Promise<{
+  currency: string;
+  totalThisMonth: number;
+  totalLastMonth: number;
+  avgMonthly6: number;
+  elapsedDays: number;
+  topCategories: Array<{ category: string; total: number }>;
+  budgets: Array<{ name: string; limit: number; spent: number }>;
+} | null> {
+  if (!db) {
+    throw new AppError('Database not initialized', 500, false);
+  }
+
+  const metrics = await computeSpendingMetrics(userId, now);
+  if (!metrics || metrics.countThisMonth === 0) {
+    return null;
+  }
+
+  const range = buildMetricWindows(now);
+
+  // Category totals over the current month, both `date` representations.
+  const categoryTotals = new Map<string, number>();
+  const collect = (snapshot: FirebaseFirestore.QuerySnapshot): void => {
+    snapshot.forEach((doc) => {
+      const data = doc.data() as { category?: string; amount?: number };
+      const category = (data.category || 'other').toLowerCase();
+      categoryTotals.set(category, (categoryTotals.get(category) || 0) + (Number(data.amount) || 0));
+    });
+  };
+
+  const expenses = db.collection('expenses');
+  const [asStrings, asTimestamps] = await Promise.all([
+    expenses
+      .where('userId', '==', userId)
+      .where('date', '>=', range.monthStart.slice(0, 10))
+      .where('date', '<=', range.monthToDateEnd)
+      .orderBy('date', 'desc')
+      .get(),
+    expenses
+      .where('userId', '==', userId)
+      .where('date', '>=', new Date(range.monthStart))
+      .where('date', '<=', new Date(range.monthToDateEnd))
+      .orderBy('date', 'desc')
+      .get(),
+  ]);
+  collect(asStrings);
+  collect(asTimestamps);
+
+  const topCategories = Array.from(categoryTotals.entries())
+    .map(([category, total]) => ({ category, total: Math.round(total * 100) / 100 }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 5);
+
+  const budgetsSnapshot = await db.collection('budgets').where('userId', '==', userId).limit(20).get();
+  const budgets = budgetsSnapshot.docs.map((doc) => {
+    const data = doc.data() as { name?: string; amount?: number; category?: string };
+    const category = (data.category || '').toLowerCase();
+    return {
+      name: String(data.name || category || 'Budget'),
+      limit: Number(data.amount) || 0,
+      spent: Math.round((categoryTotals.get(category) || 0) * 100) / 100,
+    };
+  });
+
+  const userDoc = await db.collection('users').doc(userId).get();
+  const currency = (userDoc.data()?.settings?.currency as string) || 'USD';
+
+  return {
+    currency,
+    totalThisMonth: metrics.totalThisMonth,
+    totalLastMonth: metrics.totalLastMonth,
+    avgMonthly6: metrics.avgMonthly6,
+    elapsedDays: metrics.range.elapsedDays,
+    topCategories,
+    budgets,
+  };
+}

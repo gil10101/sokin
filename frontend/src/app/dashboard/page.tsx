@@ -35,6 +35,7 @@ import { RecentTransactions } from "@/components/dashboard/recent-transactions"
 import { MetricCard } from "@/components/dashboard/metric-card"
 import { SavingsGoals } from "@/components/dashboard/savings-goals"
 import { BillReminders } from "@/components/dashboard/bill-reminders"
+import { AiInsights } from "@/components/dashboard/ai-insights"
 import { ResponsiveLayoutContainer } from "@/components/dashboard/responsive-layout-container"
 import { usePortfolioState } from "@/hooks/use-portfolio-state"
 import { Input } from "@/components/ui/input"
@@ -531,6 +532,7 @@ export default function DashboardPage(props: DashboardPageProps) {
           }
           savingsAnalyticsSection={
             <div className="space-y-4 lg:space-y-6 h-full flex flex-col">
+              <AiInsights />
               {/* Savings Goals */}
               <MotionContainer className="bg-cream/5 rounded-xl p-4 lg:p-6 flex-1 flex flex-col" delay={0.9}>
                 <div className="flex items-center justify-between mb-4 lg:mb-6">
