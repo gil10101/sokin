@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useRef } from "react"
+import { ChartError } from "./chart-error"
 import { Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Area, ComposedChart } from "recharts"
 // Removed ChartContainer due to type compatibility issues - using plain div instead
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
@@ -40,7 +41,7 @@ export function ExpenseChart({ timeframe = "30days" }: ExpenseChartProps) {
   const [loading, setLoading] = useState(true)
   const [chartData, setChartData] = useState<ChartDataPoint[]>([])
   const chartRef = useRef<HTMLDivElement>(null)
-  const { data: expenses = [], isLoading: expensesLoading } = useExpensesData()
+  const { data: expenses = [], isLoading: expensesLoading, isError: expensesError, refetch: refetchExpenses } = useExpensesData()
 
   useEffect(() => {
     setMounted(true)
@@ -127,6 +128,12 @@ export function ExpenseChart({ timeframe = "30days" }: ExpenseChartProps) {
 
   // ResponsiveContainer automatically handles window resize events
   // No manual resize handling needed
+
+  // A failed load must not fall through to a chart of zeros - an empty
+  // result and a failed request are different claims about the user's money.
+  if (expensesError) {
+    return <ChartError height={320} label="spending data" onRetry={() => refetchExpenses()} />
+  }
 
   if (!mounted || loading) {
     return (

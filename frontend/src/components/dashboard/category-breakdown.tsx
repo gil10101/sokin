@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useMemo, useCallback, useRef } from "react"
+import { ChartError } from "./chart-error"
 import { toChartNumber } from "@/lib/format"
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts"
 import { ChevronRight, X, Calendar, Filter, ShoppingBag, Coffee, Home, Car, Utensils, ArrowDown, LucideIcon } from "lucide-react"
@@ -161,7 +162,7 @@ export function CategoryBreakdown() {
     setMounted(true)
   }, [])
 
-  const { data: expenses = [], isLoading: expensesLoading } = useExpensesData()
+  const { data: expenses = [], isLoading: expensesLoading, isError: expensesError, refetch: refetchExpenses } = useExpensesData()
   const prevProcessedKeyRef = useRef<string>('')
 
   // Create a composite key that includes all dependencies to prevent infinite loops
@@ -252,6 +253,12 @@ export function CategoryBreakdown() {
 
   if (!mounted) {
     return <div className="h-[300px] bg-cream/5 animate-pulse rounded-md" />
+  }
+
+  // A failed load must not fall through to a chart of zeros - an empty
+  // result and a failed request are different claims about the user's money.
+  if (expensesError) {
+    return <ChartError height={260} label="category breakdown" onRetry={() => refetchExpenses()} />
   }
 
   if (loading) {

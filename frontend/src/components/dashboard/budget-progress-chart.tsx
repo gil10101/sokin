@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useMemo, useCallback } from "react"
+import { ChartError } from "./chart-error"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell, ResponsiveContainer, LabelList } from "recharts"
 import { MotionDiv } from "../ui/dynamic-motion"
 import { useAuth } from "@/contexts/auth-context"
@@ -44,7 +45,7 @@ export function BudgetProgressChart({ selectedMonth }: BudgetProgressChartProps)
   const [chartData, setChartData] = useState<BudgetProgressData[]>([])
   const { user } = useAuth()
   const { isMobile, isTablet } = useViewport()
-  const { data: expenses = [], isLoading: expensesLoading } = useExpensesData()
+  const { data: expenses = [], isLoading: expensesLoading, isError: expensesError, refetch: refetchExpenses } = useExpensesData()
 
   // Responsive chart configuration
   const chartConfig = useMemo(() => {
@@ -194,6 +195,12 @@ export function BudgetProgressChart({ selectedMonth }: BudgetProgressChartProps)
         </text>
       </g>
     )
+  }
+
+  // A failed load must not fall through to a chart of zeros - an empty
+  // result and a failed request are different claims about the user's money.
+  if (expensesError) {
+    return <ChartError height={240} label="budget progress" onRetry={() => refetchExpenses()} />
   }
 
   if (loading || expensesLoading) {

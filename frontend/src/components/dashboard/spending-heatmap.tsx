@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
+import { ChartError } from "./chart-error"
 import { format, startOfWeek, addDays, addWeeks, subWeeks } from "date-fns"
 import { useExpensesData } from "@/hooks/use-expenses-data"
 import { useAuth } from "@/contexts/auth-context"
@@ -79,7 +80,7 @@ export function SpendingHeatmap() {
     }
   }, [isMobile, isTablet])
 
-  const { data: expenses = [], isLoading: expensesLoading } = useExpensesData()
+  const { data: expenses = [], isLoading: expensesLoading, isError: expensesError, refetch: refetchExpenses } = useExpensesData()
 
   // Process expenses data using useMemo to avoid infinite loops
   const data = useMemo(() => {
@@ -139,6 +140,10 @@ export function SpendingHeatmap() {
         <div className="text-cream/60">Loading spending data...</div>
       </div>
     )
+  }
+
+  if (expensesError) {
+    return <ChartError height={240} label="spending data" onRetry={() => refetchExpenses()} />
   }
 
   return (

@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useEffect, useState, useRef, useCallback, useMemo } from "react"
+import { ChartError } from "./chart-error"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell, Tooltip } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
@@ -86,7 +87,7 @@ export function StackedBarChart({ timeframe = "year" }: StackedBarChartProps) {
   const [categories, setCategories] = useState<string[]>([])
   const chartRef = useRef<HTMLDivElement>(null)
 
-  const { data: allExpenses = [], isLoading: expensesLoading } = useExpensesData()
+  const { data: allExpenses = [], isLoading: expensesLoading, isError: expensesError, refetch: refetchExpenses } = useExpensesData()
   const prevProcessedKeyRef = useRef<string>('')
 
   useEffect(() => {
@@ -110,6 +111,7 @@ export function StackedBarChart({ timeframe = "year" }: StackedBarChartProps) {
       setLoading(true)
       return
     }
+
 
     // Create a composite key to track if we need to reprocess
     const processKey = `${user.uid}-${timeframe}-${expensesKey}`
@@ -187,6 +189,12 @@ export function StackedBarChart({ timeframe = "year" }: StackedBarChartProps) {
     window.addEventListener("resize", handleResize)
     return () => window.removeEventListener("resize", handleResize)
   }, [mounted])
+
+  // A failed load must not fall through to a chart of zeros - an empty
+  // result and a failed request are different claims about the user's money.
+  if (expensesError) {
+    return <ChartError height={300} label="spending data" onRetry={() => refetchExpenses()} />
+  }
 
   if (!mounted || loading) {
     return (

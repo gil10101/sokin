@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo, useCallback } from "react"
+import { ChartError } from "./chart-error"
 import { useAuth } from "@/contexts/auth-context"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell, ResponsiveContainer, LabelList } from "recharts"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
@@ -62,7 +63,7 @@ export function BudgetProgressCard({ refreshTrigger }: BudgetProgressCardProps) 
   const [data, setData] = useState<BudgetProgress[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const { data: expenses = [], isLoading: expensesLoading } = useExpensesData()
+  const { data: expenses = [], isLoading: expensesLoading, isError: expensesError, refetch: refetchExpenses } = useExpensesData()
   const [budgets, setBudgets] = useState<Budget[]>([])
 
   // Responsive chart configuration
@@ -207,6 +208,12 @@ export function BudgetProgressCard({ refreshTrigger }: BudgetProgressCardProps) 
     if (percentage < 90) return "rgba(245, 245, 240, 0.8)"
     if (percentage < 100) return "rgba(245, 245, 240, 1)"
     return "rgba(255, 99, 71, 0.8)" // Tomato color for over budget
+  }
+
+  // A failed load must not fall through to a chart of zeros - an empty
+  // result and a failed request are different claims about the user's money.
+  if (expensesError) {
+    return <ChartError height={240} label="budget progress" onRetry={() => refetchExpenses()} />
   }
 
   if (loading || expensesLoading) {
