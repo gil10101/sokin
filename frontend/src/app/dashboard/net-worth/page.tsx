@@ -304,11 +304,7 @@ export default function NetWorthPage(props: NetWorthPageProps) {
                     Historical View
                   </span>
                 </div>
-                <NetWorthTrends
-                  currentNetWorth={netWorth?.netWorth || 0}
-                  monthlyChange={netWorth?.monthlyChange}
-                  monthlyChangePercent={netWorth?.monthlyChangePercent}
-                />
+                <NetWorthTrends />
               </div>
             </MotionDiv>
 
