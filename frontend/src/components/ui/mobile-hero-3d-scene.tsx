@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic"
 import React, { Suspense, useEffect, useState } from "react"
 import { Canvas } from "@react-three/fiber"
+import { isWebGLAvailable } from "@/lib/webgl"
 
 // Dynamically import the TwistedTorus to avoid SSR issues
 const TwistedTorus = dynamic(() => import("./twisted-torus"), {
@@ -10,6 +11,17 @@ const TwistedTorus = dynamic(() => import("./twisted-torus"), {
 })
 
 function MobileHero3DScene() {
+  /**
+   * Resolved after mount, never during render: the server cannot know whether
+   * the visitor's browser can make a WebGL context, so deciding during render
+   * would produce a hydration mismatch. Until it resolves we render nothing
+   * rather than mounting a Canvas that may throw.
+   */
+  const [webglAvailable, setWebglAvailable] = useState(false)
+  useEffect(() => {
+    setWebglAvailable(isWebGLAvailable())
+  }, [])
+
   const [viewportHeight, setViewportHeight] = useState(0)
 
   useEffect(() => {
@@ -62,6 +74,7 @@ function MobileHero3DScene() {
         overflow: "hidden"
       }}
     >
+      {webglAvailable && (
       <Suspense fallback={null}>
         <Canvas
           camera={{ 
@@ -89,6 +102,7 @@ function MobileHero3DScene() {
           </Suspense>
         </Canvas>
       </Suspense>
+      )}
     </div>
   )
 }

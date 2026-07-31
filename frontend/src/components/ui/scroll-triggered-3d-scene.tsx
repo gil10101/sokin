@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic"
 import React, { Suspense, useEffect, useRef, useState } from "react"
 import { Canvas } from "@react-three/fiber"
+import { isWebGLAvailable } from "@/lib/webgl"
 import { gsap } from "gsap"
 import { ScrollTrigger } from "gsap/ScrollTrigger"
 
@@ -17,6 +18,17 @@ const TwistedTorus = dynamic(() => import("./twisted-torus"), {
 })
 
 function ScrollTriggered3DScene() {
+  /**
+   * Resolved after mount, never during render: the server cannot know whether
+   * the visitor's browser can make a WebGL context, so deciding during render
+   * would produce a hydration mismatch. Until it resolves we render nothing
+   * rather than mounting a Canvas that may throw.
+   */
+  const [webglAvailable, setWebglAvailable] = useState(false)
+  useEffect(() => {
+    setWebglAvailable(isWebGLAvailable())
+  }, [])
+
   const canvasRef = useRef<HTMLDivElement>(null)
   const [isMobile, setIsMobile] = useState(false)
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 })
@@ -303,6 +315,7 @@ function ScrollTriggered3DScene() {
         overflow: "visible"
       }}
     >
+      {webglAvailable && (
       <Suspense fallback={null}>
         <Canvas
             camera={{ 
@@ -334,6 +347,7 @@ function ScrollTriggered3DScene() {
             </Suspense>
           </Canvas>
         </Suspense>
+      )}
     </div>
   )
 }

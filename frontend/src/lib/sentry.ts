@@ -20,10 +20,20 @@ const isValidDSN = SENTRY_DSN &&
   SENTRY_DSN.startsWith('https://') &&
   SENTRY_DSN.includes('@');
 
-// DSN validation completed silently
+/**
+ * Development is excluded on purpose. Hot-module replacement throws errors that
+ * cannot occur in a built app - "module factory is not available", and
+ * ReferenceErrors for bindings that exist in the source but not yet in the
+ * patched chunk - and reporting them fills the issue stream with failures
+ * nobody can act on while consuming the event quota. Set
+ * NEXT_PUBLIC_SENTRY_ENABLE_DEV=true to opt in when testing the integration.
+ */
+const isReportingEnvironment =
+  process.env.NODE_ENV === 'production' ||
+  process.env.NEXT_PUBLIC_SENTRY_ENABLE_DEV === 'true';
 
-// Only initialize if DSN is valid
-if (isValidDSN) {
+// Only initialize if DSN is valid and we are somewhere worth reporting from
+if (isValidDSN && isReportingEnvironment) {
   // Use setTimeout to defer initialization and avoid webpack issues
   setTimeout(() => {
     import('@sentry/nextjs').then((Sentry) => {
