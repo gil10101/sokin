@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useMemo, useCallback } from "react"
+import { BarChart3 } from "lucide-react"
 import { ChartError } from "./chart-error"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell, ResponsiveContainer, LabelList } from "recharts"
 import { MotionDiv } from "../ui/dynamic-motion"
@@ -215,7 +216,7 @@ export function BudgetProgressChart({ selectedMonth }: BudgetProgressChartProps)
     return (
       <div className="flex items-center justify-center h-64 text-cream/50">
         <div className="text-center">
-          <div className="text-4xl mb-2">📊</div>
+          <BarChart3 className="h-8 w-8 mx-auto mb-2 opacity-40" />
           <p className="text-sm">No budget data available</p>
           <p className="text-xs opacity-75 mt-1">Set up budgets to track your progress</p>
         </div>

@@ -102,9 +102,9 @@ export function PerformanceMonitor() {
   const formatTime = (time: number | null) => time ? `${time.toFixed(2)}ms` : 'N/A'
   const formatScore = (value: number | null, good: number, poor: number) => {
     if (value === null) return 'N/A'
-    if (value <= good) return '🟢 Good'
-    if (value <= poor) return '🟡 Needs improvement'
-    return '🔴 Poor'
+    if (value <= good) return 'Good'
+    if (value <= poor) return 'Needs improvement'
+    return 'Poor'
   }
 
   return (
@@ -115,7 +115,7 @@ export function PerformanceMonitor() {
           onClick={() => setIsVisible(false)}
           className="text-cream/60 hover:text-cream text-xs"
         >
-          ✕
+          \u00d7
         </button>
       </div>
 

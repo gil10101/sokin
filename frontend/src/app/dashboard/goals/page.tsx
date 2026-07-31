@@ -346,19 +346,19 @@ export default function GoalsPage(props: GoalsPageProps) {
 
         if (progressPercentage >= 100) {
           toast({
-            title: "🎉 Goal Completed!",
+            title: "Goal completed",
             description: `Congratulations! You've reached your "${goalName}" goal!`,
             duration: 7000
           })
         } else if (progressPercentage >= 75 && previousPercentage < 75) {
           toast({
-            title: "🏆 Milestone Reached!",
+            title: "Milestone reached",
             description: `You're 75% of the way to your "${goalName}" goal!`,
             duration: 5000
           })
         } else if (progressPercentage >= 50 && previousPercentage < 50) {
           toast({
-            title: "🎯 Halfway There!",
+            title: "Halfway there",
             description: `You're 50% of the way to your "${goalName}" goal!`,
             duration: 5000
           })

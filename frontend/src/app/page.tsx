@@ -3,8 +3,8 @@
 import Link from "next/link"
 import Image from "next/image"
 import { useEffect, useState, useRef } from "react"
-import { ArrowRight, Menu, X, ArrowDown, BarChart3, PieChart, Target, Wallet } from "lucide-react"
-import { motion, AnimatePresence } from "framer-motion"
+import { ArrowRight, Menu, X, ArrowDown, BarChart3, PieChart, Target, Wallet, TrendingUp, CalendarClock, LineChart, Sparkles } from "lucide-react"
+import { motion } from "framer-motion"
 import { useAuth } from "@/contexts/auth-context"
 import dynamic from "next/dynamic"
 
@@ -24,45 +24,77 @@ import { useIsMobile } from "@/hooks/use-mobile"
  *
  * No imagery: the stock screenshots that used to sit here said nothing the
  * words don't, and they competed with the 3D object for the same attention.
- * Each entry carries a `metric` instead - a concrete detail that earns its
- * place on the page in a fraction of the space.
+ *
+ * Every entry renders in full, always. An earlier version expanded the active
+ * one and collapsed the rest, which changed the section's height mid-scroll -
+ * that shifted content under the reader and re-triggered the very observer that
+ * caused the expansion. Scroll now moves emphasis only, so the height is
+ * constant and there is nothing to fight.
  */
 const coreFeatures = [
   {
     id: "01",
-    title: "Expense tracking",
+    title: "Expenses and receipts",
     description:
-      "Scan a receipt or type a line. Sokin reads the merchant, proposes a category, and files it - so the ledger stays current without becoming a chore.",
+      "Scan a receipt or type a line. Cloud Vision reads the merchant and amount, and you confirm before anything is saved.",
     icon: Wallet,
-    metric: "Receipt to logged expense in one step",
-    tags: ["Receipt scanning", "AI categorization", "Instant search"],
+    tags: ["Receipt OCR", "Search and filter", "Bulk editing"],
   },
   {
     id: "02",
-    title: "Budgets that hold",
+    title: "Budgets",
     description:
-      "Set a limit per category and watch it against real spending, not a rounded guess. Alerts arrive while you can still act on them.",
+      "Per-category limits over any period, measured against real spending. Alerts arrive at 80%, while you can still act on them.",
     icon: PieChart,
-    metric: "Warns at 80%, not after you have overspent",
-    tags: ["Per-category limits", "Threshold alerts", "Any timeframe"],
+    tags: ["Any timeframe", "Threshold alerts", "Per category"],
   },
   {
     id: "03",
-    title: "Net worth over time",
+    title: "Savings goals",
     description:
-      "Assets against liabilities, recorded monthly. Every point on the chart is a snapshot you actually have - nothing is interpolated to make the line look smoother.",
-    icon: BarChart3,
-    metric: "Only real snapshots are plotted",
-    tags: ["Assets & liabilities", "Monthly history", "Trend analysis"],
+      "Contributions are recorded transactionally, so two at once cannot lose each other. Progress reflects what you put in, not what you intended to.",
+    icon: Target,
+    tags: ["Contribution history", "Milestones", "Transactional"],
   },
   {
     id: "04",
-    title: "Goals you reach",
+    title: "Net worth",
     description:
-      "Name the target, contribute toward it, and see the distance close. Progress is computed from what you have put in, not from what you intended to.",
-    icon: Target,
-    metric: "Contributions recorded transactionally",
-    tags: ["Progress tracking", "Milestones", "Contribution history"],
+      "Assets against liabilities, snapshotted monthly. Every point on the chart is a snapshot you actually have - nothing is interpolated.",
+    icon: TrendingUp,
+    tags: ["Assets and debts", "Monthly history", "Real snapshots only"],
+  },
+  {
+    id: "05",
+    title: "Bills and subscriptions",
+    description:
+      "Recurring bills with due dates and an upcoming view, plus subscriptions with projected schedules and true monthly cost.",
+    icon: CalendarClock,
+    tags: ["Due tracking", "Projected cost", "Renewal reminders"],
+  },
+  {
+    id: "06",
+    title: "Stocks and portfolio",
+    description:
+      "Live quotes and company data from Finnhub, a watchlist, and a buy/sell portfolio with cost basis and gain-loss tracking.",
+    icon: LineChart,
+    tags: ["Live quotes", "Watchlist", "Cost basis"],
+  },
+  {
+    id: "07",
+    title: "Analytics",
+    description:
+      "Category breakdowns, monthly trends and a spending heatmap, aggregated server-side across your whole history rather than a recent slice.",
+    icon: BarChart3,
+    tags: ["Trends", "Heatmap", "Full-history totals"],
+  },
+  {
+    id: "08",
+    title: "AI assistance",
+    description:
+      "Claude suggests a category as you type an expense, and writes a short summary of your month from figures the server computed - never invented.",
+    icon: Sparkles,
+    tags: ["Category suggestions", "Written insights", "Grounded in real data"],
   },
 ]
 
@@ -183,15 +215,6 @@ export default function LandingPage() {
     rows.forEach((row) => observer.observe(row))
     return () => observer.disconnect()
   }, [])
-
-  /**
-   * Clicking a row scrolls it into the focus band rather than setting state
-   * directly, so scroll position stays the single source of truth - otherwise a
-   * click and the next scroll event would disagree about what is open.
-   */
-  const goToFeature = (index: number) => {
-    featureRefs.current[index]?.scrollIntoView({ behavior: "smooth", block: "center" })
-  }
 
 
   return (
@@ -460,82 +483,77 @@ export default function LandingPage() {
                   </h2>
                 </motion.div>
 
-                <div className="divide-y divide-cream/10 border-t border-cream/10">
+                <div className="border-t border-cream/10">
                   {coreFeatures.map((feature, index) => {
-                    const isOpen = index === currentFeature
+                    const isActive = index === currentFeature
                     return (
                       <motion.div
                         key={feature.title}
                         ref={(node) => { featureRefs.current[index] = node }}
-                        initial={{ opacity: 0 }}
-                        whileInView={{ opacity: 1 }}
-                        viewport={{ once: true }}
-                        transition={{ duration: 0.5, delay: index * 0.06 }}
+                        initial={{ opacity: 0, y: isMobile ? 0 : 16 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true, margin: "-10%" }}
+                        transition={{ duration: 0.5 }}
+                        className="border-b border-cream/10"
                       >
-                        <button
-                          type="button"
-                          onClick={() => goToFeature(index)}
-                          aria-expanded={isOpen}
-                          className="w-full text-left py-6 group focus:outline-none focus-visible:ring-1 focus-visible:ring-cream/40 rounded-sm"
+                        {/*
+                          A left accent bar and text brightness carry the active
+                          state. Nothing here changes size, so the section's
+                          height is identical whichever row is active.
+                        */}
+                        <div
+                          className={`flex gap-4 sm:gap-5 py-6 pl-4 border-l-2 transition-colors duration-500 ${
+                            isActive ? "border-l-cream/70 bg-cream/[0.03]" : "border-l-transparent"
+                          }`}
                         >
-                          <div className="flex items-baseline gap-4 sm:gap-6">
-                            <span
-                              className={`font-roboto-mono text-xs tabular-nums transition-colors ${
-                                isOpen ? 'text-cream' : 'text-cream/35 group-hover:text-cream/60'
+                          <span
+                            className={`font-roboto-mono text-xs tabular-nums pt-1 transition-colors duration-500 ${
+                              isActive ? "text-cream/80" : "text-cream/30"
+                            }`}
+                          >
+                            {feature.id}
+                          </span>
+
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2.5">
+                              <feature.icon
+                                className={`h-4 w-4 shrink-0 transition-colors duration-500 ${
+                                  isActive ? "text-cream" : "text-cream/45"
+                                }`}
+                              />
+                              <h3
+                                className={`font-outfit tracking-tight transition-colors duration-500 ${
+                                  isMobile ? "text-lg" : "text-xl"
+                                } ${isActive ? "text-cream" : "text-cream/65"}`}
+                              >
+                                {feature.title}
+                              </h3>
+                            </div>
+
+                            <p
+                              className={`mt-2 text-sm leading-relaxed font-outfit max-w-lg transition-colors duration-500 ${
+                                isActive ? "text-cream/75" : "text-cream/45"
                               }`}
                             >
-                              {feature.id}
-                            </span>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-3">
-                                <feature.icon
-                                  className={`h-4 w-4 shrink-0 transition-colors ${
-                                    isOpen ? 'text-cream' : 'text-cream/40 group-hover:text-cream/70'
-                                  }`}
-                                />
-                                <h3
-                                  className={`font-outfit tracking-tight transition-colors ${
-                                    isMobile ? 'text-xl' : 'text-2xl'
-                                  } ${isOpen ? 'text-cream' : 'text-cream/60 group-hover:text-cream/90'}`}
-                                >
-                                  {feature.title}
-                                </h3>
-                              </div>
+                              {feature.description}
+                            </p>
 
-                              <AnimatePresence initial={false}>
-                                {isOpen && (
-                                  <motion.div
-                                    key="body"
-                                    initial={{ height: 0, opacity: 0 }}
-                                    animate={{ height: 'auto', opacity: 1 }}
-                                    exit={{ height: 0, opacity: 0 }}
-                                    transition={{ duration: 0.35, ease: 'easeInOut' }}
-                                    className="overflow-hidden"
-                                  >
-                                    <div className="pt-4 pl-7">
-                                      <p className="text-cream/70 font-outfit max-w-lg leading-relaxed">
-                                        {feature.description}
-                                      </p>
-                                      <p className="mt-4 font-roboto-mono text-xs text-cream/50">
-                                        {feature.metric}
-                                      </p>
-                                      <div className="mt-5 flex flex-wrap gap-2">
-                                        {feature.tags.map((tag) => (
-                                          <span
-                                            key={tag}
-                                            className="px-3 py-1 rounded-full border border-cream/15 text-cream/70 text-xs font-roboto-mono"
-                                          >
-                                            {tag}
-                                          </span>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  </motion.div>
-                                )}
-                              </AnimatePresence>
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {feature.tags.map((tag) => (
+                                <span
+                                  key={tag}
+                                  className={`px-2.5 py-0.5 rounded-full border text-[11px] font-roboto-mono transition-colors duration-500 ${
+                                    isActive
+                                      ? "border-cream/25 text-cream/70"
+                                      : "border-cream/10 text-cream/35"
+                                  }`}
+                                >
+                                  {tag}
+                                </span>
+                              ))}
                             </div>
                           </div>
-                        </button>
+                        </div>
                       </motion.div>
                     )
                   })}

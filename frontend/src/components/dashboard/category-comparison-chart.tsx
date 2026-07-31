@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useEffect, useState, useRef, useMemo } from "react"
+import { BarChart3 } from "lucide-react"
 import { toChartNumber } from "@/lib/format"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell, LabelList, RectangleProps } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
@@ -83,7 +84,7 @@ export function CategoryComparisonChart({ data }: CategoryComparisonChartProps) 
     return (
       <div className="flex items-center justify-center h-64 text-cream/50">
         <div className="text-center">
-          <div className="text-4xl mb-2">📊</div>
+          <BarChart3 className="h-8 w-8 mx-auto mb-2 opacity-40" />
           <p className="text-sm">No category data available</p>
         </div>
       </div>
