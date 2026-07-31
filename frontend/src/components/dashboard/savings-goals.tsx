@@ -188,7 +188,8 @@ export function SavingsGoals({ hideHeader = false }: SavingsGoalsProps) {
     if (!selectedGoal || !contributionAmount) return
 
     const amount = parseFloat(contributionAmount)
-    if (amount <= 0) {
+    // NaN fails every comparison, so `amount <= 0` alone lets garbage input through.
+    if (!Number.isFinite(amount) || amount <= 0) {
       toast({
         title: "Invalid Amount",
         description: "Please enter a valid contribution amount",
@@ -197,48 +198,31 @@ export function SavingsGoals({ hideHeader = false }: SavingsGoalsProps) {
       return
     }
 
-    try {
-      const newCurrentAmount = selectedGoal.currentAmount + amount
-      
-      if (!selectedGoal.id) {
-        throw new Error("Goal ID is missing")
-      }
-      
-      await goalsAPI.updateGoal(selectedGoal.id, {
-        currentAmount: newCurrentAmount,
-        isCompleted: newCurrentAmount >= selectedGoal.targetAmount
-      })
-
-      // Check for milestones
-      const progressPercentage = (newCurrentAmount / selectedGoal.targetAmount) * 100
-      if (progressPercentage >= 100) {
-        toast({
-          title: "Goal Completed",
-          description: `Congratulations! You have successfully achieved your "${selectedGoal.name}" savings goal.`,
-          duration: 7000
-        })
-      } else if (progressPercentage >= 75 && selectedGoal.currentAmount / selectedGoal.targetAmount < 0.75) {
-        toast({
-          title: "Milestone Achieved",
-          description: `You have reached 75% of your "${selectedGoal.name}" savings target.`,
-          duration: 5000
-        })
-      } else if (progressPercentage >= 50 && selectedGoal.currentAmount / selectedGoal.targetAmount < 0.50) {
-        toast({
-          title: "Progress Update",
-          description: `You have reached 50% of your "${selectedGoal.name}" savings target.`,
-          duration: 5000
-        })
-      }
-
-      await fetchSavingsGoals()
-      setContributionAmount('')
-      setContributionNote('')
-      setSelectedGoal(null)
-      
+    const goalId = selectedGoal.id
+    if (!goalId) {
       toast({
-        title: "Contribution Added",
-        description: `${formatCurrency(amount, { decimals: 0 })} has been added to your goal.`
+        title: "Error",
+        description: "Goal ID is missing",
+        variant: "destructive"
+      })
+      return
+    }
+
+    const goalName = selectedGoal.name
+    const previousAmount = selectedGoal.currentAmount
+
+    try {
+      // POST goals/:goalId/contribute is the only endpoint that moves the balance:
+      // it increments currentAmount in a Firestore transaction and appends the
+      // contribution record. PUT goals/:goalId whitelists name/description/
+      // targetAmount/targetDate/category/priority and silently discards
+      // currentAmount, so sending a locally computed total there returns 200 and
+      // writes nothing. The new balance is the server's to decide, not ours.
+      await goalsAPI.addContribution(goalId, {
+        amount,
+        method: 'manual',
+        source: 'Manual Entry',
+        note: contributionNote || undefined
       })
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : "Failed to add contribution"
@@ -247,29 +231,47 @@ export function SavingsGoals({ hideHeader = false }: SavingsGoalsProps) {
         description: errorMessage,
         variant: "destructive"
       })
+      return
     }
-  }
 
-  const checkMilestoneAchievements = (goal: SavingsGoal, newContribution: number) => {
-    const newTotal = goal.currentAmount + newContribution
-    const progressPercentage = (newTotal / goal.targetAmount) * 100
+    setContributionAmount('')
+    setContributionNote('')
+    setSelectedGoal(null)
 
-    goal.milestones?.forEach(milestone => {
-      if (progressPercentage >= milestone.percentage && !milestone.achievedAt) {
+    toast({
+      title: "Contribution Added",
+      description: `${formatCurrency(amount, { decimals: 0 })} has been added to your goal.`
+    })
+
+    // Milestones are announced from the balance the server stored, so a write
+    // that lands short of what was requested cannot trigger a "goal completed"
+    // celebration. A failed refetch leaves the toasts unsent rather than guessed.
+    const { data: freshGoals } = await fetchSavingsGoals()
+    const updatedGoal = freshGoals?.find(g => g.id === goalId)
+
+    if (updatedGoal && updatedGoal.targetAmount > 0) {
+      const progressPercentage = (updatedGoal.currentAmount / updatedGoal.targetAmount) * 100
+      const previousPercentage = (previousAmount / updatedGoal.targetAmount) * 100
+
+      if (progressPercentage >= 100) {
         toast({
-          title: "Milestone Reached",
-          description: `You've reached ${milestone.percentage}% of your "${goal.name}" goal!`,
+          title: "Goal Completed",
+          description: `Congratulations! You have successfully achieved your "${goalName}" savings goal.`,
+          duration: 7000
+        })
+      } else if (progressPercentage >= 75 && previousPercentage < 75) {
+        toast({
+          title: "Milestone Achieved",
+          description: `You have reached 75% of your "${goalName}" savings target.`,
+          duration: 5000
+        })
+      } else if (progressPercentage >= 50 && previousPercentage < 50) {
+        toast({
+          title: "Progress Update",
+          description: `You have reached 50% of your "${goalName}" savings target.`,
           duration: 5000
         })
       }
-    })
-
-    if (newTotal >= goal.targetAmount && !goal.isCompleted) {
-      toast({
-        title: "Goal Completed",
-        description: `Congratulations! You've completed your "${goal.name}" goal!`,
-        duration: 7000
-      })
     }
   }
 
