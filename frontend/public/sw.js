@@ -1,4 +1,4 @@
-const STATIC_CACHE_NAME = 'sokin-static-v2.0.0'
+const STATIC_CACHE_NAME = 'sokin-static-v3.0.0'
 
 // Static assets to cache
 const STATIC_ASSETS = [
@@ -45,8 +45,12 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
-  // Cache static assets with cache-first strategy
-  if (request.destination === 'image' || request.destination === 'font' || request.destination === 'style') {
+  // Cache-first suits images and fonts, whose URLs change when their content
+  // does. Stylesheets are deliberately excluded: a cache-first stylesheet under
+  // a version-stable cache name pins the first CSS the browser ever saw, and
+  // because a service worker sits in front of the HTTP cache, neither a hard
+  // reload nor "disable cache" clears it.
+  if (request.destination === 'image' || request.destination === 'font') {
     event.respondWith(
       caches.match(request).then((cachedResponse) => {
         if (cachedResponse) {

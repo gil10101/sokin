@@ -68,15 +68,23 @@ const nextConfig = {
           },
         ],
       },
-      {
-        source: '/_next/static/:path*',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
-          },
-        ],
-      },
+      // Production only. Turbopack's dev chunk URLs are stable across rebuilds,
+      // so an immutable year-long max-age tells the browser to keep serving the
+      // first bundle it ever saw - edits then appear to have no effect no matter
+      // how many times the dev server restarts.
+      ...(process.env.NODE_ENV === 'production'
+        ? [
+            {
+              source: '/_next/static/:path*',
+              headers: [
+                {
+                  key: 'Cache-Control',
+                  value: 'public, max-age=31536000, immutable',
+                },
+              ],
+            },
+          ]
+        : []),
     ]
   },
 }

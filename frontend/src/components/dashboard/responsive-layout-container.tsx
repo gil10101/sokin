@@ -1,6 +1,7 @@
 "use client"
 
 import React from "react"
+import { cn } from "@/lib/utils"
 import { PortfolioState } from "@/hooks/use-portfolio-state"
 
 interface ResponsiveLayoutContainerProps {
@@ -13,8 +14,17 @@ interface ResponsiveLayoutContainerProps {
 }
 
 /**
- * Responsive layout container that adapts based on portfolio state
- * When portfolio is empty, reorganizes layout to make better use of space
+ * Adapts the lower dashboard to whether the user holds any stock.
+ *
+ * This renders ONE tree whose classes vary, never two shaped differently.
+ * React reconciles by position, so returning a separate tree for the compact
+ * case meant the same child sat at a different nesting depth in each - and the
+ * portfolio state necessarily transitions (loading -> resolved) on every mount,
+ * so the switch fired every visit. That unmounted and rebuilt the whole lower
+ * dashboard mid-paint: the Stock Market widget dropped back to a spinner after
+ * it had already rendered, its pagination reset, and it refired its requests.
+ *
+ * Keep it one tree. Vary `className`, never the structure.
  */
 export function ResponsiveLayoutContainer({
   stockMarketSection,
@@ -24,50 +34,29 @@ export function ResponsiveLayoutContainer({
   className = "",
   portfolioState,
 }: ResponsiveLayoutContainerProps) {
+  // An empty portfolio doesn't need the tall stretched split, so the columns
+  // sit at natural height instead.
+  const compact = portfolioState.isEmpty && !portfolioState.isLoading
 
-  // If portfolio is empty or loading, use compact layout
-  const shouldUseCompactLayout = portfolioState.isEmpty && !portfolioState.isLoading
-
-  if (shouldUseCompactLayout) {
-    return (
-      <div className={className}>
-        {/* Compact Layout: 2-column approach */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 mb-6 lg:mb-8">
-          {/* Left Column: Stock Market & Recent Transactions */}
-          <div className="space-y-4 lg:space-y-6">
-            {stockMarketSection}
-            {recentTransactionsSection}
-          </div>
-          
-          {/* Right Column: Bills (desktop only) | Savings & Analytics */}
-          <div className="flex flex-col space-y-4 lg:space-y-6">
-            {billsSection && <div className="hidden lg:block">{billsSection}</div>}
-            {savingsAnalyticsSection}
-          </div>
-        </div>
-        
-        {/* Bills on mobile/tablet */}
-        {billsSection && <div className="lg:hidden mb-6 lg:mb-8">{billsSection}</div>}
-      </div>
-    )
-  }
-
-  // Standard Layout: When user has portfolio
   return (
     <div className={className}>
-      {/* Desktop: 2-column layout with equal heights */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 mb-6 lg:mb-8 lg:items-stretch">
-        {/* Left Column: Stock Market | Recent Transactions */}
+      <div
+        className={cn(
+          "grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 mb-6 lg:mb-8",
+          !compact && "lg:items-stretch"
+        )}
+      >
+        {/* Left column: Stock Market over Recent Transactions */}
         <div className="flex flex-col space-y-4 lg:space-y-6">
-          <div className="flex-[2] flex flex-col min-h-0">
+          <div className={cn(!compact && "flex-[2] flex flex-col min-h-0")}>
             {stockMarketSection}
           </div>
-          <div className="flex-1 flex flex-col min-h-0">
+          <div className={cn(!compact && "flex-1 flex flex-col min-h-0")}>
             {recentTransactionsSection}
           </div>
         </div>
 
-        {/* Right Column: Bills (desktop only) | Savings Goals | Analytics Overview */}
+        {/* Right column: Bills (desktop only) over Savings & Analytics */}
         <div className="flex flex-col space-y-4 lg:space-y-6">
           {billsSection && <div className="hidden lg:block">{billsSection}</div>}
           {savingsAnalyticsSection}
