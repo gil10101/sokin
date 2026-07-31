@@ -45,7 +45,8 @@ import {
   startOfDay
 } from 'date-fns'
 import { MotionDiv, AnimatePresence } from "@/components/ui/dynamic-motion"
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useAuth } from '@/contexts/auth-context'
 import { useToast } from '@/hooks/use-toast'
 import { API } from '@/lib/api'
 
@@ -111,6 +112,7 @@ interface BillRemindersProps {
   onBillsChanged?: () => void
 }
 
+const EMPTY_BILLS: BillReminder[] = []
 const REMINDER_DAY_OPTIONS = [7, 3, 1]
 const DEFAULT_REMINDER_DAYS = [7, 3, 1]
 
@@ -135,9 +137,7 @@ export function BillReminders({
   hideInternalFilters = false,
   onBillsChanged
 }: BillRemindersProps = {}) {
-  const [bills, setBills] = useState<BillReminder[]>([])
   const [upcomingReminders, setUpcomingReminders] = useState<ReminderNotification[]>([])
-  const [loading, setLoading] = useState(true)
   const [internalShowCreate, setInternalShowCreate] = useState(false)
 
   // Use external control if both props provided, otherwise use internal state
@@ -157,6 +157,7 @@ export function BillReminders({
   const [billToDelete, setBillToDelete] = useState<BillReminder | null>(null)
   const { toast } = useToast()
   const queryClient = useQueryClient()
+  const { user } = useAuth()
 
   const billCategories = [
     { value: 'utilities', label: 'Utilities', icon: Zap },
@@ -168,9 +169,15 @@ export function BillReminders({
     { value: 'other', label: 'Other', icon: FileText }
   ]
 
-  const fetchBillReminders = useCallback(async () => {
-    setLoading(true)
-    try {
+  const {
+    data: bills = EMPTY_BILLS,
+    isLoading: loading,
+    refetch: fetchBillReminders,
+  } = useQuery<BillReminder[]>({
+    queryKey: ['bill-reminders', user?.uid],
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
       const apiBills = await API.billReminders.getBillReminders() as ApiBillReminder[]
       // Transform API bills to extended BillReminder format
       const transformedBills: BillReminder[] = apiBills.map(bill => ({
@@ -181,18 +188,9 @@ export function BillReminders({
         autoPayEnabled: bill.autoPayEnabled ?? false,
         frequency: bill.frequency === 'once' ? 'one-time' : bill.frequency
       }))
-      setBills(transformedBills)
-    } catch (error) {
-
-      toast({
-        title: "Error",
-        description: "Failed to load bill reminders",
-        variant: "destructive"
-      })
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+      return transformedBills
+    },
+  })
 
   // Keep the dashboard's upcoming-bills analytics (react-query) and the parent
   // page in sync after any mutation
@@ -233,11 +231,6 @@ export function BillReminders({
 
     setUpcomingReminders(reminders.sort((a, b) => a.daysUntilDue - b.daysUntilDue))
   }, [bills])
-
-  // Add useEffect hooks after function declarations
-  useEffect(() => {
-    fetchBillReminders()
-  }, [fetchBillReminders])
 
   useEffect(() => {
     generateUpcomingReminders()

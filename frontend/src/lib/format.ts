@@ -44,6 +44,36 @@ export function formatCurrency(amount: number, options: CurrencyOptions = {}): s
   return formatter.format(safeAmount)
 }
 
+/**
+ * Short form for chart axes and other space-constrained labels: "€66K".
+ * Intl's compact notation keeps the symbol and grouping correct per currency,
+ * which hand-rolled `$${v/1000}k` strings did not.
+ */
+export function formatCompactCurrency(amount: number, options: CurrencyOptions = {}): string {
+  const { currency = "USD" } = options
+  const safeAmount = Number.isFinite(amount) ? amount : 0
+
+  const cacheKey = `compact:${currency}`
+  let formatter = formatterCache.get(cacheKey)
+  if (!formatter) {
+    const build = (code: string) =>
+      new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: code,
+        notation: "compact",
+        maximumFractionDigits: 1,
+      })
+    try {
+      formatter = build(currency)
+    } catch {
+      formatter = build("USD")
+    }
+    formatterCache.set(cacheKey, formatter)
+  }
+
+  return formatter.format(safeAmount)
+}
+
 export function formatPercentChange(value: number): string {
   const safe = Number.isFinite(value) ? value : 0
   const sign = safe >= 0 ? "+" : ""

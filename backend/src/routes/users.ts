@@ -24,7 +24,7 @@ const router = express.Router();
 // Rate limiting configurations
 const readRateLimit = createRateLimiter.read(); // 200 requests per 15 minutes
 const writeRateLimit = createRateLimiter.api(); // 100 requests per 15 minutes
-const profileRateLimit = rateLimiter(50, 15 * 60 * 1000); // 50 requests per 15 minutes
+const profileRateLimit = rateLimiter(50, 15 * 60 * 1000); // 50 writes per 15 minutes
 
 // Validation schemas for user profile operations
 const createProfileSchema = Joi.object({
@@ -128,7 +128,7 @@ router.post(
 router.get(
   '/:userId',
   auth,
-  profileRateLimit,
+  readRateLimit,
   validateParams(userIdParamsSchema),
   usersProfileController.getUserProfile
 );

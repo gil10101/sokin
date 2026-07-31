@@ -5,12 +5,14 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell, 
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { MotionDiv } from "@/components/ui/dynamic-motion"
 import { useViewport } from "@/hooks/use-mobile"
+import { useCurrency } from "@/hooks/use-currency"
 
 interface CategoryComparisonChartProps {
   data: Array<{ category: string; amount: number }>
 }
 
 export function CategoryComparisonChart({ data }: CategoryComparisonChartProps) {
+  const { format: formatCurrency, formatCompact } = useCurrency()
   const { isMobile, isTablet } = useViewport()
   
   // Responsive chart configuration
@@ -135,14 +137,14 @@ export function CategoryComparisonChart({ data }: CategoryComparisonChartProps) 
                 fill: "rgba(245, 245, 240, 0.6)",
                 fontSize: chartConfig.fontSize
               }}
-              tickFormatter={(value) => isMobile ? `$${Math.round(value/1000)}k` : `$${value.toLocaleString()}`}
+              tickFormatter={(value) => isMobile ? formatCompact(value) : formatCurrency(value, { decimals: 0 })}
               width={isMobile ? 35 : 60}
             />
             
             <ChartTooltip
               content={<ChartTooltipContent />}
               labelFormatter={(value) => `Category: ${value}`}
-              formatter={(value: number | undefined) => value !== undefined ? [`$${value.toLocaleString()}`] : ['N/A']}
+              formatter={(value: number | undefined) => value !== undefined ? [`${formatCurrency(value, { decimals: 0 })}`] : ['N/A']}
             />
             
             <Bar

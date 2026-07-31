@@ -32,6 +32,7 @@ import { MotionContainer } from "@/components/ui/motion-container"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 // Import the useNotifications hook
 import { useNotifications } from "@/contexts/notifications-context"
+import { useCurrency } from "@/hooks/use-currency"
 
 interface Expense {
   id: string
@@ -106,6 +107,7 @@ interface ExpensesPageProps {
 const MAX_EXPENSE_PAGES = 6
 
 export default function ExpensesPage(props: ExpensesPageProps) {
+  const { format: formatCurrency } = useCurrency()
   const [collapsed, setCollapsed] = useState(false)
   const { user } = useAuth()
   const userRef = useRef(user)
@@ -457,7 +459,7 @@ export default function ExpensesPage(props: ExpensesPageProps) {
                           )}
                         </div>
                         <div className="text-right ml-4">
-                          <div className="text-lg font-semibold text-cream">${expense.amount.toFixed(2)}</div>
+                          <div className="text-lg font-semibold text-cream">{formatCurrency(expense.amount)}</div>
                           <div className="flex gap-1 mt-2">
                             <Button
                               variant="ghost"
@@ -544,7 +546,7 @@ export default function ExpensesPage(props: ExpensesPageProps) {
                             <span className="px-2 py-1 rounded-full bg-cream/10 text-xs">{expense.category}</span>
                           </TableCell>
                           <TableCell>{expense.date ? safeFormatDate(expense.date, "MMM d, yyyy") : "N/A"}</TableCell>
-                          <TableCell className="text-right">${expense.amount.toFixed(2)}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(expense.amount)}</TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
                               <Button

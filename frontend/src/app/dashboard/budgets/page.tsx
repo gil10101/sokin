@@ -56,6 +56,7 @@ const DEFAULT_CATEGORIES = [
 ]
 
 import type { Budget, Expense, BudgetPeriod } from "@/lib/api"
+import { useCurrency } from "@/hooks/use-currency"
 
 interface BudgetFormData {
   amount: string
@@ -107,6 +108,7 @@ interface BudgetsPageProps {
 const MAX_FETCH_PAGES = 6
 
 export default function BudgetsPage(props: BudgetsPageProps) {
+  const { format: formatCurrency } = useCurrency()
   const [collapsed, setCollapsed] = useState(false)
   const { user } = useAuth()
 
@@ -727,6 +729,7 @@ interface BudgetCardProps {
 }
 
 function BudgetCard({ budget, onEdit, onDelete, calculateProgress }: BudgetCardProps) {
+  const { format: formatCurrency } = useCurrency()
   // Calculate actual progress using real expense data
   const { spent, progress } = calculateProgress(budget)
   const isOverBudget = progress > 100
@@ -823,9 +826,9 @@ function BudgetCard({ budget, onEdit, onDelete, calculateProgress }: BudgetCardP
 
       <div className="space-y-3 sm:space-y-4">
         <div className="flex flex-col space-y-2 sm:space-y-0 sm:flex-row sm:justify-between sm:items-baseline">
-          <div className="text-xl sm:text-2xl font-medium">${budget.amount.toFixed(2)}</div>
+          <div className="text-xl sm:text-2xl font-medium">{formatCurrency(budget.amount)}</div>
           <div className={`text-sm sm:text-base ${isOverBudget ? "text-red-400" : "text-cream/60"}`}>
-            ${spent.toFixed(2)} spent
+            {formatCurrency(spent)} spent
           </div>
         </div>
 
@@ -844,7 +847,7 @@ function BudgetCard({ budget, onEdit, onDelete, calculateProgress }: BudgetCardP
           </div>
           {isOverBudget && (
             <p className="text-xs text-red-400 mt-1">
-              Over budget by ${(spent - budget.amount).toFixed(2)}
+              Over budget by {formatCurrency((spent - budget.amount))}
             </p>
           )}
         </div>

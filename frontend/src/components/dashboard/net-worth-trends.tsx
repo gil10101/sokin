@@ -24,6 +24,7 @@ import { format, subMonths, parseISO } from 'date-fns'
 import { useAuth } from '@/contexts/auth-context'
 import { api } from '@/lib/api'
 import { NetWorthTrend, NetWorthSnapshot } from '@/lib/types'
+import { useCurrency } from "@/hooks/use-currency"
 
 interface NetWorthTrendsProps {
   currentNetWorth: number
@@ -45,6 +46,7 @@ export function NetWorthTrends({
   monthlyChange, 
   monthlyChangePercent 
 }: NetWorthTrendsProps) {
+  const { format: formatCurrency, formatCompact } = useCurrency()
   const { user } = useAuth()
   const [timeframe, setTimeframe] = useState('12months')
   const [chartType, setChartType] = useState<'line' | 'area' | 'bar' | 'composed'>('area')
@@ -147,23 +149,7 @@ export function NetWorthTrends({
     return result
   }
 
-  const formatCurrency = (value: number): string => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(value)
-  }
-
-  const formatTooltipCurrency = (value: number): string => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(value)
-  }
+  const formatTooltipCurrency = (value: number): string => formatCurrency(value, { decimals: 0 })
 
   const CustomTooltip = ({ active, payload, label }: {
     active?: boolean;
@@ -305,7 +291,7 @@ export function NetWorthTrends({
                     <YAxis 
                       stroke="#F5F5DC60"
                       fontSize={12}
-                      tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                      tickFormatter={(value) => formatCompact(value)}
                     />
                     <Tooltip content={<CustomTooltip />} />
                     <Area
@@ -330,7 +316,7 @@ export function NetWorthTrends({
                     <YAxis 
                       stroke="#F5F5DC60"
                       fontSize={12}
-                      tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                      tickFormatter={(value) => formatCompact(value)}
                     />
                     <Tooltip content={<CustomTooltip />} />
                     <Line
@@ -355,7 +341,7 @@ export function NetWorthTrends({
                     <YAxis 
                       stroke="#F5F5DC60"
                       fontSize={12}
-                      tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                      tickFormatter={(value) => formatCompact(value)}
                     />
                     <Tooltip content={<CustomTooltip />} />
                     <Legend />
@@ -379,7 +365,7 @@ export function NetWorthTrends({
                     <YAxis 
                       stroke="#F5F5DC60"
                       fontSize={12}
-                      tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                      tickFormatter={(value) => formatCompact(value)}
                     />
                     <Tooltip content={<CustomTooltip />} />
                     <Legend />

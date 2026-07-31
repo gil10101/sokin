@@ -30,6 +30,7 @@ import {
   AssetType,
   LiabilityType
 } from '@/lib/types'
+import { useCurrency } from "@/hooks/use-currency"
 
 interface AssetLiabilityBreakdownProps {
   assets: Asset[]
@@ -104,15 +105,6 @@ const LIABILITY_CATEGORY_CONFIG = {
   }
 }
 
-// Helper functions
-const formatCurrency = (amount: number): string => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
-  }).format(amount)
-}
 
 const getTypeLabel = (type: AssetType | LiabilityType): string => {
   return type.split('_').map(word => 
@@ -130,6 +122,7 @@ export function AssetLiabilityBreakdown({
   onDeleteAsset,
   onDeleteLiability
 }: AssetLiabilityBreakdownProps) {
+  const { format: formatCurrency } = useCurrency()
   const [expandedAssetCategories, setExpandedAssetCategories] = useState<Set<AssetCategory>>(new Set())
   const [expandedLiabilityCategories, setExpandedLiabilityCategories] = useState<Set<LiabilityCategory>>(new Set())
   

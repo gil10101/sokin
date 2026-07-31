@@ -20,6 +20,7 @@ import { useToast } from "@/hooks/use-toast"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { AddButton } from "@/components/ui/add-button"
 import { API } from "@/lib/api"
+import { useCurrency } from "@/hooks/use-currency"
 
 interface BillReminder {
   id: string
@@ -51,6 +52,7 @@ interface BillsPageProps {
 }
 
 export default function BillsPage(props: BillsPageProps) {
+  const { format: formatCurrency } = useCurrency()
   const [bills, setBills] = useState<BillReminder[]>([])
   const [loading, setLoading] = useState(true)
   const [filterStatus, setFilterStatus] = useState<'all' | 'upcoming' | 'overdue' | 'paid'>('all')
@@ -213,7 +215,7 @@ export default function BillsPage(props: BillsPageProps) {
               <MetricCard
                 title="Total Bills"
                 value={stats.totalBills.toString()}
-                secondaryValue={`$${stats.monthlyBillCount > 0 ? (stats.monthlyTotal / stats.monthlyBillCount).toFixed(0) : 0} avg this month`}
+                secondaryValue={`${formatCurrency(stats.monthlyBillCount > 0 ? stats.monthlyTotal / stats.monthlyBillCount : 0, { decimals: 0 })} avg this month`}
                 icon={<Bell className="h-5 w-5" />}
               />
             </MotionContainer>
@@ -221,7 +223,7 @@ export default function BillsPage(props: BillsPageProps) {
               <MetricCard
                 title="Upcoming"
                 value={stats.upcomingBills.toString()}
-                secondaryValue={`$${bills.filter(bill => !bill.isPaid && !isBefore(startOfDay(new Date(bill.dueDate)), startOfDay(new Date()))).reduce((sum, bill) => sum + bill.amount, 0).toFixed(2)} due`}
+                secondaryValue={`${formatCurrency(bills.filter(bill => !bill.isPaid && !isBefore(startOfDay(new Date(bill.dueDate)), startOfDay(new Date()))).reduce((sum, bill) => sum + bill.amount, 0))} due`}
                 icon={<Clock className="h-5 w-5" />}
               />
             </MotionContainer>
@@ -229,15 +231,15 @@ export default function BillsPage(props: BillsPageProps) {
               <MetricCard
                 title="Overdue"
                 value={stats.overdueBills.toString()}
-                secondaryValue={`$${bills.filter(bill => !bill.isPaid && isBefore(startOfDay(new Date(bill.dueDate)), startOfDay(new Date()))).reduce((sum, bill) => sum + bill.amount, 0).toFixed(2)} overdue`}
+                secondaryValue={`${formatCurrency(bills.filter(bill => !bill.isPaid && isBefore(startOfDay(new Date(bill.dueDate)), startOfDay(new Date()))).reduce((sum, bill) => sum + bill.amount, 0))} overdue`}
                 icon={<AlertCircle className="h-5 w-5" />}
               />
             </MotionContainer>
             <MotionContainer delay={0.4}>
               <MetricCard
                 title="Monthly Total"
-                value={`$${stats.monthlyTotal.toFixed(2)}`}
-                secondaryValue={`$${stats.monthlyPaid.toFixed(2)} paid`}
+                value={formatCurrency(stats.monthlyTotal, { decimals: 0 })}
+                secondaryValue={`${formatCurrency(stats.monthlyPaid)} paid`}
                 icon={<DollarSign className="h-5 w-5" />}
               />
             </MotionContainer>

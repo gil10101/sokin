@@ -3,6 +3,7 @@
 import { useMemo } from 'react'
 import { useViewport } from '@/hooks/use-mobile'
 import { format, subMonths, eachDayOfInterval } from 'date-fns'
+import { useCurrency } from "@/hooks/use-currency"
 
 // Simple card components to avoid React 19 type conflicts
 interface SimpleCardProps {
@@ -79,6 +80,7 @@ const safeParseDate = (dateValue: string | number | Date | { toDate(): Date } | 
 }
 
 export function SpendingHeatmapAnalytics({ expenses }: SpendingHeatmapAnalyticsProps) {
+  const { format: formatCurrency } = useCurrency()
   const { isMobile, isTablet } = useViewport()
 
   // Process spending data for heatmap
@@ -151,7 +153,7 @@ export function SpendingHeatmapAnalytics({ expenses }: SpendingHeatmapAnalyticsP
                     border: '1px solid rgba(245, 245, 240, 0.2)',
                     minHeight: isMobile ? '32px' : isTablet ? '40px' : '48px'
                   }}
-                  title={`${day.date}: $${day.amount.toFixed(2)} (${day.count} transactions)`}
+                  title={`${day.date}: ${formatCurrency(day.amount)} (${day.count} transactions)`}
                 >
                   {isMobile ? day.day.slice(-1) : day.day}
                 </div>

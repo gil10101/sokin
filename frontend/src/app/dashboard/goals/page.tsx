@@ -60,6 +60,7 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { MotionDiv, MotionMain, MotionSection, AnimatePresence } from "@/components/ui/dynamic-motion"
 import { cn } from "@/lib/utils"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { useCurrency } from "@/hooks/use-currency"
 
 interface SavingsGoal {
   id: string
@@ -128,6 +129,7 @@ interface GoalsPageProps {
 }
 
 export default function GoalsPage(props: GoalsPageProps) {
+  const { format: formatCurrency } = useCurrency()
   const [collapsed, setCollapsed] = useState(false)
   const { user } = useAuth()
   const userRef = useRef(user)
@@ -336,7 +338,7 @@ export default function GoalsPage(props: GoalsPageProps) {
 
       toast({
         title: "Contribution Added",
-        description: `$${amount.toLocaleString()} has been added to your goal.`
+        description: `${formatCurrency(amount, { decimals: 0 })} has been added to your goal.`
       })
 
       // Check for milestones against the freshly fetched goal data
@@ -474,7 +476,7 @@ export default function GoalsPage(props: GoalsPageProps) {
               <MetricCard
                 title="Total Goals"
                 value={stats.total.toString()}
-                secondaryValue={`$${stats.totalValue.toLocaleString()} target`}
+                secondaryValue={`${formatCurrency(stats.totalValue, { decimals: 0 })} target`}
                 icon={<Target className="h-5 w-5" />}
               />
             </MotionContainer>
@@ -498,7 +500,7 @@ export default function GoalsPage(props: GoalsPageProps) {
               <MetricCard
                 title="Progress"
                 value={`${stats.overallProgress.toFixed(1)}%`}
-                secondaryValue={`$${stats.savedAmount.toLocaleString()} saved`}
+                secondaryValue={`${formatCurrency(stats.savedAmount, { decimals: 0 })} saved`}
                 icon={<TrendingUp className="h-5 w-5" />}
               />
             </MotionContainer>
@@ -694,10 +696,10 @@ export default function GoalsPage(props: GoalsPageProps) {
                         <div className="space-y-3">
                           <div className="flex justify-between items-center text-sm">
                             <span className="font-medium text-cream/70">
-                              ${goal.currentAmount.toLocaleString()}
+                              {formatCurrency(goal.currentAmount, { decimals: 0 })}
                             </span>
                             <span className="font-medium text-cream/70">
-                              ${goal.targetAmount.toLocaleString()}
+                              {formatCurrency(goal.targetAmount, { decimals: 0 })}
                             </span>
                           </div>
                           
@@ -717,8 +719,8 @@ export default function GoalsPage(props: GoalsPageProps) {
                             </span>
                             <span className="text-sm text-cream/60">
                               {goal.currentAmount > goal.targetAmount
-                                ? `Over target by $${(goal.currentAmount - goal.targetAmount).toLocaleString()}`
-                                : `$${(goal.targetAmount - goal.currentAmount).toLocaleString()} remaining`}
+                                ? `Over target by ${formatCurrency((goal.currentAmount - goal.targetAmount), { decimals: 0 })}`
+                                : `${formatCurrency((goal.targetAmount - goal.currentAmount), { decimals: 0 })} remaining`}
                             </span>
                           </div>
                         </div>
@@ -979,7 +981,7 @@ export default function GoalsPage(props: GoalsPageProps) {
                   <div className="bg-cream/5 rounded-lg p-4 border border-cream/10">
                     <p className="font-medium text-cream/90">{selectedGoal.name}</p>
                     <p className="text-sm text-cream/60 mt-1">
-                      Current: ${selectedGoal.currentAmount.toLocaleString()} / ${selectedGoal.targetAmount.toLocaleString()}
+                      Current: {formatCurrency(selectedGoal.currentAmount, { decimals: 0 })} / {formatCurrency(selectedGoal.targetAmount, { decimals: 0 })}
                     </p>
                   </div>
                 )}
@@ -1054,7 +1056,7 @@ export default function GoalsPage(props: GoalsPageProps) {
                       <div>
                         <span className="text-cream/60">Total Amount:</span>
                         <p className="text-cream/90 font-medium">
-                          ${viewContributionsGoal.contributions?.reduce((sum, contrib) => sum + contrib.amount, 0).toLocaleString() || '0.00'}
+                          {formatCurrency(viewContributionsGoal.contributions?.reduce((sum, contrib) => sum + contrib.amount, 0) ?? 0, { decimals: 0 })}
                         </p>
                       </div>
                     </div>
@@ -1076,7 +1078,7 @@ export default function GoalsPage(props: GoalsPageProps) {
                                   <div className="flex items-center gap-2">
                                     <DollarSign className="h-4 w-4 text-green-400" />
                                     <span className="font-medium text-cream/90">
-                                      ${contribution.amount.toLocaleString()}
+                                      {formatCurrency(contribution.amount, { decimals: 0 })}
                                     </span>
                                     <Badge variant="outline" className="text-xs">
                                       {contribution.method}

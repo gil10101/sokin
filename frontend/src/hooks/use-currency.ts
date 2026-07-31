@@ -2,7 +2,7 @@
 
 import { useCallback } from "react"
 import { useAuth } from "@/contexts/auth-context"
-import { formatCurrency, type CurrencyOptions } from "@/lib/format"
+import { formatCurrency, formatCompactCurrency, type CurrencyOptions } from "@/lib/format"
 
 /**
  * Currency formatter bound to the signed-in user's currency setting, so the
@@ -18,5 +18,10 @@ export function useCurrency() {
     [currency]
   )
 
-  return { currency, format }
+  const formatCompact = useCallback(
+    (amount: number) => formatCompactCurrency(amount, { currency }),
+    [currency]
+  )
+
+  return { currency, format, formatCompact }
 }

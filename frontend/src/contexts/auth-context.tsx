@@ -119,16 +119,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const unsubscribeRef = useRef<(() => void) | null>(null)
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  const fetchUserProfile = async (userId: string): Promise<UserData | null> => {
+  /**
+   * The profile carries the user's settings (currency, preferences), so a
+   * failed fetch silently renders the whole app with defaults. Retry transient
+   * failures rather than accepting the first error.
+   */
+  const fetchUserProfile = async (userId: string, attempt = 0): Promise<UserData | null> => {
+    const MAX_ATTEMPTS = 3
+
     try {
       const response = await apiRequest<{ success: boolean; data: UserData }>(
         `/users/${userId}`
       )
       return response.data
     } catch (error) {
-      logger.warn("Profile fetch failed", {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        userId
+      const message = error instanceof Error ? error.message : 'Unknown error'
+
+      if (attempt < MAX_ATTEMPTS - 1) {
+        const backoffMs = 500 * 2 ** attempt
+        await new Promise((resolve) => setTimeout(resolve, backoffMs))
+        return fetchUserProfile(userId, attempt + 1)
+      }
+
+      logger.error("Profile fetch failed - falling back to default settings", {
+        error: message,
+        userId,
+        attempts: MAX_ATTEMPTS,
       })
       return null
     }

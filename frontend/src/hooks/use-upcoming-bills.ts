@@ -36,24 +36,14 @@ interface UpcomingBillsData {
 export function useUpcomingBills() {
   const { user } = useAuth()
 
-  return useQuery<UpcomingBillsData>({
-    queryKey: ['upcoming-bills', user?.uid],
+  return useQuery<BillReminder[], Error, UpcomingBillsData>({
+    queryKey: ['bill-reminders', user?.uid],
     enabled: !!user,
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 15 * 60 * 1000, // 15 minutes
-    queryFn: async () => {
-      if (!user) {
-        return {
-          upcomingBills: [],
-          totalUpcoming: 0,
-          overdueCount: 0,
-          thisWeekCount: 0
-        }
-      }
-
+    queryFn: async () => await API.billReminders.getBillReminders() as BillReminder[],
+    select: (bills) => {
       try {
-        const bills = await API.billReminders.getBillReminders() as BillReminder[]
-
         const now = new Date()
         const nextWeek = addDays(now, 7)
         
@@ -103,7 +93,7 @@ export function useUpcomingBills() {
           thisWeekCount
         }
       } catch (error) {
-        logger.error('Error fetching upcoming bills', error instanceof Error ? error : { error })
+        logger.error('Error deriving upcoming bills', error instanceof Error ? error : { error })
         return {
           upcomingBills: [],
           totalUpcoming: 0,

@@ -13,6 +13,7 @@ import { auth } from '@/lib/firebase'
 import { expensesAPI } from '@/lib/api'
 import { useCategories } from '@/hooks/use-categories'
 import { validateExpenseAmount, isValidAmountInput } from '@/lib/expense-validation'
+import { useCurrency } from "@/hooks/use-currency"
 
 // Below this confidence we ask the user to review before saving
 const LOW_CONFIDENCE_THRESHOLD = 0.6
@@ -51,6 +52,7 @@ const EMPTY_EXPENSE_FORM = {
 }
 
 export function ReceiptScanner({ onDataExtracted, onExpenseCreated }: ReceiptScannerProps) {
+  const { format: formatCurrency } = useCurrency()
   const [scannerOpen, setScannerOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [dragActive, setDragActive] = useState(false)
@@ -423,7 +425,7 @@ export function ReceiptScanner({ onDataExtracted, onExpenseCreated }: ReceiptSca
                       {extractedData.amount && (
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Amount:</span>
-                          <span className="font-medium">${extractedData.amount.toFixed(2)}</span>
+                          <span className="font-medium">{formatCurrency(extractedData.amount)}</span>
                         </div>
                       )}
                       {extractedData.items && extractedData.items.length > 0 && (

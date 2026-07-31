@@ -24,18 +24,10 @@ import { AssetLiabilityBreakdown } from "@/components/dashboard/asset-liability-
 import { NetWorthTrends } from "@/components/dashboard/net-worth-trends"  
 import { AssetLiabilityForm } from "@/components/dashboard/asset-liability-form"
 import { api } from "@/lib/api"
+import { useCurrency } from "@/hooks/use-currency"
 
 
 
-// Helper functions
-const formatCurrency = (amount: number): string => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
-  }).format(amount)
-}
 
 const formatPercent = (percent: number): string => {
   return `${percent >= 0 ? '+' : ''}${percent.toFixed(1)}%`
@@ -65,6 +57,7 @@ interface NetWorthPageProps {
 }
 
 export default function NetWorthPage(props: NetWorthPageProps) {
+  const { format: formatCurrency } = useCurrency()
   const { user, loading: authLoading } = useAuth()
   const userRef = useRef(user)
   useEffect(() => { userRef.current = user }, [user])
@@ -234,7 +227,7 @@ export default function NetWorthPage(props: NetWorthPageProps) {
               <MotionContainer delay={0.1}>
                 <MetricCard
                   title="Total Assets"
-                  value={formatCurrency(netWorth?.totalAssets || 0)}
+                  value={formatCurrency(netWorth?.totalAssets || 0, { decimals: 0 })}
                   icon={<Building className="h-5 w-5" />}
                 />
               </MotionContainer>
@@ -244,7 +237,7 @@ export default function NetWorthPage(props: NetWorthPageProps) {
               <MotionContainer delay={0.2}>
                 <MetricCard
                   title="Total Liabilities"
-                  value={formatCurrency(netWorth?.totalLiabilities || 0)}
+                  value={formatCurrency(netWorth?.totalLiabilities || 0, { decimals: 0 })}
                   icon={<CreditCard className="h-5 w-5" />}
                 />
               </MotionContainer>
@@ -255,7 +248,7 @@ export default function NetWorthPage(props: NetWorthPageProps) {
                 <MetricCard
                   title="Net Worth"
                   polarity="growth"
-                  value={formatCurrency(netWorth?.netWorth || 0)}
+                  value={formatCurrency(netWorth?.netWorth || 0, { decimals: 0 })}
                   change={netWorth?.monthlyChangePercent ? formatPercent(netWorth.monthlyChangePercent) : undefined}
                   trend={netWorth?.monthlyChange ? (netWorth.monthlyChange >= 0 ? "up" : "down") : undefined}
                   period={netWorth?.monthlyChange ? "vs last month" : undefined}

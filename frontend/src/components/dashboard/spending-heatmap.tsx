@@ -5,6 +5,7 @@ import { format, startOfWeek, addDays, addWeeks, subWeeks } from "date-fns"
 import { useExpensesData } from "@/hooks/use-expenses-data"
 import { useAuth } from "@/contexts/auth-context"
 import { useViewport } from "@/hooks/use-mobile"
+import { useCurrency } from "@/hooks/use-currency"
 
 // Helper function to safely parse dates including Firebase Timestamps
 const safeParseDate = (dateValue: string | number | Date | { toDate(): Date } | null | undefined): Date => {
@@ -43,6 +44,7 @@ interface Expense {
 }
 
 export function SpendingHeatmap() {
+  const { format: formatCurrency } = useCurrency()
   const { user } = useAuth()
   const { isMobile, isTablet } = useViewport()
   const today = new Date()
@@ -159,7 +161,7 @@ export function SpendingHeatmap() {
                   <div
                     key={day.dateKey}
                     className={`${heatmapConfig.cellSize} rounded-sm ${getColor(day.value)} m-[1px] cursor-pointer hover:ring-1 hover:ring-cream/40`}
-                    title={`${format(day.date, "MMM d, yyyy")}: $${day.value.toFixed(2)}`}
+                    title={`${format(day.date, "MMM d, yyyy")}: ${formatCurrency(day.value)}`}
                   />
                 ))}
               </div>

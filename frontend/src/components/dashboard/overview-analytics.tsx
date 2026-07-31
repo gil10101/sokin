@@ -13,6 +13,7 @@ import {
   Tooltip
 } from 'recharts'
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns'
+import { useCurrency } from "@/hooks/use-currency"
 
 interface Expense {
   id: string
@@ -58,6 +59,7 @@ const safeParseDate = (dateValue: string | number | Date | { toDate(): Date } | 
 }
 
 export function OverviewAnalytics({ expenses }: OverviewAnalyticsProps) {
+  const { format: formatCurrency } = useCurrency()
   const isMobile = useIsMobile()
 
   // Trend analysis data
@@ -137,7 +139,7 @@ export function OverviewAnalytics({ expenses }: OverviewAnalyticsProps) {
                         <p className="text-cream font-medium">{payload[0].payload.month}</p>
                         <div className="flex items-center mt-1">
                           <div className="h-2 w-2 rounded-full bg-cream/80 mr-1"></div>
-                          <p className="text-cream text-sm">Amount: ${Number(payload[0].value).toLocaleString()}</p>
+                          <p className="text-cream text-sm">Amount: {formatCurrency(Number(payload[0].value), { decimals: 0 })}</p>
                         </div>
                       </div>
                     )

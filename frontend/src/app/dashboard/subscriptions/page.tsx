@@ -50,6 +50,7 @@ import { useToast } from "@/hooks/use-toast"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { MotionContainer } from "@/components/ui/motion-container"
 import { subscriptionsAPI } from "@/lib/api"
+import { useCurrency } from "@/hooks/use-currency"
 
 // Define subscription interface
 interface Subscription {
@@ -295,6 +296,7 @@ interface SubscriptionsPageProps {
 }
 
 export default function SubscriptionsPage(props: SubscriptionsPageProps) {
+  const { format: formatCurrency } = useCurrency()
   const [collapsed, setCollapsed] = useState(false)
   const { user } = useAuth()
   const userRef = useRef(user)
@@ -694,11 +696,11 @@ export default function SubscriptionsPage(props: SubscriptionsPageProps) {
                 <div className="grid grid-cols-3 gap-4 sm:flex sm:gap-0">
                   <div className="flex flex-col items-center sm:items-start text-center sm:text-left sm:w-32 sm:pr-6 sm:border-r sm:border-cream/10">
                     <p className="text-xs sm:text-sm text-cream/60">Monthly Cost</p>
-                    <p className="text-lg sm:text-xl font-medium mt-1">${monthlyTotal.toFixed(2)}</p>
+                    <p className="text-lg sm:text-xl font-medium mt-1">{formatCurrency(monthlyTotal)}</p>
                   </div>
                   <div className="flex flex-col items-center sm:items-start text-center sm:text-left sm:w-32 sm:border-r sm:border-cream/10">
                     <p className="text-xs sm:text-sm text-cream/60">Annual Cost</p>
-                    <p className="text-lg sm:text-xl font-medium mt-1">${annualTotal.toFixed(2)}</p>
+                    <p className="text-lg sm:text-xl font-medium mt-1">{formatCurrency(annualTotal)}</p>
                   </div>
                   <div className="flex flex-col items-center sm:items-start text-center sm:text-left sm:w-32 sm:pl-6">
                     <p className="text-xs sm:text-sm text-cream/60">Subscriptions</p>
@@ -842,7 +844,7 @@ export default function SubscriptionsPage(props: SubscriptionsPageProps) {
                           </div>
                           <div className="flex items-center gap-2 flex-shrink-0">
                             <div className="text-right">
-                              <p className="font-medium text-sm sm:text-base">${subscription.amount.toFixed(2)}</p>
+                              <p className="font-medium text-sm sm:text-base">{formatCurrency(subscription.amount)}</p>
                               <p className="text-xs text-cream/60 hidden sm:block">
                                 Next: {format(safeParseDate(subscription.nextPaymentDate), "MMM d")}
                               </p>
@@ -901,18 +903,18 @@ export default function SubscriptionsPage(props: SubscriptionsPageProps) {
                               </div>
                               <div className="flex justify-between items-start gap-2">
                                 <p className="text-xs sm:text-sm text-cream/60">Amount per Cycle</p>
-                                <p className="text-xs sm:text-sm font-medium text-right">${subscription.amount.toFixed(2)}</p>
+                                <p className="text-xs sm:text-sm font-medium text-right">{formatCurrency(subscription.amount)}</p>
                               </div>
                               <div className="flex justify-between items-start gap-2">
                                 <p className="text-xs sm:text-sm text-cream/60">Annual Cost</p>
                                 <p className="text-xs sm:text-sm font-medium text-right">
                                   $
-                                  {calculateAnnualCost(
+                                  {formatCurrency(calculateAnnualCost(
                                     subscription.amount,
                                     subscription.billingCycle,
                                     subscription.customInterval,
                                     subscription.customIntervalUnit,
-                                  ).toFixed(2)}
+                                  ))}
                                 </p>
                               </div>
                               {subscription.website && (
@@ -955,7 +957,7 @@ export default function SubscriptionsPage(props: SubscriptionsPageProps) {
                                       {projectedPayments[subscription.id].map((payment) => (
                                         <TableRow key={payment.id} className="border-cream/10">
                                           <TableCell className="text-xs">{format(safeParseDate(payment.date), "MMM d, yyyy")}</TableCell>
-                                          <TableCell className="text-xs">${payment.amount.toFixed(2)}</TableCell>
+                                          <TableCell className="text-xs">{formatCurrency(payment.amount)}</TableCell>
                                           <TableCell className="text-xs">{payment.paymentMethod}</TableCell>
                                         </TableRow>
                                       ))}
@@ -969,7 +971,7 @@ export default function SubscriptionsPage(props: SubscriptionsPageProps) {
                                     <div key={payment.id} className="bg-cream/10 rounded-lg p-3 space-y-1">
                                       <div className="flex justify-between items-start">
                                         <span className="text-xs text-cream/60">{format(safeParseDate(payment.date), "MMM d, yyyy")}</span>
-                                        <span className="text-xs font-medium">${payment.amount.toFixed(2)}</span>
+                                        <span className="text-xs font-medium">{formatCurrency(payment.amount)}</span>
                                       </div>
                                       <p className="text-xs text-cream/60">{payment.paymentMethod}</p>
                                     </div>

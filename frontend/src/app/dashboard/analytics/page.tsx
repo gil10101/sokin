@@ -25,6 +25,7 @@ const TypedSelectContent = SelectContent
 const TypedSelectItem = SelectItem
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { logger } from "@/lib/logger"
+import { useCurrency } from "@/hooks/use-currency"
 
 interface AnalyticsPageProps {
   params?: Promise<Record<string, string>>;
@@ -32,6 +33,7 @@ interface AnalyticsPageProps {
 }
 
 export default function AnalyticsPage(props: AnalyticsPageProps) {
+  const { format: formatCurrency } = useCurrency()
   const [collapsed, setCollapsed] = useState(false)
   const [user] = useAuthState(auth)
   const [timeframe, setTimeframe] = useState<"3months" | "6months" | "12months">("6months")
@@ -123,7 +125,7 @@ export default function AnalyticsPage(props: AnalyticsPageProps) {
               <div className="space-y-2">
                 <p className="text-cream/60 text-sm font-outfit">Total Spending</p>
                 <p className="text-3xl font-medium text-cream font-outfit">
-                  {loading ? "..." : `$${summary.totalExpense.toFixed(2)}`}
+                  {loading ? "..." : `${formatCurrency(summary.totalExpense)}`}
                 </p>
                 <p className="text-cream/50 text-xs">
                   {loading ? "" : `${summary.totalTransactions} transactions`}
@@ -140,7 +142,7 @@ export default function AnalyticsPage(props: AnalyticsPageProps) {
               <div className="space-y-2">
                 <p className="text-cream/60 text-sm font-outfit">Monthly Average</p>
                 <p className="text-3xl font-medium text-cream font-outfit">
-                  {loading ? "..." : `$${summary.monthlyAverage.toFixed(2)}`}
+                  {loading ? "..." : `${formatCurrency(summary.monthlyAverage)}`}
                 </p>
                 <p className="text-cream/50 text-xs">
                   {loading ? "" : `${timeframe.replace('months', '')} month period`}
@@ -157,7 +159,7 @@ export default function AnalyticsPage(props: AnalyticsPageProps) {
               <div className="space-y-2">
                 <p className="text-cream/60 text-sm font-outfit">Upcoming Bills</p>
                 <p className="text-3xl font-medium text-cream font-outfit">
-                  {billsLoading ? "..." : `$${(billsData?.totalUpcoming ?? 0).toFixed(2)}`}
+                  {billsLoading ? "..." : `${formatCurrency((billsData?.totalUpcoming ?? 0))}`}
                 </p>
                 <p className={`text-xs ${
                   billsData?.overdueCount && billsData.overdueCount > 0 
@@ -270,12 +272,11 @@ export default function AnalyticsPage(props: AnalyticsPageProps) {
                         : "N/A"}
                     </p>
                     <p className="text-cream/60 text-sm">
-                      $
-                      {monthlyData.length > 0
-                        ? monthlyData
-                            .reduce((prev, current) => (current.amount > prev.amount ? current : prev))
-                            .amount.toFixed(2)
-                        : "0.00"}
+                      {formatCurrency(
+                        monthlyData.length > 0
+                          ? monthlyData.reduce((prev, current) => (current.amount > prev.amount ? current : prev)).amount
+                          : 0
+                      )}
                     </p>
                   </MotionDiv>
                   <MotionDiv
@@ -286,7 +287,7 @@ export default function AnalyticsPage(props: AnalyticsPageProps) {
                     <h3 className="text-sm font-medium mb-2">Top Spending Category</h3>
                     <p className="text-2xl font-medium">{categoryData.length > 0 ? categoryData[0].category : "N/A"}</p>
                     <p className="text-cream/60 text-sm">
-                      ${categoryData.length > 0 ? categoryData[0].amount.toFixed(2) : "0.00"}
+                      {formatCurrency(categoryData.length > 0 ? categoryData[0].amount : 0)}
                     </p>
                   </MotionDiv>
                   <MotionDiv
@@ -296,10 +297,11 @@ export default function AnalyticsPage(props: AnalyticsPageProps) {
                   >
                     <h3 className="text-sm font-medium mb-2">Average Monthly Spend</h3>
                     <p className="text-2xl font-medium">
-                      $
-                      {monthlyData.length > 0
-                        ? (monthlyData.reduce((sum, item) => sum + item.amount, 0) / monthlyData.length).toFixed(2)
-                        : "0.00"}
+                      {formatCurrency(
+                        monthlyData.length > 0
+                          ? monthlyData.reduce((sum, item) => sum + item.amount, 0) / monthlyData.length
+                          : 0
+                      )}
                     </p>
                     <p className="text-cream/60 text-sm">Over {monthlyData.length} months</p>
                   </MotionDiv>

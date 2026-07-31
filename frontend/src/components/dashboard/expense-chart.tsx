@@ -11,6 +11,7 @@ import { format, subDays, subMonths, isAfter } from "date-fns"
 import { safeParseDate } from "@/types/firebase"
 import { logger } from "@/lib/logger"
 import { useExpensesData } from "@/hooks/use-expenses-data"
+import { useCurrency } from "@/hooks/use-currency"
 
 interface Expense {
   id: string
@@ -32,6 +33,7 @@ interface ExpenseChartProps {
 }
 
 export function ExpenseChart({ timeframe = "30days" }: ExpenseChartProps) {
+  const { format: formatCurrency, formatCompact } = useCurrency()
   const { user } = useAuth()
   const { isMobile } = useViewport()
   const [mounted, setMounted] = useState(false)
@@ -188,7 +190,7 @@ export function ExpenseChart({ timeframe = "30days" }: ExpenseChartProps) {
               axisLine={false}
               tickLine={false}
               tick={{ fill: "rgba(245, 245, 240, 0.6)", fontSize: isMobile ? 9 : 12 }}
-              tickFormatter={(value) => isMobile && value >= 1000 ? `$${(value / 1000).toFixed(1)}k` : `$${value}`}
+              tickFormatter={(value) => isMobile ? formatCompact(value) : formatCurrency(value, { decimals: 0 })}
               width={isMobile ? 30 : 60}
             />
             <Tooltip
@@ -199,12 +201,12 @@ export function ExpenseChart({ timeframe = "30days" }: ExpenseChartProps) {
                       <p className="text-cream font-medium">{payload[0].payload.name}</p>
                       <div className="flex items-center mt-1">
                         <div className="h-2 w-2 rounded-full bg-cream/80 mr-1"></div>
-                        <p className="text-cream text-sm">Amount: ${Number(payload[0].value).toFixed(2)}</p>
+                        <p className="text-cream text-sm">Amount: {formatCurrency(Number(payload[0].value))}</p>
                       </div>
                       {payload[1] && (
                         <div className="flex items-center mt-1">
                           <div className="h-2 w-2 rounded-full bg-cream/50 mr-1"></div>
-                          <p className="text-cream/80 text-sm">Moving Average: ${Number(payload[1].value).toFixed(2)}</p>
+                          <p className="text-cream/80 text-sm">Moving Average: {formatCurrency(Number(payload[1].value))}</p>
                         </div>
                       )}
                     </div>

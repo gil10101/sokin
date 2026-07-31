@@ -9,6 +9,7 @@ import { useExpensesData } from "@/hooks/use-expenses-data"
 import { useAuth } from "@/contexts/auth-context"
 import { useViewport } from "@/hooks/use-mobile"
 import { format, subMonths, startOfMonth, endOfMonth, eachMonthOfInterval } from "date-fns"
+import { useCurrency } from "@/hooks/use-currency"
 
 // Helper function to safely parse dates including Firebase Timestamps
 const safeParseDate = (dateValue: string | number | Date | { toDate(): Date } | null | undefined): Date => {
@@ -76,6 +77,7 @@ const categoryColors: Record<string, string> = {
 }
 
 export function StackedBarChart({ timeframe = "year" }: StackedBarChartProps) {
+  const { format: formatCurrency, formatCompact } = useCurrency()
   const { user } = useAuth()
   const { isMobile } = useViewport()
   const [mounted, setMounted] = useState(false)
@@ -271,7 +273,7 @@ export function StackedBarChart({ timeframe = "year" }: StackedBarChartProps) {
               axisLine={false}
               tickLine={false}
               tick={{ fill: "rgba(245, 245, 240, 0.6)", fontSize: isMobile ? 9 : 12 }}
-              tickFormatter={(value) => isMobile ? `$${(value/1000).toFixed(0)}k` : `$${value}`}
+              tickFormatter={(value) => isMobile ? formatCompact(value) : formatCurrency(value, { decimals: 0 })}
             />
             <YAxis
               type="category"
@@ -291,7 +293,7 @@ export function StackedBarChart({ timeframe = "year" }: StackedBarChartProps) {
                       <p className="text-cream font-medium mb-2">{label}</p>
                       <div className="flex items-center mb-3 pb-2 border-b border-cream/10">
                         <div className="h-2.5 w-2.5 rounded-full bg-cream/80 mr-2"></div>
-                        <p className="text-cream text-sm font-medium">Total: ${total.toLocaleString()}</p>
+                        <p className="text-cream text-sm font-medium">Total: {formatCurrency(total, { decimals: 0 })}</p>
                       </div>
                       <div className="space-y-1.5">
                         {payload
@@ -313,7 +315,7 @@ export function StackedBarChart({ timeframe = "year" }: StackedBarChartProps) {
                                   <span className="text-cream/80 text-sm">{categoryName}</span>
                                 </div>
                                 <div className="flex items-center space-x-1.5">
-                                  <span className="text-cream text-sm font-mono">${value.toLocaleString()}</span>
+                                  <span className="text-cream text-sm font-mono">{formatCurrency(value, { decimals: 0 })}</span>
                                   <span className="text-cream/60 text-xs">({percentage}%)</span>
                                 </div>
                               </div>

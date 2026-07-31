@@ -20,6 +20,7 @@ interface AdvancedAnalyticsProps {
 }
 
 import type { Budget } from "@/lib/api"
+import { useCurrency } from "@/hooks/use-currency"
 
 interface Expense {
   id: string
@@ -70,6 +71,7 @@ const safeParseDate = (dateValue: unknown): Date => {
 }
 
 export function AdvancedAnalytics({ budgets, timeframe = "6months" }: AdvancedAnalyticsProps) {
+  const { format: formatCurrency } = useCurrency()
   const { user } = useAuth()
   const [insights, setInsights] = useState<SpendingInsight[]>([])
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
@@ -185,7 +187,7 @@ export function AdvancedAnalytics({ budgets, timeframe = "6months" }: AdvancedAn
       newInsights.push({
         type: 'forecast',
         title: 'Next Month Forecast',
-        description: `Based on current trends, you're projected to spend approximately $${trend.toLocaleString()} next month`,
+        description: `Based on current trends, you're projected to spend approximately ${formatCurrency(trend, { decimals: 0 })} next month`,
         severity: 'info',
         value: trend
       })
@@ -235,7 +237,7 @@ export function AdvancedAnalytics({ budgets, timeframe = "6months" }: AdvancedAn
                     <p className="text-sm font-semibold text-cream/80 leading-tight">{insight.title}</p>
                     <p className="text-xs text-cream/60 leading-relaxed">{insight.description}</p>
                     {insight.value && (
-                      <p className="text-xl font-bold text-cream/90 mt-3">${insight.value.toLocaleString()}</p>
+                      <p className="text-xl font-bold text-cream/90 mt-3">{formatCurrency(insight.value, { decimals: 0 })}</p>
                     )}
                   </div>
                 </div>

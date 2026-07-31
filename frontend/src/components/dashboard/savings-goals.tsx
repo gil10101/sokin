@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/auth-context'
 import { goalsAPI } from '@/lib/api'
 import { Button } from '../ui/button'
@@ -33,6 +34,7 @@ import { format } from 'date-fns'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
+import { useCurrency } from "@/hooks/use-currency"
 
 interface SavingsGoal {
   id?: string
@@ -70,11 +72,11 @@ interface SavingsGoalsProps {
   hideHeader?: boolean
 }
 
+const EMPTY_GOALS: SavingsGoal[] = []
+
 export function SavingsGoals({ hideHeader = false }: SavingsGoalsProps) {
+  const { format: formatCurrency } = useCurrency()
   const { user } = useAuth()
-  const [goals, setGoals] = useState<SavingsGoal[]>([])  
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [showCreateGoal, setShowCreateGoal] = useState(false)
   const [selectedGoal, setSelectedGoal] = useState<SavingsGoal | null>(null)
   const [contributionAmount, setContributionAmount] = useState('')
@@ -114,32 +116,28 @@ export function SavingsGoals({ hideHeader = false }: SavingsGoalsProps) {
     high: 'bg-red-100 text-red-800'
   }
 
-  const fetchSavingsGoals = async () => {
-    if (!user) return
-
-    setLoading(true)
-    setError(null)
-    try {
+  // Shared query key so the several places this renders resolve to one request
+  const {
+    data: goals = EMPTY_GOALS,
+    isLoading: loading,
+    isError,
+    refetch: fetchSavingsGoals,
+  } = useQuery<SavingsGoal[]>({
+    queryKey: ['savings-goals', user?.uid],
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
       const goalsData = await goalsAPI.getGoals()
       // Transform API response to ensure targetDate field is present
       // Handles legacy data that may use 'deadline' instead of 'targetDate'
-      const transformedGoals = goalsData.map((goal) => ({
+      return goalsData.map((goal) => ({
         ...goal,
         targetDate: (goal.targetDate || (goal as unknown as { deadline?: string }).deadline || '') as string
-      }))
-      setGoals(transformedGoals as SavingsGoal[])
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "There was an error loading your savings goals"
-      setError('Failed to load savings goals. Please try again.')
-      toast({
-        title: "Error loading goals",
-        description: errorMessage,
-        variant: "destructive",
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
+      })) as SavingsGoal[]
+    },
+  })
+
+  const error = isError ? 'Failed to load savings goals. Please try again.' : null
 
   const createGoal = async () => {
     if (!user || !newGoal.name || !newGoal.targetAmount) {
@@ -240,7 +238,7 @@ export function SavingsGoals({ hideHeader = false }: SavingsGoalsProps) {
       
       toast({
         title: "Contribution Added",
-        description: `$${amount.toLocaleString()} has been added to your goal.`
+        description: `${formatCurrency(amount, { decimals: 0 })} has been added to your goal.`
       })
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : "Failed to add contribution"
@@ -294,11 +292,6 @@ export function SavingsGoals({ hideHeader = false }: SavingsGoalsProps) {
     )
   }
 
-  // Load savings goals on component mount and when user changes
-  useEffect(() => {
-    fetchSavingsGoals()
-  }, [user])
-
   if (loading) {
     return (
       <div className="space-y-6">
@@ -341,7 +334,7 @@ export function SavingsGoals({ hideHeader = false }: SavingsGoalsProps) {
             <p className="text-cream/60 mb-6 text-sm">{error}</p>
 
             <Button
-              onClick={fetchSavingsGoals}
+              onClick={() => { void fetchSavingsGoals() }}
               className="bg-cream/10 hover:bg-cream/20 text-cream/80 border-cream/20"
             >
               Try Again
@@ -541,8 +534,8 @@ export function SavingsGoals({ hideHeader = false }: SavingsGoalsProps) {
                     {/* Progress Section */}
                     <div className="space-y-3">
                       <div className="flex justify-between text-sm text-cream/70">
-                        <span className="font-medium">${goal.currentAmount.toLocaleString()}</span>
-                        <span className="font-medium">${goal.targetAmount.toLocaleString()}</span>
+                        <span className="font-medium">{formatCurrency(goal.currentAmount, { decimals: 0 })}</span>
+                        <span className="font-medium">{formatCurrency(goal.targetAmount, { decimals: 0 })}</span>
                       </div>
                       <div className="w-full bg-cream/10 rounded-full h-4">
                         <div 
@@ -568,7 +561,7 @@ export function SavingsGoals({ hideHeader = false }: SavingsGoalsProps) {
                           </span>
                         </div>
                         <div className="text-sm text-cream/60">
-                          ${(nextMilestone.amount - goal.currentAmount).toLocaleString()} remaining
+                          {formatCurrency((nextMilestone.amount - goal.currentAmount), { decimals: 0 })} remaining
                         </div>
                       </div>
                     )}
@@ -641,7 +634,7 @@ export function SavingsGoals({ hideHeader = false }: SavingsGoalsProps) {
               <div className="bg-cream/5 rounded-lg p-4 border border-cream/10">
                 <p className="font-medium text-cream/90">{selectedGoal.name}</p>
                 <p className="text-sm text-cream/60 mt-1">
-                  Current: ${selectedGoal.currentAmount.toLocaleString()} / ${selectedGoal.targetAmount.toLocaleString()}
+                  Current: {formatCurrency(selectedGoal.currentAmount, { decimals: 0 })} / {formatCurrency(selectedGoal.targetAmount, { decimals: 0 })}
                 </p>
               </div>
             )}

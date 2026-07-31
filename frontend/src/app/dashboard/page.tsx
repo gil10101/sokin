@@ -49,6 +49,7 @@ import { api } from "@/lib/api"
 import { useQuery } from "@tanstack/react-query"
 import Link from "next/link"
 import type { NetWorthCalculation, Budget } from "@/lib/types"
+import { useCurrency } from "@/hooks/use-currency"
 
 interface Expense {
   id: string
@@ -76,6 +77,7 @@ interface DashboardPageProps {
 }
 
 export default function DashboardPage(props: DashboardPageProps) {
+  const { format: formatCurrency } = useCurrency()
   const [collapsed, setCollapsed] = useState(false)
   const { user, loading: authLoading } = useAuth()
   const userRef = useRef(user)
@@ -277,16 +279,6 @@ export default function DashboardPage(props: DashboardPageProps) {
 
 
 
-  // Helper function to format currency
-  const formatCurrency = (amount: number): string => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(amount)
-  }
-
   // Helper function to format percentage
   const formatPercent = (percent: number): string => {
     return `${percent >= 0 ? '+' : ''}${percent.toFixed(1)}%`
@@ -401,7 +393,7 @@ export default function DashboardPage(props: DashboardPageProps) {
                         >
                           <div className="flex justify-between">
                             <span className="font-medium">{result.name}</span>
-                            <span>${result.amount.toFixed(2)}</span>
+                            <span>{formatCurrency(result.amount)}</span>
                           </div>
                           <div className="flex justify-between text-xs text-cream/60">
                             <span>{result.category}</span>
@@ -437,7 +429,7 @@ export default function DashboardPage(props: DashboardPageProps) {
             <MotionContainer delay={0.1}>
               <MetricCard
                 title="Total Expenses"
-                value={formatCurrency(metrics.totalExpenses)}
+                value={formatCurrency(metrics.totalExpenses, { decimals: 0 })}
                 change={formatPercent(metrics.monthlyChange)}
                 trend={
                   metrics.monthlyChange === 0 ? "neutral" :
@@ -450,7 +442,7 @@ export default function DashboardPage(props: DashboardPageProps) {
             <MotionContainer delay={0.2}>
               <MetricCard
                 title="Monthly Average"
-                value={formatCurrency(metrics.monthlyAverage)}
+                value={formatCurrency(metrics.monthlyAverage, { decimals: 0 })}
                 change={formatPercent(metrics.averageChange)}
                 trend={
                   metrics.averageChange === 0 ? "neutral" :
@@ -465,7 +457,7 @@ export default function DashboardPage(props: DashboardPageProps) {
                 <MetricCard
                   title="Net Worth"
                   polarity="growth"
-                  value={netWorth ? formatCurrency(netWorth.netWorth) : "$0.00"}
+                  value={formatCurrency(netWorth ? netWorth.netWorth : 0, { decimals: 0 })}
                   change={netWorth?.monthlyChangePercent ? formatPercent(netWorth.monthlyChangePercent) : "0.0%"}
                   trend={
                     !netWorth?.monthlyChange || netWorth.monthlyChange === 0 ? "neutral" :
@@ -479,7 +471,7 @@ export default function DashboardPage(props: DashboardPageProps) {
             <MotionContainer delay={0.4}>
               <MetricCard
                 title="Upcoming Bills"
-                value={billsData ? formatCurrency(billsData.totalUpcoming) : "$0.00"}
+                value={formatCurrency(billsData ? billsData.totalUpcoming : 0, { decimals: 0 })}
                 secondaryValue={billsData ? `${billsData.upcomingBills.length} bills due` : "No bills"}
                 icon={<Calendar className="h-5 w-5" />}
               />

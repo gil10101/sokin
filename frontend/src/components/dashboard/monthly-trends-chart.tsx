@@ -5,12 +5,14 @@ import { AreaChart, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Area } fro
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { MotionDiv } from "../ui/dynamic-motion"
 import { useViewport } from "@/hooks/use-mobile"
+import { useCurrency } from "@/hooks/use-currency"
 
 interface MonthlyTrendsChartProps {
   data: Array<{ month: string; amount: number }>
 }
 
 export function MonthlyTrendsChart({ data }: MonthlyTrendsChartProps) {
+  const { format: formatCurrency } = useCurrency()
   const [animatedData, setAnimatedData] = useState<Array<{ month: string; amount: number }>>([])
   const { isMobile, isTablet } = useViewport()
 
@@ -109,13 +111,13 @@ export function MonthlyTrendsChart({ data }: MonthlyTrendsChartProps) {
                 fill: "rgba(245, 245, 240, 0.6)", 
                 fontSize: chartConfig.tickFontSize 
               }}
-              tickFormatter={(value) => isMobile ? `$${Math.round(value)}` : `$${value}`}
+              tickFormatter={(value) => formatCurrency(value, { decimals: 0 })}
               width={chartConfig.yAxisWidth}
             />
             <ChartTooltip
               content={<ChartTooltipContent />}
               labelFormatter={(value) => `Month: ${value}`}
-              formatter={(value: number | undefined) => value !== undefined ? [`$${value.toLocaleString()}`] : ['N/A']}
+              formatter={(value: number | undefined) => value !== undefined ? [`${formatCurrency(value, { decimals: 0 })}`] : ['N/A']}
             />
             <Area
               type="monotone"

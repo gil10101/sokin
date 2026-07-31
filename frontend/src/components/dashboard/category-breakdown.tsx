@@ -11,6 +11,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import React from "react"
 import { safeParseDate } from "@/types/firebase"
 import { logger } from "@/lib/logger"
+import { useCurrency } from "@/hooks/use-currency"
 
 // Define transaction type
 interface Transaction {
@@ -81,6 +82,7 @@ const getCategoryIcon = (category: string): LucideIcon => {
 }
 
 export function CategoryBreakdown() {
+  const { format: formatCurrency } = useCurrency()
   const { user } = useAuth()
   const [mounted, setMounted] = useState(false)
   const [activeIndex, setActiveIndex] = useState<number | null>(null)
@@ -197,7 +199,6 @@ export function CategoryBreakdown() {
   const total = useMemo(() => categoryData.reduce((sum, item) => sum + item.value, 0), [categoryData])
   
   // Memoize formatCurrency function
-  const formatCurrency = useMemo(() => (value: number) => `$${value.toLocaleString()}`, [])
 
   if (!mounted) {
     return <div className="h-[300px] bg-cream/5 animate-pulse rounded-md" />
@@ -334,7 +335,7 @@ export function CategoryBreakdown() {
                                 return (
                                   <div className="bg-dark border border-cream/10 p-2 rounded-md shadow-md">
                                     <p className="text-cream font-medium">{data.name}</p>
-                                    <p className="text-cream/80 text-sm">${data.value.toFixed(2)}</p>
+                                    <p className="text-cream/80 text-sm">{formatCurrency(data.value)}</p>
                                     <p className="text-cream/60 text-xs">{data.percentage}% of total</p>
                                   </div>
                                 )
@@ -367,10 +368,10 @@ export function CategoryBreakdown() {
                           tick={{ fill: 'rgba(245, 245, 240, 0.7)', fontSize: 12 }} 
                           axisLine={{ stroke: 'rgba(245, 245, 240, 0.1)' }}
                           tickLine={false}
-                          tickFormatter={(value) => `$${value}`}
+                          tickFormatter={(value) => formatCurrency(value, { decimals: 0 })}
                         />
                         <Tooltip
-                          formatter={(value: number | undefined) => value !== undefined ? [`$${value.toFixed(2)}`, "Amount"] : ['N/A', "Amount"]}
+                          formatter={(value: number | undefined) => value !== undefined ? [`${formatCurrency(value)}`, "Amount"] : ['N/A', "Amount"]}
                           contentStyle={{
                             backgroundColor: "#FFFFFF",
                             border: "1px solid #000000",
@@ -445,7 +446,7 @@ export function CategoryBreakdown() {
                             <div className="h-4 w-4 rounded-full mr-3" style={{ backgroundColor: category.color }} />
                             <span className="text-sm font-medium text-cream">{category.name}</span>
                           </div>
-                          <span className="text-sm font-medium text-cream">${category.value.toFixed(2)}</span>
+                          <span className="text-sm font-medium text-cream">{formatCurrency(category.value)}</span>
                         </div>
                         
                         <div className="w-full bg-cream/5 rounded-full h-2 mb-3">
@@ -474,7 +475,7 @@ export function CategoryBreakdown() {
                           <div className="grid grid-cols-2 gap-3">
                             <div className="bg-cream/5 rounded-lg p-3 transform transition-all duration-300 delay-100">
                               <div className="text-xs text-cream/60 mb-1">Total Spent</div>
-                              <div className="text-lg font-medium text-cream">${category.value.toFixed(2)}</div>
+                              <div className="text-lg font-medium text-cream">{formatCurrency(category.value)}</div>
                             </div>
                             <div className="bg-cream/5 rounded-lg p-3 transform transition-all duration-300 delay-150">
                               <div className="text-xs text-cream/60 mb-1">% of Total</div>
@@ -503,7 +504,7 @@ export function CategoryBreakdown() {
                                       </p>
                                     </div>
                                   </div>
-                                  <p className="text-sm font-medium text-cream">${transaction.amount.toFixed(2)}</p>
+                                  <p className="text-sm font-medium text-cream">{formatCurrency(transaction.amount)}</p>
                                 </div>
                               )
                             })}
@@ -515,7 +516,7 @@ export function CategoryBreakdown() {
                   
                   <div className="mt-6 pt-4 border-t border-cream/10 flex justify-between items-center">
                     <span className="text-base font-medium text-cream">Total</span>
-                    <span className="text-base font-medium text-cream">${total.toFixed(2)}</span>
+                    <span className="text-base font-medium text-cream">{formatCurrency(total)}</span>
                   </div>
                 </div>
               </div>
@@ -558,7 +559,7 @@ export function CategoryBreakdown() {
                   return (
                     <div className="bg-dark border border-cream/10 p-2 rounded-md shadow-md">
                       <p className="text-cream font-medium text-sm">{data.name}</p>
-                      <p className="text-cream/80 text-xs">${data.value.toFixed(2)}</p>
+                      <p className="text-cream/80 text-xs">{formatCurrency(data.value)}</p>
                       <p className="text-cream/60 text-xs">{data.percentage}% of total</p>
                     </div>
                   )
@@ -579,7 +580,7 @@ export function CategoryBreakdown() {
                 <div className="h-3 w-3 rounded-full mr-2 flex-shrink-0" style={{ backgroundColor: category.color }} />
                 <span className="text-xs sm:text-sm text-cream/80 truncate">{category.name}</span>
               </div>
-              <span className="text-xs sm:text-sm font-medium text-cream ml-2 flex-shrink-0">${category.value.toFixed(2)}</span>
+              <span className="text-xs sm:text-sm font-medium text-cream ml-2 flex-shrink-0">{formatCurrency(category.value)}</span>
             </div>
           ))}
         </div>
@@ -587,7 +588,7 @@ export function CategoryBreakdown() {
         {/* Total */}
         <div className="mt-3 sm:mt-6 pt-3 sm:pt-4 border-t border-cream/10 flex justify-between items-center">
           <span className="text-sm font-medium text-cream">Total</span>
-          <span className="text-sm font-medium text-cream">${total.toFixed(2)}</span>
+          <span className="text-sm font-medium text-cream">{formatCurrency(total)}</span>
         </div>
 
         {/* Expand Button */}

@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/auth-context"
 import { format } from "date-fns"
 import { expensesAPI } from "@/lib/api"
 import { logger } from "@/lib/logger"
+import { useCurrency } from "@/hooks/use-currency"
 
 // Helper function to safely parse dates
 const safeParseDate = (dateValue: string | number | Date | null | undefined): Date => {
@@ -62,6 +63,7 @@ interface RecentTransactionsProps {
 }
 
 export function RecentTransactions({ expenses: parentExpenses }: RecentTransactionsProps = {}) {
+  const { format: formatCurrency } = useCurrency()
   const { user } = useAuth()
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(!parentExpenses)
@@ -164,7 +166,7 @@ export function RecentTransactions({ expenses: parentExpenses }: RecentTransacti
               </div>
             </div>
             <div className="text-right">
-              <p className="font-medium text-sm">${transaction.amount.toFixed(2)}</p>
+              <p className="font-medium text-sm">{formatCurrency(transaction.amount)}</p>
               <p className="text-xs text-cream/60">{transaction.category}</p>
             </div>
           </div>
