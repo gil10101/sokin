@@ -19,7 +19,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Search, Trash2, Edit, ChevronDown, ChevronRight, ChevronLeft, Receipt, ChevronsLeft, ChevronsRight } from "lucide-react"
@@ -288,6 +287,14 @@ export default function ExpensesPage(props: ExpensesPageProps) {
   const endIndex = startIndex + itemsPerPage
   const paginatedExpenses = filteredExpenses.slice(startIndex, endIndex)
 
+  /**
+   * The one confirmation dialog is shared by every row, so it names the row it
+   * was opened from rather than saying "this expense".
+   */
+  const pendingDeleteExpense = expenseToDelete
+    ? expenses.find((expense) => expense.id === expenseToDelete)
+    : undefined
+
   const goToPage = (page: number) => {
     setCurrentPage(Math.max(1, Math.min(page, totalPages)))
   }
@@ -469,37 +476,15 @@ export default function ExpensesPage(props: ExpensesPageProps) {
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => setExpenseToDelete(expense.id)}
-                                  className="h-8 w-8 text-cream/60 hover:text-red-400 hover:bg-cream/10"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent className="bg-dark border-cream/10 text-cream">
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Delete Expense</AlertDialogTitle>
-                                  <AlertDialogDescription className="text-cream/60">
-                                    Are you sure you want to delete this expense? This action cannot be undone.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel className="bg-transparent border-cream/10 text-cream hover:bg-cream/10 hover:text-cream">
-                                    Cancel
-                                  </AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={handleDeleteExpense}
-                                    className="bg-red-500 text-white hover:bg-red-600"
-                                  >
-                                    Delete
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              aria-label={`Delete ${expense.name}`}
+                              onClick={() => setExpenseToDelete(expense.id)}
+                              className="h-8 w-8 text-cream/60 hover:text-red-400 hover:bg-cream/10"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
                         </div>
                       </div>
@@ -560,37 +545,18 @@ export default function ExpensesPage(props: ExpensesPageProps) {
                               >
                                 <Edit className="h-4 w-4" />
                               </Button>
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => setExpenseToDelete(expense.id)}
-                                    className="h-8 w-8 text-cream/60 hover:text-red-400 hover:bg-cream/10"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent className="bg-dark border-cream/10 text-cream">
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Delete Expense</AlertDialogTitle>
-                                    <AlertDialogDescription className="text-cream/60">
-                                      Are you sure you want to delete this expense? This action cannot be undone.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel className="bg-transparent border-cream/10 text-cream hover:bg-cream/10 hover:text-cream">
-                                      Cancel
-                                    </AlertDialogCancel>
-                                    <AlertDialogAction
-                                      onClick={handleDeleteExpense}
-                                      className="bg-red-500 text-white hover:bg-red-600"
-                                    >
-                                      Delete
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                aria-label={`Delete ${expense.name}`}
+                                onClick={(e: React.MouseEvent<HTMLElement>) => {
+                                  e.stopPropagation()
+                                  setExpenseToDelete(expense.id)
+                                }}
+                                className="h-8 w-8 text-cream/60 hover:text-red-400 hover:bg-cream/10"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                             </div>
                           </TableCell>
                         </TableRow>
@@ -807,7 +773,9 @@ export default function ExpensesPage(props: ExpensesPageProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Expense</AlertDialogTitle>
             <AlertDialogDescription className="text-cream/60">
-              Are you sure you want to delete this expense? This action cannot be undone.
+              {pendingDeleteExpense
+                ? `Are you sure you want to delete "${pendingDeleteExpense.name}"? This action cannot be undone.`
+                : "Are you sure you want to delete this expense? This action cannot be undone."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
