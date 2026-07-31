@@ -247,6 +247,10 @@ export default function DashboardPage(props: DashboardPageProps) {
    * rendering it as "+0.0%" would claim the user's spending was flat when the
    * truth is that we cannot say. Only a real 0 gets the neutral trend.
    */
+  /** Maps a React Query status onto the MetricCard state. */
+  const cardState = (q: { isLoading: boolean; isError: boolean }): "loading" | "error" | "ready" =>
+    q.isLoading ? "loading" : q.isError ? "error" : "ready"
+
   const formatChangePct = (pct: number | null | undefined): string =>
     pct === null || pct === undefined ? "—" : formatPercent(pct)
 
@@ -388,6 +392,8 @@ export default function DashboardPage(props: DashboardPageProps) {
           <MotionContainer delay={0.1}>
             <MetricCard
               title="Total Expenses"
+              state={cardState(dashboardQuery)}
+              onRetry={() => dashboardQuery.refetch()}
               value={metrics ? formatCurrency(metrics.totalThisMonth, { decimals: 0 }) : "—"}
               change={formatChangePct(metrics?.monthOverMonthChangePct)}
               trend={trendOf(metrics?.monthOverMonthChangePct)}
@@ -398,6 +404,8 @@ export default function DashboardPage(props: DashboardPageProps) {
           <MotionContainer delay={0.2}>
             <MetricCard
               title="Monthly Average"
+              state={cardState(dashboardQuery)}
+              onRetry={() => dashboardQuery.refetch()}
               value={metrics ? formatCurrency(metrics.avgMonthly6, { decimals: 0 }) : "—"}
               change={formatChangePct(metrics?.avgChangePct)}
               trend={trendOf(metrics?.avgChangePct)}
@@ -409,6 +417,8 @@ export default function DashboardPage(props: DashboardPageProps) {
             <Link href="/dashboard/net-worth" className="block">
               <MetricCard
                 title="Net Worth"
+                state={cardState(netWorthQuery)}
+                onRetry={() => netWorthQuery.refetch()}
                 polarity="growth"
                 value={formatCurrency(netWorth ? netWorth.netWorth : 0, { decimals: 0 })}
                 change={netWorth?.monthlyChangePercent ? formatPercent(netWorth.monthlyChangePercent) : "0.0%"}

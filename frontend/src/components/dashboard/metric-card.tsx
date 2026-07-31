@@ -14,9 +14,21 @@ interface MetricCardProps {
   polarity?: "spend" | "growth"
   period?: string
   icon: React.ReactElement
+  /**
+   * Whether the figure is known yet.
+   *
+   * `value` is a pre-formatted string, so without this a caller with no data
+   * has nothing to pass but a formatted zero - and "$0" is a claim about the
+   * user's money, not an absence of one. A pending or failed request rendered
+   * as "$0.00" reads as "you have nothing", which is worse than saying nothing.
+   * Defaults to "ready" so existing callers are unaffected.
+   */
+  state?: "loading" | "error" | "ready"
+  /** Retry handler for the error state; omitted renders the message alone. */
+  onRetry?: () => void
 }
 
-export const MetricCard = React.memo(function MetricCard({ title, value, secondaryValue, change, trend, polarity = "spend", period, icon }: MetricCardProps) {
+export const MetricCard = React.memo(function MetricCard({ title, value, secondaryValue, change, trend, polarity = "spend", period, icon, state = "ready", onRetry }: MetricCardProps) {
   const upIsGood = polarity === "growth"
   const trendColor =
     trend === "up"
@@ -35,6 +47,31 @@ export const MetricCard = React.memo(function MetricCard({ title, value, seconda
         </div>
       </div>
       <div className="space-y-1">
+        {state === "loading" ? (
+          <>
+            <div className="h-8 w-28 bg-cream/10 rounded animate-pulse" aria-label={`${title} loading`} />
+            <div className="h-4 w-20 bg-cream/5 rounded animate-pulse" />
+          </>
+        ) : state === "error" ? (
+          <>
+            <p className="text-2xl font-medium font-outfit text-cream/40" aria-label={`${title} unavailable`}>
+              &mdash;
+            </p>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-red-400/80">Couldn&apos;t load</span>
+              {onRetry && (
+                <button
+                  type="button"
+                  onClick={onRetry}
+                  className="text-xs text-cream/60 underline underline-offset-2 hover:text-cream"
+                >
+                  Retry
+                </button>
+              )}
+            </div>
+          </>
+        ) : (
+          <>
         <p className="text-2xl font-medium font-outfit">{value}</p>
         {secondaryValue && <p className="text-sm text-cream/60">{secondaryValue}</p>}
         {change && (
@@ -51,6 +88,8 @@ export const MetricCard = React.memo(function MetricCard({ title, value, seconda
             </span>
             {period && <span className="text-xs text-cream/40 ml-1">{period}</span>}
           </div>
+        )}
+          </>
         )}
       </div>
     </div>
