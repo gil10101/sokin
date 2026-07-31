@@ -116,73 +116,33 @@ export default function DashboardPage(props: DashboardPageProps) {
     }
   }, [])
 
-  // Calculate real metrics from user expense data
-  const metrics = useMemo(() => {
-    if (!expenses.length) {
-      return {
-        totalExpenses: 0,
-        monthlyAverage: 0,
-        monthlyChange: 0,
-        averageChange: 0
-      }
-    }
-
-    // Calculate total expenses for current period
-    const now = new Date()
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-    const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-    const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0)
-
-    // Current month expenses
-    const currentMonthExpenses = expenses.filter(expense => {
-      const expenseDate = parseExpenseDate(expense.date)
-      return expenseDate >= startOfMonth
-    })
-
-    // Last month expenses 
-    const lastMonthExpenses = expenses.filter(expense => {
-      const expenseDate = parseExpenseDate(expense.date)
-      return expenseDate >= startOfLastMonth && expenseDate <= endOfLastMonth
-    })
-
-    // Last 6 months for average calculation
-    const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 6, 1)
-    const recentExpenses = expenses.filter(expense => {
-      const expenseDate = parseExpenseDate(expense.date)
-      return expenseDate >= sixMonthsAgo
-    })
-
-    const totalExpenses = currentMonthExpenses.reduce((sum, expense) => sum + expense.amount, 0)
-    const lastMonthTotal = lastMonthExpenses.reduce((sum, expense) => sum + expense.amount, 0)
-    const monthlyChange = lastMonthTotal > 0 ? ((totalExpenses - lastMonthTotal) / lastMonthTotal) * 100 : 0
-
-    // Calculate monthly average from recent expenses
-    const monthlyAverage = recentExpenses.length > 0 ? recentExpenses.reduce((sum, expense) => sum + expense.amount, 0) / 6 : 0
-    
-    // Previous 6 months for comparison
-    const twelveMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 12, 1)
-    const olderExpenses = expenses.filter(expense => {
-      const expenseDate = parseExpenseDate(expense.date)
-      return expenseDate >= twelveMonthsAgo && expenseDate < sixMonthsAgo
-    })
-    
-    const olderAverage = olderExpenses.length > 0 ? olderExpenses.reduce((sum, expense) => sum + expense.amount, 0) / 6 : 0
-    const averageChange = olderAverage > 0 ? ((monthlyAverage - olderAverage) / olderAverage) * 100 : 0
-
-    return {
-      totalExpenses,
-      monthlyAverage,
-      monthlyChange,
-      averageChange
-    }
-  }, [expenses, parseExpenseDate])
-
   // Fix hydration issues by only rendering after mount
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  type DashboardPayload = { expenses: Expense[]; budgets: Budget[]; notifications: Notification[] }
+  /**
+   * `metrics` is aggregated server-side over every expense. It must not be
+   * re-derived from `expenses`, which is a capped recent-items feed - doing so
+   * is what pinned "vs last 6 months" at +0.0% for anyone with 50+ rows.
+   * Percentages are null when there is no baseline to compare against, which is
+   * different from 0 ("flat"), and the whole object is null if aggregation failed.
+   */
+  type DashboardMetrics = {
+    totalThisMonth: number
+    totalLastMonth: number
+    avgMonthly6: number
+    avgMonthlyPrev6: number
+    monthOverMonthChangePct: number | null
+    avgChangePct: number | null
+  }
+
+  type DashboardPayload = {
+    expenses: Expense[]
+    budgets: Budget[]
+    notifications: Notification[]
+    metrics?: DashboardMetrics | null
+  }
 
   // Dashboard payload through React Query so staleTime/invalidation apply -
   // the previous getQueryData early-return meant the numbers never refreshed
@@ -210,6 +170,10 @@ export default function DashboardPage(props: DashboardPageProps) {
       return data.data ?? null
     },
   })
+
+  // Server-aggregated over every expense; see DashboardMetrics above for why
+  // this is not derived from `expenses`.
+  const metrics = dashboardQuery.data?.metrics ?? null
 
   useEffect(() => {
     // Note: the dashboard payload is capped server-side (recent items only),
@@ -278,6 +242,19 @@ export default function DashboardPage(props: DashboardPageProps) {
 
 
   // Helper function to format percentage
+  /**
+   * A null percentage means there was no baseline period to compare against -
+   * rendering it as "+0.0%" would claim the user's spending was flat when the
+   * truth is that we cannot say. Only a real 0 gets the neutral trend.
+   */
+  const formatChangePct = (pct: number | null | undefined): string =>
+    pct === null || pct === undefined ? "—" : formatPercent(pct)
+
+  const trendOf = (pct: number | null | undefined): "up" | "down" | "neutral" => {
+    if (pct === null || pct === undefined || pct === 0) return "neutral"
+    return pct > 0 ? "up" : "down"
+  }
+
   const formatPercent = (percent: number): string => {
     return `${percent >= 0 ? '+' : ''}${percent.toFixed(1)}%`
   }
@@ -411,26 +388,20 @@ export default function DashboardPage(props: DashboardPageProps) {
           <MotionContainer delay={0.1}>
             <MetricCard
               title="Total Expenses"
-              value={formatCurrency(metrics.totalExpenses, { decimals: 0 })}
-              change={formatPercent(metrics.monthlyChange)}
-              trend={
-                metrics.monthlyChange === 0 ? "neutral" :
-                metrics.monthlyChange > 0 ? "up" : "down"
-              }
-              period="vs last month"
+              value={metrics ? formatCurrency(metrics.totalThisMonth, { decimals: 0 }) : "—"}
+              change={formatChangePct(metrics?.monthOverMonthChangePct)}
+              trend={trendOf(metrics?.monthOverMonthChangePct)}
+              period="vs same days last month"
               icon={<CreditCard className="h-5 w-5" />}
             />
           </MotionContainer>
           <MotionContainer delay={0.2}>
             <MetricCard
               title="Monthly Average"
-              value={formatCurrency(metrics.monthlyAverage, { decimals: 0 })}
-              change={formatPercent(metrics.averageChange)}
-              trend={
-                metrics.averageChange === 0 ? "neutral" :
-                metrics.averageChange > 0 ? "up" : "down"
-              }
-              period="vs last 6 months"
+              value={metrics ? formatCurrency(metrics.avgMonthly6, { decimals: 0 }) : "—"}
+              change={formatChangePct(metrics?.avgChangePct)}
+              trend={trendOf(metrics?.avgChangePct)}
+              period="vs previous 6 months"
               icon={<Calendar className="h-5 w-5" />}
             />
           </MotionContainer>
