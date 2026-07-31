@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { ArrowRight, Menu, X, ArrowDown, BarChart3, PieChart, Target, Wallet } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useAuth } from "@/contexts/auth-context"
@@ -107,8 +107,6 @@ export default function LandingPage() {
   const isMobile = useIsMobile()
   const viewport = useResponsiveViewport()
   const [currentFeature, setCurrentFeature] = useState(0)
-  const [touchStart, setTouchStart] = useState(0)
-  const [touchEnd, setTouchEnd] = useState(0)
 
   useEffect(() => {
     setMounted(true)
@@ -153,79 +151,48 @@ export default function LandingPage() {
     setIsMenuOpen(false)
   }
 
-  const nextFeature = () => {
-    setCurrentFeature((prev) => (prev + 1) % coreFeatures.length)
-  }
+  /**
+   * Which feature is expanded is driven by scroll position, not a timer.
+   *
+   * A section that advances on its own moves the thing you are reading out
+   * from under you, and it makes the section's state independent of where the
+   * page actually is. Each row reports when it enters a narrow band around the
+   * middle of the viewport, and the last one to enter wins - so scrolling is
+   * the only thing that changes the selection.
+   */
+  const featureRefs = useRef<Array<HTMLDivElement | null>>([])
 
-  const prevFeature = () => {
-    setCurrentFeature((prev) => (prev - 1 + coreFeatures.length) % coreFeatures.length)
-  }
-
-  const goToFeature = (index: number) => {
-    setCurrentFeature(index)
-  }
-
-  // Auto-play carousel (5 seconds)
   useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentFeature((prev) => (prev + 1) % coreFeatures.length)
-    }, 5000) // Change slide every 5 seconds
+    const rows = featureRefs.current.filter(Boolean) as HTMLDivElement[]
+    if (rows.length === 0) return
 
-    return () => clearInterval(interval)
+    // A focus band roughly a third of the way down. Negative top/bottom margins
+    // shrink the observer's viewport to that strip, so a row only counts as
+    // active while it is crossing it.
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue
+          const index = rows.indexOf(entry.target as HTMLDivElement)
+          if (index !== -1) setCurrentFeature(index)
+        }
+      },
+      { rootMargin: "-35% 0px -55% 0px", threshold: 0 }
+    )
+
+    rows.forEach((row) => observer.observe(row))
+    return () => observer.disconnect()
   }, [])
 
-  // Touch/swipe handlers
-  const handleTouchStart = (e: React.TouchEvent) => {
-    setTouchEnd(0) // Reset touchEnd
-    setTouchStart(e.targetTouches[0].clientX)
+  /**
+   * Clicking a row scrolls it into the focus band rather than setting state
+   * directly, so scroll position stays the single source of truth - otherwise a
+   * click and the next scroll event would disagree about what is open.
+   */
+  const goToFeature = (index: number) => {
+    featureRefs.current[index]?.scrollIntoView({ behavior: "smooth", block: "center" })
   }
 
-  const handleTouchMove = (e: React.TouchEvent) => {
-    setTouchEnd(e.targetTouches[0].clientX)
-  }
-
-  const handleTouchEnd = () => {
-    if (!touchStart || !touchEnd) return
-    
-    const distance = touchStart - touchEnd
-    const minSwipeDistance = 50 // Minimum distance for a swipe
-    
-    if (distance > minSwipeDistance) {
-      // Swiped left - next feature
-      nextFeature()
-    } else if (distance < -minSwipeDistance) {
-      // Swiped right - previous feature
-      prevFeature()
-    }
-  }
-
-  // Mouse drag handlers for desktop
-  const handleMouseDown = (e: React.MouseEvent) => {
-    setTouchEnd(0)
-    setTouchStart(e.clientX)
-  }
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (touchStart) {
-      setTouchEnd(e.clientX)
-    }
-  }
-
-  const handleMouseUp = () => {
-    if (!touchStart || !touchEnd) return
-    
-    const distance = touchStart - touchEnd
-    const minSwipeDistance = 50
-    
-    if (distance > minSwipeDistance) {
-      nextFeature()
-    } else if (distance < -minSwipeDistance) {
-      prevFeature()
-    }
-    
-    setTouchStart(0)
-    setTouchEnd(0)
-  }
 
   return (
     <div className="flex min-h-screen flex-col bg-dark text-cream relative overflow-hidden">
@@ -300,9 +267,9 @@ export default function LandingPage() {
         {isMenuOpen && (
           <motion.div
             className="md:hidden px-4 sm:px-6 py-6 bg-dark/95 backdrop-blur-md border-t border-cream/10"
-            initial={isMobile ? { opacity: 0 } : { opacity: 0, height: 0 }}
-            animate={isMobile ? { opacity: 1 } : { opacity: 1, height: "auto" }}
-            exit={isMobile ? { opacity: 0 } : { opacity: 0, height: 0 }}
+            initial={{ opacity: 0, height: isMobile ? "auto" : 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: isMobile ? "auto" : 0 }}
             transition={{ duration: isMobile ? 0.15 : 0.2 }}
           >
             <nav className={`flex flex-col ${isMobile ? 'gap-6' : 'gap-4'}`}>
@@ -363,13 +330,16 @@ export default function LandingPage() {
             </div>
           )}
           
-          <div className="w-full px-4 sm:px-6 md:px-8 lg:px-12 relative z-10 max-w-[1600px] mx-auto flex-1 flex items-center">
+          <div className="w-full px-6 md:px-8 lg:px-12 relative z-10 max-w-[1600px] mx-auto flex-1 flex items-center">
             <div className={`flex flex-col lg:flex-row gap-0 lg:gap-8 items-center ${isMobile ? 'min-h-[50vh]' : 'min-h-[80vh]'} ${isMobile ? 'mt-0' : 'mt-8 lg:mt-12'} w-full`}>
               {/* Left side - Text content */}
               <motion.div
-                className="flex flex-col justify-center text-center flex-shrink-0 lg:w-1/2 order-2 lg:order-1"
-                initial={isMobile ? { opacity: 0 } : { opacity: 0, x: -50 }}
-                animate={isMobile ? { opacity: 1 } : { opacity: 1, x: 0 }}
+                // w-full on mobile: without a width this column shrink-wraps to
+                // its content inside the flex parent, so the "centred" text sat
+                // in an off-centre box. lg:w-1/2 takes over at the breakpoint.
+                className="flex flex-col justify-center text-center w-full lg:w-1/2 flex-shrink-0 order-2 lg:order-1"
+                initial={{ opacity: 0, x: isMobile ? 0 : -50 }}
+                animate={{ opacity: 1, x: 0 }}
                 transition={isMobile ? { duration: 0.8, ease: "easeOut" } : { duration: 1.5, ease: "easeOut" }}
               >
                 <h1 className={`${isMobile ? 'text-5xl mb-4' : 'text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl mb-6'} font-medium tracking-tight font-outfit`}>
@@ -430,8 +400,8 @@ export default function LandingPage() {
               {/* Right side - Content */}
               <motion.div
                 className="w-full lg:w-1/2 text-center"
-                initial={isMobile ? { opacity: 0 } : { opacity: 0, y: 20 }}
-                whileInView={isMobile ? { opacity: 1 } : { opacity: 1, y: 0 }}
+                initial={{ opacity: 0, y: isMobile ? 0 : 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={isMobile ? { duration: 0.6 } : { duration: 0.8 }}
               >
@@ -478,8 +448,8 @@ export default function LandingPage() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
               <div className="lg:col-span-7 xl:col-span-6">
                 <motion.div
-                  initial={isMobile ? { opacity: 0 } : { opacity: 0, y: 20 }}
-                  whileInView={isMobile ? { opacity: 1 } : { opacity: 1, y: 0 }}
+                  initial={{ opacity: 0, y: isMobile ? 0 : 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: isMobile ? 0.6 : 0.8 }}
                   className={isMobile ? 'mb-10' : 'mb-16'}
@@ -496,6 +466,7 @@ export default function LandingPage() {
                     return (
                       <motion.div
                         key={feature.title}
+                        ref={(node) => { featureRefs.current[index] = node }}
                         initial={{ opacity: 0 }}
                         whileInView={{ opacity: 1 }}
                         viewport={{ once: true }}
@@ -584,8 +555,8 @@ export default function LandingPage() {
           <div className="container mx-auto px-6 md:px-12 lg:px-16 w-full">
             <motion.div
               className={`max-w-3xl mx-auto ${isMobile ? 'text-center' : ''}`}
-              initial={isMobile ? { opacity: 0 } : { opacity: 0, y: 20 }}
-              whileInView={isMobile ? { opacity: 1 } : { opacity: 1, y: 0 }}
+              initial={{ opacity: 0, y: isMobile ? 0 : 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={isMobile ? { duration: 0.6 } : { duration: 0.8 }}
             >
