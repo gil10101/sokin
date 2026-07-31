@@ -57,6 +57,31 @@ interface CategoryWithPercentage {
   [key: string]: string | number  // Index signature for Recharts compatibility
 }
 
+/** Categories beyond this rank are folded into a single remainder row. */
+const DISPLAY_LIMIT = 5
+
+/**
+ * The categories the chart draws, plus the aggregate they were drawn from.
+ *
+ * `total` is the sum of *every* category in the period, not just the ones in
+ * `items`. Keeping them in one object is deliberate: these used to be two
+ * separate values named `total` in two scopes, and the displayed "Total" was
+ * silently the top-5 subtotal sitting next to percentages computed against the
+ * real total. Anything rendered as the total must come from this field.
+ */
+export interface CategoryBreakdownSummary {
+  items: CategoryWithPercentage[]
+  total: number
+  /** Everything that did not fit in `items`; null when nothing was dropped. */
+  truncated: { count: number; value: number; percentage: number } | null
+}
+
+export const EMPTY_SUMMARY: CategoryBreakdownSummary = {
+  items: [],
+  total: 0,
+  truncated: null,
+}
+
 // Default category colors
 const getCategoryColor = (index: number) => {
   const opacities = [0.9, 0.7, 0.5, 0.3, 0.1]
@@ -81,6 +106,43 @@ const getCategoryIcon = (category: string): LucideIcon => {
   return categoryIcons[category.toLowerCase()] || Home
 }
 
+/**
+ * Turns per-category totals into the display set and the true aggregate.
+ * Pure and exported so the truncation math can be tested without a DOM.
+ */
+export function summarizeCategories(
+  categoryTotals: Record<string, number>,
+  limit: number = DISPLAY_LIMIT
+): CategoryBreakdownSummary {
+  const total = Object.values(categoryTotals).reduce((sum, amount) => sum + amount, 0)
+
+  const ranked = Object.entries(categoryTotals)
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value)
+
+  const items: CategoryWithPercentage[] = ranked.slice(0, limit).map((entry, index) => ({
+    name: entry.name,
+    value: entry.value,
+    color: getCategoryColor(index),
+    percentage: total > 0 ? Math.round((entry.value / total) * 100) : 0,
+  }))
+
+  const rest = ranked.slice(limit)
+  const restValue = rest.reduce((sum, entry) => sum + entry.value, 0)
+
+  return {
+    items,
+    total,
+    truncated: rest.length
+      ? {
+          count: rest.length,
+          value: restValue,
+          percentage: total > 0 ? Math.round((restValue / total) * 100) : 0,
+        }
+      : null,
+  }
+}
+
 export function CategoryBreakdown() {
   const { format: formatCurrency } = useCurrency()
   const { user } = useAuth()
@@ -89,7 +151,7 @@ export function CategoryBreakdown() {
   const [expanded, setExpanded] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [dateRange, setDateRange] = useState("30days")
-  const [categoryData, setCategoryData] = useState<CategoryWithPercentage[]>([])
+  const [summary, setSummary] = useState<CategoryBreakdownSummary>(EMPTY_SUMMARY)
   const [transactionsByCategory, setTransactionsByCategory] = useState<CategoryTransactions>({})
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'distribution' | 'comparison'>('distribution')
@@ -168,19 +230,7 @@ export function CategoryBreakdown() {
         txByCategory[category].push(expense)
       })
 
-      const total = Object.values(categoryTotals).reduce((sum, amount) => sum + amount, 0)
-
-      const categoryArray = Object.entries(categoryTotals)
-        .map(([name, value], index) => ({
-          name,
-          value,
-          color: getCategoryColor(index),
-          percentage: total > 0 ? Math.round((value / total) * 100) : 0,
-        }))
-        .sort((a, b) => b.value - a.value)
-        .slice(0, 5)
-
-      setCategoryData(categoryArray)
+      setSummary(summarizeCategories(categoryTotals))
       setTransactionsByCategory(txByCategory)
       setLoading(false)
     } catch (error) {
@@ -189,16 +239,15 @@ export function CategoryBreakdown() {
         dateRange,
         error: error instanceof Error ? error.message : 'Unknown error'
       })
-      setCategoryData([])
+      setSummary(EMPTY_SUMMARY)
       setTransactionsByCategory({})
       setLoading(false)
     }
   }, [user, mounted, dateRange, expensesLoading, processKey, expenses])
 
-  // Memoize total calculation to prevent recalculation on each render
-  const total = useMemo(() => categoryData.reduce((sum, item) => sum + item.value, 0), [categoryData])
-  
-  // Memoize formatCurrency function
+  // `total` covers every category in the period; `categoryData` is only the
+  // slice that gets drawn. Never re-derive the total from `categoryData`.
+  const { items: categoryData, total, truncated } = summary
 
   if (!mounted) {
     return <div className="h-[300px] bg-cream/5 animate-pulse rounded-md" />
@@ -513,7 +562,23 @@ export function CategoryBreakdown() {
                       </div>
                     </div>
                   ))}
-                  
+
+                  {/* Carries the categories outside the top 5 so the rows add up to Total. */}
+                  {truncated && (
+                    <div className="bg-cream/5 rounded-lg p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <div className="h-4 w-4 rounded-full mr-3 border border-dashed border-cream/40" />
+                          <span className="text-sm font-medium text-cream/70">
+                            +{truncated.count} more {truncated.count === 1 ? "category" : "categories"}
+                          </span>
+                        </div>
+                        <span className="text-sm font-medium text-cream/70">{formatCurrency(truncated.value)}</span>
+                      </div>
+                      <div className="mt-2 text-xs text-cream/60">{truncated.percentage}% of total</div>
+                    </div>
+                  )}
+
                   <div className="mt-6 pt-4 border-t border-cream/10 flex justify-between items-center">
                     <span className="text-base font-medium text-cream">Total</span>
                     <span className="text-base font-medium text-cream">{formatCurrency(total)}</span>
@@ -583,6 +648,21 @@ export function CategoryBreakdown() {
               <span className="text-xs sm:text-sm font-medium text-cream ml-2 flex-shrink-0">{formatCurrency(category.value)}</span>
             </div>
           ))}
+
+          {/* Carries the categories outside the top 5 so the legend adds up to Total. */}
+          {truncated && (
+            <div className="flex items-center justify-between min-w-0">
+              <div className="flex items-center min-w-0 flex-1">
+                <div className="h-3 w-3 rounded-full mr-2 flex-shrink-0 border border-dashed border-cream/40" />
+                <span className="text-xs sm:text-sm text-cream/60 truncate">
+                  +{truncated.count} more {truncated.count === 1 ? "category" : "categories"}
+                </span>
+              </div>
+              <span className="text-xs sm:text-sm font-medium text-cream/60 ml-2 flex-shrink-0">
+                {formatCurrency(truncated.value)}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Total */}
