@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useMemo } from "react"
+import { toChartNumber } from "@/lib/format"
 import { AreaChart, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Area } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { MotionDiv } from "../ui/dynamic-motion"
@@ -117,7 +118,10 @@ export function MonthlyTrendsChart({ data }: MonthlyTrendsChartProps) {
             <ChartTooltip
               content={<ChartTooltipContent />}
               labelFormatter={(value) => `Month: ${value}`}
-              formatter={(value: number | undefined) => value !== undefined ? [`${formatCurrency(value, { decimals: 0 })}`] : ['N/A']}
+              formatter={(value) => {
+                const amount = toChartNumber(value)
+                return amount === null ? 'N/A' : formatCurrency(amount, { decimals: 0 })
+              }}
             />
             <Area
               type="monotone"

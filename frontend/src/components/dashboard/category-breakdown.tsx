@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useMemo, useCallback, useRef } from "react"
+import { toChartNumber } from "@/lib/format"
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts"
 import { ChevronRight, X, Calendar, Filter, ShoppingBag, Coffee, Home, Car, Utensils, ArrowDown, LucideIcon } from "lucide-react"
 import { useExpensesData } from "@/hooks/use-expenses-data"
@@ -420,7 +421,10 @@ export function CategoryBreakdown() {
                           tickFormatter={(value) => formatCurrency(value, { decimals: 0 })}
                         />
                         <Tooltip
-                          formatter={(value: number | undefined) => value !== undefined ? [`${formatCurrency(value)}`, "Amount"] : ['N/A', "Amount"]}
+                          formatter={(value) => {
+                            const amount = toChartNumber(value)
+                            return [amount === null ? 'N/A' : formatCurrency(amount), "Amount"]
+                          }}
                           contentStyle={{
                             backgroundColor: "#FFFFFF",
                             border: "1px solid #000000",

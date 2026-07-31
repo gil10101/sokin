@@ -74,6 +74,19 @@ export function formatCompactCurrency(amount: number, options: CurrencyOptions =
   return formatter.format(safeAmount)
 }
 
+/**
+ * Recharts hands tooltip formatters a `ValueType` - string, number, or an
+ * array of either - not the `number` the call sites used to declare. Narrowing
+ * it here keeps the chart components from each re-deriving the coercion, and
+ * returns null rather than NaN so callers render a fallback instead of "$NaN".
+ */
+export function toChartNumber(value: unknown): number | null {
+  const raw = Array.isArray(value) ? value[0] : value
+  if (raw === null || raw === undefined || raw === "") return null
+  const parsed = Number(raw)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
 export function formatPercentChange(value: number): string {
   const safe = Number.isFinite(value) ? value : 0
   const sign = safe >= 0 ? "+" : ""

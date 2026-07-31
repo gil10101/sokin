@@ -47,7 +47,7 @@
     "react-firebase-hooks": "^5.1.1",
     "react-hook-form": "^7.54.1",
     "recharts": "^3.6.0",
-    "sharp": "^0.34.1",
+    "sharp": "^0.35.3",
     "tailwind-merge": "^2.5.5",
     "three": "^0.179.1"
   },

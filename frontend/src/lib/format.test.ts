@@ -5,6 +5,7 @@ import {
   formatPercentChange,
   parseDateSafe,
   formatDate,
+  toChartNumber,
 } from './format'
 
 describe('formatCurrency', () => {
@@ -82,6 +83,32 @@ describe('formatPercentChange', () => {
   it('degrades to zero rather than printing "NaN%"', () => {
     expect(formatPercentChange(Number.NaN)).toBe('+0.0%')
     expect(formatPercentChange(Number.POSITIVE_INFINITY)).toBe('+0.0%')
+  })
+})
+
+describe('toChartNumber', () => {
+  it('accepts the shapes recharts actually passes a tooltip formatter', () => {
+    // ValueType is string | number | Array<string | number>, not number.
+    expect(toChartNumber(1234.5)).toBe(1234.5)
+    expect(toChartNumber('1234.5')).toBe(1234.5)
+    expect(toChartNumber([1234.5])).toBe(1234.5)
+    expect(toChartNumber(['1234.5', 'Amount'])).toBe(1234.5)
+  })
+
+  it('returns null for values with no numeric meaning', () => {
+    // null rather than NaN, so callers render a fallback instead of "$NaN".
+    expect(toChartNumber(undefined)).toBeNull()
+    expect(toChartNumber(null)).toBeNull()
+    expect(toChartNumber('')).toBeNull()
+    expect(toChartNumber('abc')).toBeNull()
+    expect(toChartNumber([])).toBeNull()
+    expect(toChartNumber(Number.NaN)).toBeNull()
+    expect(toChartNumber(Number.POSITIVE_INFINITY)).toBeNull()
+  })
+
+  it('preserves zero, which is a real amount', () => {
+    expect(toChartNumber(0)).toBe(0)
+    expect(toChartNumber('0')).toBe(0)
   })
 })
 

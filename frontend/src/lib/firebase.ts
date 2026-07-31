@@ -1,6 +1,5 @@
 import { initializeApp, getApps } from "firebase/app"
 import { getAuth } from "firebase/auth"
-import { getFirestore } from "firebase/firestore"
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -15,7 +14,13 @@ const firebaseConfig = {
 // Initialize Firebase only if it hasn't been initialized already
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0]
 const auth = getAuth(app)
-const db = getFirestore(app)
 
-export { auth, db }
+/**
+ * Auth only, deliberately. Every read and write goes through the backend API,
+ * which owns validation and ownership checks - the client never talks to
+ * Firestore directly. A `getFirestore(app)` call used to sit here with no
+ * importers, and from firebase 12.17 it throws "Service firestore is not
+ * available" while prerendering, breaking the production build.
+ */
+export { auth }
 

@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useEffect, useState, useRef, useMemo } from "react"
+import { toChartNumber } from "@/lib/format"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell, LabelList, RectangleProps } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { MotionDiv } from "@/components/ui/dynamic-motion"
@@ -144,7 +145,10 @@ export function CategoryComparisonChart({ data }: CategoryComparisonChartProps) 
             <ChartTooltip
               content={<ChartTooltipContent />}
               labelFormatter={(value) => `Category: ${value}`}
-              formatter={(value: number | undefined) => value !== undefined ? [`${formatCurrency(value, { decimals: 0 })}`] : ['N/A']}
+              formatter={(value) => {
+                const amount = toChartNumber(value)
+                return amount === null ? 'N/A' : formatCurrency(amount, { decimals: 0 })
+              }}
             />
             
             <Bar
