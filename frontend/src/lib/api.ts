@@ -372,11 +372,34 @@ export const clearApiCache = (): void => {
 // -----------------------------------------------------------------------------
 
 /**
+ * Thrown when the server answered with a non-2xx status, as opposed to the
+ * request never completing. Carries the status so callers can branch on it
+ * instead of parsing the message.
+ */
+export class HttpResponseError extends Error {
+  readonly status: number
+
+  constructor(status: number, message: string) {
+    super(message)
+    this.name = 'HttpResponseError'
+    this.status = status
+  }
+}
+
+/**
+ * Replaying a request that may already have been processed duplicates the
+ * write it is retrying - a second contribution, a second expense, a second
+ * stock sale. Only methods whose repetition is defined to be harmless are
+ * eligible for an automatic retry; POST and PATCH never are.
+ */
+const IDEMPOTENT_METHODS = new Set(['GET', 'HEAD', 'OPTIONS', 'PUT', 'DELETE'])
+
+/**
  * Enhanced fetch with retry logic, timeout, and rate limit handling
  */
 const enhancedFetch = async (
-  url: string, 
-  options: RequestInit = {}, 
+  url: string,
+  options: RequestInit = {},
   retries = MAX_RETRIES
 ): Promise<Response> => {
   const controller = new AbortController()
@@ -384,45 +407,71 @@ const enhancedFetch = async (
   
   const baseUrl = getApiBaseUrl()
   const fullUrl = url.startsWith('http') ? url : `${baseUrl}/${url.replace(/^\//, '')}`
-  
+
+  const method = (options.method ?? 'GET').toUpperCase()
+  const mayReplay = retries > 0 && IDEMPOTENT_METHODS.has(method)
+  const backoffMs = 1000 * Math.pow(2, MAX_RETRIES - retries)
+
   try {
     const response = await fetch(fullUrl, {
       ...options,
       signal: controller.signal
     })
-    
+
     clearTimeout(timeoutId)
-    
-    // Handle rate limiting
+
+    // Handle rate limiting. A 429 is produced by the limiter before the route
+    // handler runs, so nothing was written and replaying is safe for any
+    // method - this is the one retry that does not require idempotency.
     if (response.status === 429) {
       const errorData = await response.json().catch(() => ({}))
       const retryAfter = errorData.retryAfter || Math.pow(2, MAX_RETRIES - retries)
-      
+
       if (retries > 0) {
         await new Promise(resolve => setTimeout(resolve, retryAfter * 1000))
         return enhancedFetch(url, options, retries - 1)
       }
-      
+
       throw new Error(`Rate limited: ${errorData.error || 'Too many requests'}. Please try again in ${retryAfter} seconds.`)
     }
-    
+
     if (!response.ok) {
+      // 5xx can be transient, so it is worth another attempt - but only for a
+      // method that is safe to repeat, since the server may have committed
+      // before failing. 4xx is deterministic: the same request will be
+      // rejected identically every time, and retrying only delays the error
+      // the user needs to see by several seconds of backoff.
+      if (response.status >= 500 && mayReplay) {
+        await new Promise(resolve => setTimeout(resolve, backoffMs))
+        return enhancedFetch(url, options, retries - 1)
+      }
+
       const errorData = await response.json().catch(() => ({}))
-      throw new Error(`HTTP ${response.status}: ${errorData.error || response.statusText}`)
+      throw new HttpResponseError(
+        response.status,
+        `HTTP ${response.status}: ${errorData.error || response.statusText}`
+      )
     }
-    
+
     return response
   } catch (error) {
     clearTimeout(timeoutId)
-    
-    // Retry on network errors with true exponential backoff (1s, 2s, 4s)
-    if (retries > 0 && error instanceof Error && 
-        error.name !== 'AbortError' && 
-        !error.message.includes('Rate limited')) {
-      await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, MAX_RETRIES - retries)))
+
+    // A transport failure means the response never arrived - not that the
+    // request never landed. The server may have processed it and failed on
+    // the way back, so a non-idempotent request must surface the error and
+    // let the user decide rather than silently sending the write again.
+    if (
+      mayReplay &&
+      error instanceof Error &&
+      !(error instanceof HttpResponseError) &&
+      error.name !== 'AbortError' &&
+      !error.message.includes('Rate limited')
+    ) {
+      await new Promise(resolve => setTimeout(resolve, backoffMs))
       return enhancedFetch(url, options, retries - 1)
     }
-    
+
     throw error
   }
 }
