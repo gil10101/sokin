@@ -5,7 +5,6 @@ import React from "react"
 import { useState, useEffect, useCallback, useRef } from "react"
 import { useAuth } from "@/contexts/auth-context"
 import { format, isValid, parseISO } from "date-fns"
-import { DashboardSidebar } from "@/components/dashboard/sidebar"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -107,7 +106,6 @@ const MAX_EXPENSE_PAGES = 6
 
 export default function ExpensesPage(props: ExpensesPageProps) {
   const { format: formatCurrency } = useCurrency()
-  const [collapsed, setCollapsed] = useState(false)
   const { user } = useAuth()
   const userRef = useRef(user)
   useEffect(() => { userRef.current = user }, [user])
@@ -348,20 +346,18 @@ export default function ExpensesPage(props: ExpensesPageProps) {
 
   if (!mounted) {
     return (
-      <div className="flex h-screen items-center justify-center bg-dark text-cream">
+      <div className="flex flex-1 items-center justify-center bg-dark text-cream">
         <LoadingSpinner size="lg" />
       </div>
     )
   }
 
   return (
-    <div className="flex h-screen bg-dark text-cream overflow-hidden">
-      <DashboardSidebar collapsed={collapsed} setCollapsed={setCollapsed} />
-
+    <>
       <main className="flex-1 overflow-auto p-4 sm:p-6 md:p-8 lg:p-10">
         <div className="max-w-7xl mx-auto">
           <header className="flex items-center justify-between mb-6 sm:mb-8">
-            <div className="ml-12 md:ml-0">
+            <div>
               <h1 className="text-xl sm:text-2xl md:text-3xl font-medium font-outfit">Expenses</h1>
               <p className="text-cream/60 text-sm mt-1 font-outfit">Manage and track all your expenses</p>
             </div>
@@ -625,7 +621,7 @@ export default function ExpensesPage(props: ExpensesPageProps) {
                                           </DialogContent>
                                         </Dialog>
                                       </div>
-                                      
+
                                       {expense.receiptData && (
                                         <div className="space-y-2 text-xs">
                                           {expense.receiptData.merchant && (
@@ -788,7 +784,7 @@ export default function ExpensesPage(props: ExpensesPageProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   )
 }
 

@@ -46,11 +46,6 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
-/** The sidebar is navigation chrome; it has nothing to do with deleting a row. */
-vi.mock('@/components/dashboard/sidebar', () => ({
-  DashboardSidebar: () => <nav data-sidebar />,
-}))
-
 const EXPENSES = [
   { id: 'exp-coffee', name: 'Coffee', amount: 4.5, category: 'Dining', date: '2026-07-20T10:00:00.000Z', createdAt: '2026-07-20T10:00:00.000Z', userId: 'test-uid' },
   { id: 'exp-rent', name: 'Rent', amount: 1800, category: 'Housing', date: '2026-07-01T10:00:00.000Z', createdAt: '2026-07-01T10:00:00.000Z', userId: 'test-uid' },

@@ -6,7 +6,6 @@ import { useState, useEffect, useCallback, useRef } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { useAuth } from "@/contexts/auth-context"
 import { format, addMonths, addDays, addYears } from "date-fns"
-import { DashboardSidebar } from "@/components/dashboard/sidebar"
 import { PageHeader } from "@/components/dashboard/page-header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -297,7 +296,6 @@ interface SubscriptionsPageProps {
 
 export default function SubscriptionsPage(props: SubscriptionsPageProps) {
   const { format: formatCurrency } = useCurrency()
-  const [collapsed, setCollapsed] = useState(false)
   const { user } = useAuth()
   const userRef = useRef(user)
   useEffect(() => { userRef.current = user }, [user])
@@ -667,19 +665,18 @@ export default function SubscriptionsPage(props: SubscriptionsPageProps) {
 
   if (!mounted) {
     return (
-      <div className="flex h-screen items-center justify-center bg-dark text-cream">
+      <div className="flex flex-1 items-center justify-center bg-dark text-cream">
         <LoadingSpinner size="lg" />
       </div>
     )
   }
 
   return (
-    <div className="flex h-screen bg-dark text-cream overflow-hidden">
-      <DashboardSidebar collapsed={collapsed} setCollapsed={setCollapsed} />
+    <>
       <main className="flex-1 overflow-auto p-6 md:p-8 lg:p-10">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-8">
-            <div className="ml-12 md:ml-0">
+            <div>
               <h1 className="text-xl sm:text-2xl md:text-3xl font-medium font-outfit">Subscriptions</h1>
               <p className="text-cream/60 text-sm mt-1 font-outfit">Manage your recurring subscriptions and services</p>
             </div>
@@ -799,7 +796,7 @@ export default function SubscriptionsPage(props: SubscriptionsPageProps) {
                   <div className="col-span-2 text-sm font-medium text-cream/60 text-center border-l border-cream/10 px-2">Payment Method</div>
                   <div className="col-span-2 text-sm font-medium text-cream/60 text-center border-l border-cream/10 px-2">Amount</div>
                 </div>
-                
+
                 {filteredSubscriptions.map((subscription) => (
                   <Collapsible
                     key={subscription.id}
@@ -1298,7 +1295,7 @@ export default function SubscriptionsPage(props: SubscriptionsPageProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   )
 }
 

@@ -16,7 +16,6 @@ import {
   TrendingUp,
   Building,
 } from "lucide-react"
-import { useState, useEffect } from "react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useAuth } from "@/contexts/auth-context"
@@ -27,27 +26,20 @@ interface DashboardSidebarProps {
   setCollapsed: (collapsed: boolean) => void
 }
 
+/**
+ * Rendered once by the dashboard layout, so it stays mounted across navigations.
+ *
+ * There is deliberately no `mounted` guard here: ProtectedRoute renders a spinner
+ * instead of its children while auth is resolving, and auth always starts as
+ * loading on both server and client, so this component never participates in
+ * hydration and cannot mismatch.
+ */
 export function DashboardSidebar({ collapsed, setCollapsed }: DashboardSidebarProps) {
   const { user, signOut } = useAuth()
   const pathname = usePathname()
-  const [mounted, setMounted] = useState(false)
-
-  // Fix hydration issues by only rendering after mount
-  useEffect(() => {
-    setMounted(true)
-  }, [])
 
   const handleSignOut = async () => {
     await signOut()
-  }
-
-  if (!mounted) {
-    return (
-      <aside
-        className="h-screen bg-dark border-r border-cream/10 flex flex-col"
-        style={{ width: collapsed ? "100px" : "200px" }}
-      />
-    )
   }
 
   return (
@@ -66,6 +58,8 @@ export function DashboardSidebar({ collapsed, setCollapsed }: DashboardSidebarPr
           </Link>
           <button
             onClick={() => setCollapsed(!collapsed)}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-expanded={!collapsed}
             className="h-8 w-8 rounded-full flex items-center justify-center text-cream/60 hover:text-cream hover:bg-cream/5 transition-colors"
           >
             <ChevronLeft className={`h-4 w-4 transition-transform ${collapsed ? "rotate-180" : ""}`} />

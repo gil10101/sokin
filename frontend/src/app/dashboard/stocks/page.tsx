@@ -4,7 +4,6 @@
 
 import React, { useState, useEffect, useCallback, useRef } from "react"
 import { ChevronRight, Search, TrendingUp, TrendingDown, Activity, ArrowUpDown, Plus, Minus, Star, DollarSign } from "lucide-react"
-import { DashboardSidebar } from "@/components/dashboard/sidebar"
 import { UserPortfolio } from "@/components/dashboard/user-portfolio"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -168,7 +167,6 @@ export default function StocksPage(props: StocksPageProps) {
   const { user } = useAuth()
   const userRef = useRef(user)
   useEffect(() => { userRef.current = user }, [user])
-  const [collapsed, setCollapsed] = useState(false)
   const [trendingStocks, setTrendingStocks] = useState<StockData[]>([])
   const [searchResults, setSearchResults] = useState<StockData[]>([])
   const [filteredStocks, setFilteredStocks] = useState<StockData[]>([])
@@ -484,12 +482,9 @@ export default function StocksPage(props: StocksPageProps) {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen bg-dark text-cream">
-        <DashboardSidebar collapsed={collapsed} setCollapsed={setCollapsed} />
-        <div className="flex-1 p-4 sm:p-6">
-          <div className="flex items-center justify-center h-64">
-            <LoadingSpinner size="lg" />
-          </div>
+      <div className="flex-1 p-4 sm:p-6">
+        <div className="flex items-center justify-center h-64">
+          <LoadingSpinner size="lg" />
         </div>
       </div>
     )
@@ -497,25 +492,20 @@ export default function StocksPage(props: StocksPageProps) {
 
   if (error) {
     return (
-      <div className="flex min-h-screen bg-dark text-cream">
-        <DashboardSidebar collapsed={collapsed} setCollapsed={setCollapsed} />
-        <div className="flex-1 p-4 sm:p-6">
-          <div className="text-center text-cream/60 space-y-4">
-            <Activity className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>{error}</p>
-            <Button onClick={loadStockData} variant="outline">
-              Try Again
-            </Button>
-          </div>
+      <div className="flex-1 p-4 sm:p-6">
+        <div className="text-center text-cream/60 space-y-4">
+          <Activity className="h-12 w-12 mx-auto mb-4 opacity-50" />
+          <p>{error}</p>
+          <Button onClick={loadStockData} variant="outline">
+            Try Again
+          </Button>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="flex h-screen bg-dark text-cream overflow-hidden">
-      <DashboardSidebar collapsed={collapsed} setCollapsed={setCollapsed} />
-      
+    <>
       <main className="flex-1 overflow-auto p-4 sm:p-6 md:p-8 lg:p-6 xl:p-8 2xl:p-12">
         <div className="w-full">
           {/* Header */}
@@ -978,7 +968,7 @@ export default function StocksPage(props: StocksPageProps) {
                         </TableBody>
                       </Table>
                     </div>
-                    
+
                     {filteredStocks.length === 0 && (
                       <div className="text-center py-8 text-cream/60">
                         <Activity className="h-8 w-8 mx-auto mb-2 opacity-50" />
@@ -1037,6 +1027,6 @@ export default function StocksPage(props: StocksPageProps) {
           mode={transactionDialogMode}
         />
       )}
-    </div>
+    </>
   )
 } 

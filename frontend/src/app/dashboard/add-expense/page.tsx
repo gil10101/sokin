@@ -8,7 +8,6 @@ import { useAuth } from "@/contexts/auth-context"
 import { format, startOfDay } from "date-fns"
 import { CalendarIcon, Check, ChevronsUpDown, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { DashboardSidebar } from "@/components/dashboard/sidebar"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -52,7 +51,6 @@ interface AddExpensePageProps {
 }
 
 export default function AddExpensePage(props: AddExpensePageProps) {
-  const [collapsed, setCollapsed] = useState(false)
   const { user } = useAuth()
   const router = useRouter()
   const { toast } = useToast()
@@ -198,167 +196,163 @@ export default function AddExpensePage(props: AddExpensePageProps) {
   }
 
   return (
-    <div className="flex h-screen bg-dark text-cream overflow-hidden">
-      <DashboardSidebar collapsed={collapsed} setCollapsed={setCollapsed} />
+    <main className="flex-1 overflow-auto p-6 md:p-8 lg:p-10">
+      <div className="max-w-2xl mx-auto">
+        <header className="mb-8">
+          <h1 className="text-2xl md:text-3xl font-medium font-outfit">Add Expense</h1>
+          <p className="text-cream/60 text-sm mt-1 font-outfit">Record a new expense to track your spending</p>
+        </header>
 
-      <main className="flex-1 overflow-auto p-6 md:p-8 lg:p-10">
-        <div className="max-w-2xl mx-auto">
-          <header className="mb-8">
-            <h1 className="text-2xl md:text-3xl font-medium font-outfit">Add Expense</h1>
-            <p className="text-cream/60 text-sm mt-1 font-outfit">Record a new expense to track your spending</p>
-          </header>
+        <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-6">
+          {/* Receipt Scanner Section */}
+          <div className="mb-6 p-4 bg-cream/5 rounded-lg border border-cream/10">
+            <h3 className="text-sm font-medium text-cream mb-3">Scan Receipt (Optional)</h3>
+            <p className="text-xs text-cream/60 mb-4">
+              Upload a receipt image to automatically extract expense details
+            </p>
+            <ReceiptScanner onDataExtracted={handleReceiptData} />
+          </div>
 
-          <MotionContainer className="bg-cream/5 rounded-xl border border-cream/10 p-6">
-            {/* Receipt Scanner Section */}
-            <div className="mb-6 p-4 bg-cream/5 rounded-lg border border-cream/10">
-              <h3 className="text-sm font-medium text-cream mb-3">Scan Receipt (Optional)</h3>
-              <p className="text-xs text-cream/60 mb-4">
-                Upload a receipt image to automatically extract expense details
-              </p>
-              <ReceiptScanner onDataExtracted={handleReceiptData} />
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="space-y-2">
+              <label htmlFor="name" className="text-sm font-outfit block">
+                Expense Name *
+              </label>
+              <Input
+                id="name"
+                type="text"
+                value={name}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
+                placeholder="What is this expense for?"
+                required
+                className="bg-cream/5 border-cream/10 text-cream placeholder:text-cream/40 focus-visible:ring-cream/20"
+              />
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-2">
-                <label htmlFor="name" className="text-sm font-outfit block">
-                  Expense Name *
-                </label>
+            <div className="space-y-2">
+              <label htmlFor="amount" className="text-sm font-outfit block">
+                Amount *
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-cream/60">$</span>
                 <Input
-                  id="name"
-                  type="text"
-                  value={name}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
-                  placeholder="What is this expense for?"
+                  id="amount"
+                  type="number"
+                  value={amount}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                    const value = e.target.value
+                    // Allow empty string or valid positive numbers with up to 2 decimal places
+                    if (isValidAmountInput(value)) {
+                      setAmount(value)
+                    }
+                  }}
+                  placeholder="0.00"
+                  step="0.01"
+                  min="0.00"
                   required
-                  className="bg-cream/5 border-cream/10 text-cream placeholder:text-cream/40 focus-visible:ring-cream/20"
+                  className="bg-cream/5 border-cream/10 text-cream placeholder:text-cream/40 focus-visible:ring-cream/20 pl-8"
                 />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-sm font-outfit block">Category *</label>
+                <Popover open={openCategoryPopover} onOpenChange={setOpenCategoryPopover}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={openCategoryPopover}
+                      className="w-full justify-between bg-cream/5 border-cream/10 text-cream hover:bg-cream/10 hover:text-cream"
+                    >
+                      {category || "Select category..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0 bg-dark border-cream/10">
+                    <Command className="bg-dark">
+                      <CommandInput placeholder="Search category..." className="text-cream" />
+                      <CommandList>
+                        <CommandEmpty className="text-cream/60">No category found.</CommandEmpty>
+                        <CommandGroup className="max-h-60 overflow-auto">
+                          {categories.map((cat) => (
+                            <CommandItem
+                              key={cat}
+                              value={cat}
+                              onSelect={(currentValue: string) => {
+                                setCategory(currentValue)
+                                setOpenCategoryPopover(false)
+                              }}
+                              className="text-cream hover:bg-cream/10"
+                            >
+                              <Check className={`mr-2 h-4 w-4 ${category === cat ? "opacity-100" : "opacity-0"}`} />
+                              {cat}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
 
               <div className="space-y-2">
-                <label htmlFor="amount" className="text-sm font-outfit block">
-                  Amount *
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-cream/60">$</span>
-                  <Input
-                    id="amount"
-                    type="number"
-                    value={amount}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                      const value = e.target.value
-                      // Allow empty string or valid positive numbers with up to 2 decimal places
-                      if (isValidAmountInput(value)) {
-                        setAmount(value)
-                      }
-                    }}
-                    placeholder="0.00"
-                    step="0.01"
-                    min="0.00"
-                    required
-                    className="bg-cream/5 border-cream/10 text-cream placeholder:text-cream/40 focus-visible:ring-cream/20 pl-8"
-                  />
-                </div>
+                <label className="text-sm font-outfit block">Date</label>
+                <Popover open={openDatePopover} onOpenChange={setOpenDatePopover}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal bg-cream/5 border-cream/10 text-cream hover:bg-cream/10 hover:text-cream",
+                        !date && "text-cream/60"
+                      )}
+                    >
+                      {date ? (
+                        format(date, "PPP")
+                      ) : (
+                        <span>{format(new Date(), "PPP")}</span>
+                      )}
+                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 bg-dark border-cream/10" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={date}
+                      onSelect={(selectedDate) => {
+                        setDate(selectedDate || startOfDay(new Date()))
+                        setOpenDatePopover(false)
+                      }}
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
+            </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-sm font-outfit block">Category *</label>
-                  <Popover open={openCategoryPopover} onOpenChange={setOpenCategoryPopover}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        role="combobox"
-                        aria-expanded={openCategoryPopover}
-                        className="w-full justify-between bg-cream/5 border-cream/10 text-cream hover:bg-cream/10 hover:text-cream"
-                      >
-                        {category || "Select category..."}
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-full p-0 bg-dark border-cream/10">
-                      <Command className="bg-dark">
-                        <CommandInput placeholder="Search category..." className="text-cream" />
-                        <CommandList>
-                          <CommandEmpty className="text-cream/60">No category found.</CommandEmpty>
-                          <CommandGroup className="max-h-60 overflow-auto">
-                            {categories.map((cat) => (
-                              <CommandItem
-                                key={cat}
-                                value={cat}
-                                onSelect={(currentValue: string) => {
-                                  setCategory(currentValue)
-                                  setOpenCategoryPopover(false)
-                                }}
-                                className="text-cream hover:bg-cream/10"
-                              >
-                                <Check className={`mr-2 h-4 w-4 ${category === cat ? "opacity-100" : "opacity-0"}`} />
-                                {cat}
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
-                </div>
+            <div className="space-y-2">
+              <label htmlFor="description" className="text-sm font-outfit block">
+                Description (Optional)
+              </label>
+              <Textarea
+                id="description"
+                value={description}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setDescription(e.target.value)}
+                placeholder="Add any additional details..."
+                className="bg-cream/5 border-cream/10 text-cream placeholder:text-cream/40 focus-visible:ring-cream/20 min-h-[100px]"
+              />
+            </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-outfit block">Date</label>
-                  <Popover open={openDatePopover} onOpenChange={setOpenDatePopover}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal bg-cream/5 border-cream/10 text-cream hover:bg-cream/10 hover:text-cream",
-                          !date && "text-cream/60"
-                        )}
-                      >
-                        {date ? (
-                          format(date, "PPP")
-                        ) : (
-                          <span>{format(new Date(), "PPP")}</span>
-                        )}
-                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 bg-dark border-cream/10" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={date}
-                        onSelect={(selectedDate) => {
-                          setDate(selectedDate || startOfDay(new Date()))
-                          setOpenDatePopover(false)
-                        }}
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label htmlFor="description" className="text-sm font-outfit block">
-                  Description (Optional)
-                </label>
-                <Textarea
-                  id="description"
-                  value={description}
-                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setDescription(e.target.value)}
-                  placeholder="Add any additional details..."
-                  className="bg-cream/5 border-cream/10 text-cream placeholder:text-cream/40 focus-visible:ring-cream/20 min-h-[100px]"
-                />
-              </div>
-
-              <div className="pt-4 flex justify-end">
-                <Button type="submit" disabled={loading} className="bg-cream text-dark hover:bg-cream/90 font-medium">
-                  {loading ? "Adding..." : "Add Expense"}
-                  {!loading && <Plus className="ml-2 h-4 w-4" />}
-                </Button>
-              </div>
-            </form>
-          </MotionContainer>
-        </div>
-      </main>
-    </div>
+            <div className="pt-4 flex justify-end">
+              <Button type="submit" disabled={loading} className="bg-cream text-dark hover:bg-cream/90 font-medium">
+                {loading ? "Adding..." : "Add Expense"}
+                {!loading && <Plus className="ml-2 h-4 w-4" />}
+              </Button>
+            </div>
+          </form>
+        </MotionContainer>
+      </div>
+    </main>
   )
 }
 

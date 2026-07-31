@@ -9,7 +9,6 @@ import {
   Building,
   CreditCard
 } from 'lucide-react'
-import { DashboardSidebar } from "@/components/dashboard/sidebar"
 import { MetricCard } from "@/components/dashboard/metric-card"
 import { useAuth } from "@/contexts/auth-context"
 import { MotionContainer } from "@/components/ui/motion-container"
@@ -62,7 +61,6 @@ export default function NetWorthPage(props: NetWorthPageProps) {
   const userRef = useRef(user)
   useEffect(() => { userRef.current = user }, [user])
   const router = useRouter()
-  const [collapsed, setCollapsed] = useState(false)
   const [loading, setLoading] = useState(true)
   const [netWorth, setNetWorth] = useState<NetWorthCalculation | null>(null)
   const [assets, setAssets] = useState<Asset[]>([])
@@ -135,262 +133,258 @@ export default function NetWorthPage(props: NetWorthPageProps) {
 
   if (authLoading || loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-dark text-cream">
+      <div className="flex flex-1 items-center justify-center bg-dark text-cream">
         <LoadingSpinner size="lg" />
       </div>
     )
   }
 
   return (
-    <div className="flex h-screen bg-dark text-cream overflow-hidden">
-      <DashboardSidebar collapsed={collapsed} setCollapsed={setCollapsed} />
-      
-      <main className="flex-1 overflow-auto p-4 sm:p-6 md:p-8 lg:p-10">
-        <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <MotionHeader
-            className="flex flex-col gap-4 mb-6 sm:mb-8"
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center ml-12 md:ml-0">
-                <div>
-                  <h1 className="text-xl sm:text-2xl md:text-3xl font-medium font-outfit">Net Worth</h1>
-                  <p className="text-cream/60 text-sm mt-1 font-outfit">
-                    Track your assets, liabilities, and overall financial position
-                  </p>
-                </div>
+    <main className="flex-1 overflow-auto p-4 sm:p-6 md:p-8 lg:p-10">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <MotionHeader
+          className="flex flex-col gap-4 mb-6 sm:mb-8"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <div>
+                <h1 className="text-xl sm:text-2xl md:text-3xl font-medium font-outfit">Net Worth</h1>
+                <p className="text-cream/60 text-sm mt-1 font-outfit">
+                  Track your assets, liabilities, and overall financial position
+                </p>
               </div>
-              
-              {/* Mobile: Icon-only dropdown trigger */}
-              <DropdownMenu>
-                <DropdownMenuTrigger 
-                  aria-label="Add asset or liability"
-                  className="md:hidden flex items-center justify-center h-10 w-10 p-0 rounded-lg bg-cream text-dark font-medium transition-all duration-200 shadow-sm hover:shadow-md hover:bg-cream/90"
-                >
-                  <Plus className="h-5 w-5" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="bg-dark border-cream/10">
-                  <DropdownMenuItem
-                    className="text-cream hover:bg-cream/10 cursor-pointer"
-                    onClick={() => handleAddNew('asset')}
-                  >
-                    <Building className="mr-2 h-4 w-4" />
-                    Add Asset
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    className="text-cream hover:bg-cream/10 cursor-pointer"
-                    onClick={() => handleAddNew('liability')}
-                  >
-                    <CreditCard className="mr-2 h-4 w-4" />
-                    Add Liability
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              {/* Desktop/Tablet: Full dropdown with text */}
-              <DropdownMenu>
-                <DropdownMenuTrigger className="hidden md:flex items-center justify-center h-11 px-5 rounded-lg bg-cream text-dark font-medium text-sm tracking-wide transition-all duration-200 shadow-sm hover:shadow-md hover:bg-cream/90 gap-2">
-                  <Plus className="h-4 w-4" />
-                  <span className="uppercase">Add Item</span>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="bg-dark border-cream/10">
-                  <DropdownMenuItem
-                    className="text-cream hover:bg-cream/10 cursor-pointer"
-                    onClick={() => handleAddNew('asset')}
-                  >
-                    <Building className="mr-2 h-4 w-4" />
-                    Add Asset
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    className="text-cream hover:bg-cream/10 cursor-pointer"
-                    onClick={() => handleAddNew('liability')}
-                  >
-                    <CreditCard className="mr-2 h-4 w-4" />
-                    Add Liability
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
             </div>
-          </MotionHeader>
+            
+            {/* Mobile: Icon-only dropdown trigger */}
+            <DropdownMenu>
+              <DropdownMenuTrigger 
+                aria-label="Add asset or liability"
+                className="md:hidden flex items-center justify-center h-10 w-10 p-0 rounded-lg bg-cream text-dark font-medium transition-all duration-200 shadow-sm hover:shadow-md hover:bg-cream/90"
+              >
+                <Plus className="h-5 w-5" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="bg-dark border-cream/10">
+                <DropdownMenuItem
+                  className="text-cream hover:bg-cream/10 cursor-pointer"
+                  onClick={() => handleAddNew('asset')}
+                >
+                  <Building className="mr-2 h-4 w-4" />
+                  Add Asset
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="text-cream hover:bg-cream/10 cursor-pointer"
+                  onClick={() => handleAddNew('liability')}
+                >
+                  <CreditCard className="mr-2 h-4 w-4" />
+                  Add Liability
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
-          {/* Metrics Cards */}
-          <MotionDiv 
-            variants={container}
-            initial="hidden"
-            animate="show"
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8"
-          >
-            <MotionDiv variants={item}>
-              <MotionContainer delay={0.1}>
-                <MetricCard
-                  title="Total Assets"
-                  value={formatCurrency(netWorth?.totalAssets || 0, { decimals: 0 })}
-                  icon={<Building className="h-5 w-5" />}
-                />
-              </MotionContainer>
-            </MotionDiv>
+            {/* Desktop/Tablet: Full dropdown with text */}
+            <DropdownMenu>
+              <DropdownMenuTrigger className="hidden md:flex items-center justify-center h-11 px-5 rounded-lg bg-cream text-dark font-medium text-sm tracking-wide transition-all duration-200 shadow-sm hover:shadow-md hover:bg-cream/90 gap-2">
+                <Plus className="h-4 w-4" />
+                <span className="uppercase">Add Item</span>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="bg-dark border-cream/10">
+                <DropdownMenuItem
+                  className="text-cream hover:bg-cream/10 cursor-pointer"
+                  onClick={() => handleAddNew('asset')}
+                >
+                  <Building className="mr-2 h-4 w-4" />
+                  Add Asset
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="text-cream hover:bg-cream/10 cursor-pointer"
+                  onClick={() => handleAddNew('liability')}
+                >
+                  <CreditCard className="mr-2 h-4 w-4" />
+                  Add Liability
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </MotionHeader>
 
-            <MotionDiv variants={item}>
-              <MotionContainer delay={0.2}>
-                <MetricCard
-                  title="Total Liabilities"
-                  value={formatCurrency(netWorth?.totalLiabilities || 0, { decimals: 0 })}
-                  icon={<CreditCard className="h-5 w-5" />}
-                />
-              </MotionContainer>
-            </MotionDiv>
-
-            <MotionDiv variants={item}>
-              <MotionContainer delay={0.3}>
-                <MetricCard
-                  title="Net Worth"
-                  polarity="growth"
-                  value={formatCurrency(netWorth?.netWorth || 0, { decimals: 0 })}
-                  change={netWorth?.monthlyChangePercent ? formatPercent(netWorth.monthlyChangePercent) : undefined}
-                  trend={netWorth?.monthlyChange ? (netWorth.monthlyChange >= 0 ? "up" : "down") : undefined}
-                  period={netWorth?.monthlyChange ? "vs last month" : undefined}
-                  icon={<DollarSign className="h-5 w-5" />}
-                />
-              </MotionContainer>
-            </MotionDiv>
+        {/* Metrics Cards */}
+        <MotionDiv 
+          variants={container}
+          initial="hidden"
+          animate="show"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8"
+        >
+          <MotionDiv variants={item}>
+            <MotionContainer delay={0.1}>
+              <MetricCard
+                title="Total Assets"
+                value={formatCurrency(netWorth?.totalAssets || 0, { decimals: 0 })}
+                icon={<Building className="h-5 w-5" />}
+              />
+            </MotionContainer>
           </MotionDiv>
 
-          {/* Mobile Add Button - shown in header instead */}
-
-          {/* Main Content */}
-          <MotionDiv 
-            variants={container}
-            initial="hidden"
-            animate="show"
-            className="space-y-8"
-          >
-            {/* Asset & Liability Breakdown */}
-            <MotionDiv 
-              variants={item}
-              className="pt-6 first:pt-0"
-            >
-              <div className="border-t border-cream/10 pt-6 first:border-t-0 first:pt-0">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-lg font-medium font-outfit">Assets & Liabilities</h2>
-                  <span className="text-xs bg-cream/10 text-cream/80 px-2 py-1 rounded-full">
-                    {assets.length + liabilities.length} items
-                  </span>
-                </div>
-                <AssetLiabilityBreakdown
-                  assets={assets}
-                  liabilities={liabilities}
-                  onAddAsset={() => handleAddNew('asset')}
-                  onAddLiability={() => handleAddNew('liability')}
-                  onEditAsset={(asset) => handleEdit(asset, 'asset')}
-                  onEditLiability={(liability) => handleEdit(liability, 'liability')}
-                  onDeleteAsset={handleDeleteAsset}
-                  onDeleteLiability={handleDeleteLiability}
-                />
-              </div>
-            </MotionDiv>
-
-            {/* Net Worth Trends */}
-            <MotionDiv 
-              variants={item}
-              className="pt-6"
-            >
-              <div className="border-t border-cream/10 pt-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-lg font-medium font-outfit">Net Worth Trends</h2>
-                  <span className="text-xs bg-cream/10 text-cream/80 px-2 py-1 rounded-full">
-                    Historical View
-                  </span>
-                </div>
-                <NetWorthTrends />
-              </div>
-            </MotionDiv>
-
-            {/* Net Worth Insights */}
-            <MotionDiv 
-              variants={item}
-              className="pt-6"
-            >
-              <div className="border-t border-cream/10 pt-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-lg font-medium font-outfit">Financial Insights</h2>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
-                  <MotionDiv
-                    className="bg-cream/5 rounded-lg p-4 hover:bg-cream/10 transition-colors duration-300"
-                    whileHover={{ y: -2 }}
-                    transition={{ type: "spring", stiffness: 300 }}
-                  >
-                    <h3 className="text-sm font-medium mb-2 font-outfit">Assets vs Liabilities</h3>
-                    <p className="text-2xl font-medium">
-                      {netWorth?.totalAssets && netWorth?.totalLiabilities 
-                        ? (netWorth.totalAssets / (netWorth.totalLiabilities || 1)).toFixed(1) + ':1'
-                        : 'N/A'
-                      }
-                    </p>
-                    <p className="text-cream/60 text-sm">Asset to debt ratio</p>
-                  </MotionDiv>
-                  
-                  <MotionDiv
-                    className="bg-cream/5 rounded-lg p-4 hover:bg-cream/10 transition-colors duration-300"
-                    whileHover={{ y: -2 }}
-                    transition={{ type: "spring", stiffness: 300 }}
-                  >
-                    <h3 className="text-sm font-medium mb-2 font-outfit">Largest Asset</h3>
-                    <p className="text-2xl font-medium">
-                      {assets.length > 0 
-                        ? assets.reduce((prev, current) => (current.currentValue > prev.currentValue ? current : prev)).name
-                        : 'N/A'
-                      }
-                    </p>
-                    <p className="text-cream/60 text-sm">
-                      {assets.length > 0 
-                        ? formatCurrency(assets.reduce((prev, current) => (current.currentValue > prev.currentValue ? current : prev)).currentValue)
-                        : '$0.00'
-                      }
-                    </p>
-                  </MotionDiv>
-                  
-                  <MotionDiv
-                    className="bg-cream/5 rounded-lg p-4 hover:bg-cream/10 transition-colors duration-300"
-                    whileHover={{ y: -2 }}
-                    transition={{ type: "spring", stiffness: 300 }}
-                  >
-                    <h3 className="text-sm font-medium mb-2 font-outfit">Largest Liability</h3>
-                    <p className="text-2xl font-medium">
-                      {liabilities.length > 0 
-                        ? liabilities.reduce((prev, current) => (current.currentBalance > prev.currentBalance ? current : prev)).name
-                        : 'N/A'
-                      }
-                    </p>
-                    <p className="text-cream/60 text-sm">
-                      {liabilities.length > 0 
-                        ? formatCurrency(liabilities.reduce((prev, current) => (current.currentBalance > prev.currentBalance ? current : prev)).currentBalance)
-                        : '$0.00'
-                      }
-                    </p>
-                  </MotionDiv>
-                </div>
-              </div>
-            </MotionDiv>
+          <MotionDiv variants={item}>
+            <MotionContainer delay={0.2}>
+              <MetricCard
+                title="Total Liabilities"
+                value={formatCurrency(netWorth?.totalLiabilities || 0, { decimals: 0 })}
+                icon={<CreditCard className="h-5 w-5" />}
+              />
+            </MotionContainer>
           </MotionDiv>
 
-          {/* Asset/Liability Form Modal */}
-          {showAddForm && (
-            <AssetLiabilityForm
-              type={formType}
-              editItem={editingItem}
-              onSuccess={handleFormSuccess}
-              onCancel={() => {
-                setShowAddForm(false)
-                setEditingItem(null)
-              }}
-            />
-          )}
-        </div>
-      </main>
-    </div>
+          <MotionDiv variants={item}>
+            <MotionContainer delay={0.3}>
+              <MetricCard
+                title="Net Worth"
+                polarity="growth"
+                value={formatCurrency(netWorth?.netWorth || 0, { decimals: 0 })}
+                change={netWorth?.monthlyChangePercent ? formatPercent(netWorth.monthlyChangePercent) : undefined}
+                trend={netWorth?.monthlyChange ? (netWorth.monthlyChange >= 0 ? "up" : "down") : undefined}
+                period={netWorth?.monthlyChange ? "vs last month" : undefined}
+                icon={<DollarSign className="h-5 w-5" />}
+              />
+            </MotionContainer>
+          </MotionDiv>
+        </MotionDiv>
+
+        {/* Mobile Add Button - shown in header instead */}
+
+        {/* Main Content */}
+        <MotionDiv 
+          variants={container}
+          initial="hidden"
+          animate="show"
+          className="space-y-8"
+        >
+          {/* Asset & Liability Breakdown */}
+          <MotionDiv 
+            variants={item}
+            className="pt-6 first:pt-0"
+          >
+            <div className="border-t border-cream/10 pt-6 first:border-t-0 first:pt-0">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-medium font-outfit">Assets & Liabilities</h2>
+                <span className="text-xs bg-cream/10 text-cream/80 px-2 py-1 rounded-full">
+                  {assets.length + liabilities.length} items
+                </span>
+              </div>
+              <AssetLiabilityBreakdown
+                assets={assets}
+                liabilities={liabilities}
+                onAddAsset={() => handleAddNew('asset')}
+                onAddLiability={() => handleAddNew('liability')}
+                onEditAsset={(asset) => handleEdit(asset, 'asset')}
+                onEditLiability={(liability) => handleEdit(liability, 'liability')}
+                onDeleteAsset={handleDeleteAsset}
+                onDeleteLiability={handleDeleteLiability}
+              />
+            </div>
+          </MotionDiv>
+
+          {/* Net Worth Trends */}
+          <MotionDiv 
+            variants={item}
+            className="pt-6"
+          >
+            <div className="border-t border-cream/10 pt-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-medium font-outfit">Net Worth Trends</h2>
+                <span className="text-xs bg-cream/10 text-cream/80 px-2 py-1 rounded-full">
+                  Historical View
+                </span>
+              </div>
+              <NetWorthTrends />
+            </div>
+          </MotionDiv>
+
+          {/* Net Worth Insights */}
+          <MotionDiv 
+            variants={item}
+            className="pt-6"
+          >
+            <div className="border-t border-cream/10 pt-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-medium font-outfit">Financial Insights</h2>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+                <MotionDiv
+                  className="bg-cream/5 rounded-lg p-4 hover:bg-cream/10 transition-colors duration-300"
+                  whileHover={{ y: -2 }}
+                  transition={{ type: "spring", stiffness: 300 }}
+                >
+                  <h3 className="text-sm font-medium mb-2 font-outfit">Assets vs Liabilities</h3>
+                  <p className="text-2xl font-medium">
+                    {netWorth?.totalAssets && netWorth?.totalLiabilities 
+                      ? (netWorth.totalAssets / (netWorth.totalLiabilities || 1)).toFixed(1) + ':1'
+                      : 'N/A'
+                    }
+                  </p>
+                  <p className="text-cream/60 text-sm">Asset to debt ratio</p>
+                </MotionDiv>
+                
+                <MotionDiv
+                  className="bg-cream/5 rounded-lg p-4 hover:bg-cream/10 transition-colors duration-300"
+                  whileHover={{ y: -2 }}
+                  transition={{ type: "spring", stiffness: 300 }}
+                >
+                  <h3 className="text-sm font-medium mb-2 font-outfit">Largest Asset</h3>
+                  <p className="text-2xl font-medium">
+                    {assets.length > 0 
+                      ? assets.reduce((prev, current) => (current.currentValue > prev.currentValue ? current : prev)).name
+                      : 'N/A'
+                    }
+                  </p>
+                  <p className="text-cream/60 text-sm">
+                    {assets.length > 0 
+                      ? formatCurrency(assets.reduce((prev, current) => (current.currentValue > prev.currentValue ? current : prev)).currentValue)
+                      : '$0.00'
+                    }
+                  </p>
+                </MotionDiv>
+                
+                <MotionDiv
+                  className="bg-cream/5 rounded-lg p-4 hover:bg-cream/10 transition-colors duration-300"
+                  whileHover={{ y: -2 }}
+                  transition={{ type: "spring", stiffness: 300 }}
+                >
+                  <h3 className="text-sm font-medium mb-2 font-outfit">Largest Liability</h3>
+                  <p className="text-2xl font-medium">
+                    {liabilities.length > 0 
+                      ? liabilities.reduce((prev, current) => (current.currentBalance > prev.currentBalance ? current : prev)).name
+                      : 'N/A'
+                    }
+                  </p>
+                  <p className="text-cream/60 text-sm">
+                    {liabilities.length > 0 
+                      ? formatCurrency(liabilities.reduce((prev, current) => (current.currentBalance > prev.currentBalance ? current : prev)).currentBalance)
+                      : '$0.00'
+                    }
+                  </p>
+                </MotionDiv>
+              </div>
+            </div>
+          </MotionDiv>
+        </MotionDiv>
+
+        {/* Asset/Liability Form Modal */}
+        {showAddForm && (
+          <AssetLiabilityForm
+            type={formType}
+            editItem={editingItem}
+            onSuccess={handleFormSuccess}
+            onCancel={() => {
+              setShowAddForm(false)
+              setEditingItem(null)
+            }}
+          />
+        )}
+      </div>
+    </main>
   )
 }

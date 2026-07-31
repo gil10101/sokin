@@ -7,7 +7,6 @@ import { useState, useEffect } from "react"
 import { useAuth } from "@/contexts/auth-context"
 import { format } from "date-fns"
 import { logger } from "@/lib/logger"
-import { DashboardSidebar } from "@/components/dashboard/sidebar"
 import { PageHeader } from "@/components/dashboard/page-header"
 import { Button } from "@/components/ui/button"
 import { AddButton } from "@/components/ui/add-button"
@@ -109,7 +108,6 @@ const MAX_FETCH_PAGES = 6
 
 export default function BudgetsPage(props: BudgetsPageProps) {
   const { format: formatCurrency } = useCurrency()
-  const [collapsed, setCollapsed] = useState(false)
   const { user } = useAuth()
 
   const { toast } = useToast()
@@ -428,13 +426,11 @@ export default function BudgetsPage(props: BudgetsPageProps) {
   const filteredBudgets = activeTab === "all" ? budgets : budgets.filter((budget) => budget.period === activeTab)
 
   return (
-    <div className="flex h-screen bg-dark text-cream overflow-hidden">
-      <DashboardSidebar collapsed={collapsed} setCollapsed={setCollapsed} />
-
+    <>
       <main className="flex-1 overflow-auto p-6 md:p-8 lg:p-10">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-8">
-            <div className="ml-12 md:ml-0">
+            <div>
               <h1 className="text-xl sm:text-2xl md:text-3xl font-medium font-outfit">Budgets</h1>
               <p className="text-cream/60 text-sm mt-1 font-outfit">Manage your spending limits and financial goals</p>
             </div>
@@ -717,7 +713,7 @@ export default function BudgetsPage(props: BudgetsPageProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   )
 }
 

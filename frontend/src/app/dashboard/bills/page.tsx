@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react"
 
 import { isBefore, isAfter, startOfDay } from "date-fns"
-import { DashboardSidebar } from "@/components/dashboard/sidebar"
 import { BillReminders } from "@/components/dashboard/bill-reminders"
 import { MetricCard } from "@/components/dashboard/metric-card"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
@@ -57,7 +56,6 @@ export default function BillsPage(props: BillsPageProps) {
   const [loading, setLoading] = useState(true)
   const [filterStatus, setFilterStatus] = useState<'all' | 'upcoming' | 'overdue' | 'paid'>('all')
   const [sortBy, setSortBy] = useState<'dueDate' | 'amount' | 'name'>('dueDate')
-  const [collapsed, setCollapsed] = useState(false)
   const [showCreateBill, setShowCreateBill] = useState(false)
   const { toast } = useToast()
 
@@ -172,178 +170,169 @@ export default function BillsPage(props: BillsPageProps) {
 
   if (loading) {
     return (
-      <div className="flex h-screen bg-dark text-cream overflow-hidden">
-        <DashboardSidebar collapsed={collapsed} setCollapsed={setCollapsed} />
-        <main className="flex-1 overflow-auto p-6 md:p-8 lg:p-10">
-          <div className="max-w-7xl mx-auto">
-            <div className="ml-12 md:ml-0">
-              <div className="flex items-center justify-center h-96">
-                <LoadingSpinner variant="pulse" size="lg" />
-              </div>
-            </div>
+      <main className="flex-1 overflow-auto p-6 md:p-8 lg:p-10">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-center h-96">
+            <LoadingSpinner variant="pulse" size="lg" />
           </div>
-        </main>
-      </div>
+        </div>
+      </main>
     )
   }
 
   return (
-    <div className="flex h-screen bg-dark text-cream overflow-hidden">
-      <DashboardSidebar collapsed={collapsed} setCollapsed={setCollapsed} />
-      
-      <main className="flex-1 overflow-auto p-6 md:p-8 lg:p-10">
-        <div className="max-w-7xl mx-auto">
-          <MotionHeader
-            className="flex items-center justify-between mb-8"
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <div className="ml-12 md:ml-0">
-              <h1 className="text-xl sm:text-2xl md:text-3xl font-medium font-outfit">Bill Reminders</h1>
-              <p className="text-cream/60 text-sm mt-1 font-outfit">Manage your bills and never miss a payment</p>
-            </div>
-            <AddButton
-              label="Bill"
-              onClick={() => setShowCreateBill(true)}
-            />
-          </MotionHeader>
-
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 sm:mb-8">
-            <MotionContainer delay={0.1}>
-              <MetricCard
-                title="Total Bills"
-                value={stats.totalBills.toString()}
-                secondaryValue={`${formatCurrency(stats.monthlyBillCount > 0 ? stats.monthlyTotal / stats.monthlyBillCount : 0, { decimals: 0 })} avg this month`}
-                icon={<Bell className="h-5 w-5" />}
-              />
-            </MotionContainer>
-            <MotionContainer delay={0.2}>
-              <MetricCard
-                title="Upcoming"
-                value={stats.upcomingBills.toString()}
-                secondaryValue={`${formatCurrency(bills.filter(bill => !bill.isPaid && !isBefore(startOfDay(new Date(bill.dueDate)), startOfDay(new Date()))).reduce((sum, bill) => sum + bill.amount, 0))} due`}
-                icon={<Clock className="h-5 w-5" />}
-              />
-            </MotionContainer>
-            <MotionContainer delay={0.3}>
-              <MetricCard
-                title="Overdue"
-                value={stats.overdueBills.toString()}
-                secondaryValue={`${formatCurrency(bills.filter(bill => !bill.isPaid && isBefore(startOfDay(new Date(bill.dueDate)), startOfDay(new Date()))).reduce((sum, bill) => sum + bill.amount, 0))} overdue`}
-                icon={<AlertCircle className="h-5 w-5" />}
-              />
-            </MotionContainer>
-            <MotionContainer delay={0.4}>
-              <MetricCard
-                title="Monthly Total"
-                value={formatCurrency(stats.monthlyTotal, { decimals: 0 })}
-                secondaryValue={`${formatCurrency(stats.monthlyPaid)} paid`}
-                icon={<DollarSign className="h-5 w-5" />}
-              />
-            </MotionContainer>
+    <main className="flex-1 overflow-auto p-6 md:p-8 lg:p-10">
+      <div className="max-w-7xl mx-auto">
+        <MotionHeader
+          className="flex items-center justify-between mb-8"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <div>
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-medium font-outfit">Bill Reminders</h1>
+            <p className="text-cream/60 text-sm mt-1 font-outfit">Manage your bills and never miss a payment</p>
           </div>
+          <AddButton
+            label="Bill"
+            onClick={() => setShowCreateBill(true)}
+          />
+        </MotionHeader>
 
-          {/* Filters and Sort */}
-          <MotionContainer delay={0.5}>
-            <div className="bg-cream/5 rounded-xl border border-cream/10 p-6 mb-8 hover:border-cream/20 transition-colors duration-300">
-            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-              <div className="flex flex-col sm:flex-row gap-4">
-                <div>
-                  <label className="text-sm text-cream/60 mb-2 block font-outfit">Filter by Status</label>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger className="flex items-center text-cream/60 text-sm hover:text-cream bg-cream/5 px-3 py-1.5 rounded-md border border-cream/10">
-                      {filterStatus === "all" ? "All Bills" : filterStatus === "upcoming" ? "Upcoming" : filterStatus === "overdue" ? "Overdue" : "Paid"}
-                      <ChevronRight className="h-4 w-4 ml-2 transform rotate-90" />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="bg-dark border-cream/10">
-                      <DropdownMenuItem
-                        className="text-cream hover:bg-cream/10 cursor-pointer"
-                        onClick={() => setFilterStatus("all")}
-                      >
-                        All Bills
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="text-cream hover:bg-cream/10 cursor-pointer"
-                        onClick={() => setFilterStatus("upcoming")}
-                      >
-                        Upcoming
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="text-cream hover:bg-cream/10 cursor-pointer"
-                        onClick={() => setFilterStatus("overdue")}
-                      >
-                        Overdue
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="text-cream hover:bg-cream/10 cursor-pointer"
-                        onClick={() => setFilterStatus("paid")}
-                      >
-                        Paid
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-
-                <div>
-                  <label className="text-sm text-cream/60 mb-2 block font-outfit">Sort by</label>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger className="flex items-center text-cream/60 text-sm hover:text-cream bg-cream/5 px-3 py-1.5 rounded-md border border-cream/10">
-                      {sortBy === "dueDate" ? "Due Date" : sortBy === "amount" ? "Amount" : "Name"}
-                      <ChevronRight className="h-4 w-4 ml-2 transform rotate-90" />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="bg-dark border-cream/10">
-                      <DropdownMenuItem
-                        className="text-cream hover:bg-cream/10 cursor-pointer"
-                        onClick={() => setSortBy("dueDate")}
-                      >
-                        Due Date
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="text-cream hover:bg-cream/10 cursor-pointer"
-                        onClick={() => setSortBy("amount")}
-                      >
-                        Amount
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="text-cream hover:bg-cream/10 cursor-pointer"
-                        onClick={() => setSortBy("name")}
-                      >
-                        Name
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </div>
-
-              <div className="text-sm text-cream/60 font-outfit">
-                Showing {filteredAndSortedBills.length} of {bills.length} bills
-              </div>
-            </div>
-            </div>
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 sm:mb-8">
+          <MotionContainer delay={0.1}>
+            <MetricCard
+              title="Total Bills"
+              value={stats.totalBills.toString()}
+              secondaryValue={`${formatCurrency(stats.monthlyBillCount > 0 ? stats.monthlyTotal / stats.monthlyBillCount : 0, { decimals: 0 })} avg this month`}
+              icon={<Bell className="h-5 w-5" />}
+            />
           </MotionContainer>
-
-          {/* Bills Component */}
-          <MotionContainer delay={0.6}>
-            <div className="bg-cream/5 rounded-xl border border-cream/10 p-6 hover:border-cream/20 transition-colors duration-300">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-medium font-outfit">Bills</h2>
-              </div>
-              <BillReminders
-                externalShowCreate={showCreateBill}
-                onExternalShowCreateChange={setShowCreateBill}
-                hideInternalAddButton={true}
-                limit={Number.POSITIVE_INFINITY}
-                filterStatus={filterStatus}
-                sortBy={sortBy}
-                hideInternalFilters={true}
-                onBillsChanged={fetchBills}
-              />
-            </div>
+          <MotionContainer delay={0.2}>
+            <MetricCard
+              title="Upcoming"
+              value={stats.upcomingBills.toString()}
+              secondaryValue={`${formatCurrency(bills.filter(bill => !bill.isPaid && !isBefore(startOfDay(new Date(bill.dueDate)), startOfDay(new Date()))).reduce((sum, bill) => sum + bill.amount, 0))} due`}
+              icon={<Clock className="h-5 w-5" />}
+            />
+          </MotionContainer>
+          <MotionContainer delay={0.3}>
+            <MetricCard
+              title="Overdue"
+              value={stats.overdueBills.toString()}
+              secondaryValue={`${formatCurrency(bills.filter(bill => !bill.isPaid && isBefore(startOfDay(new Date(bill.dueDate)), startOfDay(new Date()))).reduce((sum, bill) => sum + bill.amount, 0))} overdue`}
+              icon={<AlertCircle className="h-5 w-5" />}
+            />
+          </MotionContainer>
+          <MotionContainer delay={0.4}>
+            <MetricCard
+              title="Monthly Total"
+              value={formatCurrency(stats.monthlyTotal, { decimals: 0 })}
+              secondaryValue={`${formatCurrency(stats.monthlyPaid)} paid`}
+              icon={<DollarSign className="h-5 w-5" />}
+            />
           </MotionContainer>
         </div>
-      </main>
-    </div>
+
+        {/* Filters and Sort */}
+        <MotionContainer delay={0.5}>
+          <div className="bg-cream/5 rounded-xl border border-cream/10 p-6 mb-8 hover:border-cream/20 transition-colors duration-300">
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div>
+                <label className="text-sm text-cream/60 mb-2 block font-outfit">Filter by Status</label>
+                <DropdownMenu>
+                  <DropdownMenuTrigger className="flex items-center text-cream/60 text-sm hover:text-cream bg-cream/5 px-3 py-1.5 rounded-md border border-cream/10">
+                    {filterStatus === "all" ? "All Bills" : filterStatus === "upcoming" ? "Upcoming" : filterStatus === "overdue" ? "Overdue" : "Paid"}
+                    <ChevronRight className="h-4 w-4 ml-2 transform rotate-90" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="bg-dark border-cream/10">
+                    <DropdownMenuItem
+                      className="text-cream hover:bg-cream/10 cursor-pointer"
+                      onClick={() => setFilterStatus("all")}
+                    >
+                      All Bills
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="text-cream hover:bg-cream/10 cursor-pointer"
+                      onClick={() => setFilterStatus("upcoming")}
+                    >
+                      Upcoming
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="text-cream hover:bg-cream/10 cursor-pointer"
+                      onClick={() => setFilterStatus("overdue")}
+                    >
+                      Overdue
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="text-cream hover:bg-cream/10 cursor-pointer"
+                      onClick={() => setFilterStatus("paid")}
+                    >
+                      Paid
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+
+              <div>
+                <label className="text-sm text-cream/60 mb-2 block font-outfit">Sort by</label>
+                <DropdownMenu>
+                  <DropdownMenuTrigger className="flex items-center text-cream/60 text-sm hover:text-cream bg-cream/5 px-3 py-1.5 rounded-md border border-cream/10">
+                    {sortBy === "dueDate" ? "Due Date" : sortBy === "amount" ? "Amount" : "Name"}
+                    <ChevronRight className="h-4 w-4 ml-2 transform rotate-90" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="bg-dark border-cream/10">
+                    <DropdownMenuItem
+                      className="text-cream hover:bg-cream/10 cursor-pointer"
+                      onClick={() => setSortBy("dueDate")}
+                    >
+                      Due Date
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="text-cream hover:bg-cream/10 cursor-pointer"
+                      onClick={() => setSortBy("amount")}
+                    >
+                      Amount
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="text-cream hover:bg-cream/10 cursor-pointer"
+                      onClick={() => setSortBy("name")}
+                    >
+                      Name
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+
+            <div className="text-sm text-cream/60 font-outfit">
+              Showing {filteredAndSortedBills.length} of {bills.length} bills
+            </div>
+          </div>
+          </div>
+        </MotionContainer>
+
+        {/* Bills Component */}
+        <MotionContainer delay={0.6}>
+          <div className="bg-cream/5 rounded-xl border border-cream/10 p-6 hover:border-cream/20 transition-colors duration-300">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-medium font-outfit">Bills</h2>
+            </div>
+            <BillReminders
+              externalShowCreate={showCreateBill}
+              onExternalShowCreateChange={setShowCreateBill}
+              hideInternalAddButton={true}
+              limit={Number.POSITIVE_INFINITY}
+              filterStatus={filterStatus}
+              sortBy={sortBy}
+              hideInternalFilters={true}
+              onBillsChanged={fetchBills}
+            />
+          </div>
+        </MotionContainer>
+      </div>
+    </main>
   )
 } 

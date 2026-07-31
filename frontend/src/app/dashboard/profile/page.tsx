@@ -14,7 +14,6 @@ import {
 import { auth } from "@/lib/firebase"
 import { useAuthState } from "react-firebase-hooks/auth"
 import { MotionDiv, MotionMain } from "@/components/ui/dynamic-motion"
-import { DashboardSidebar } from "@/components/dashboard/sidebar"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -30,7 +29,6 @@ interface ProfilePageProps {
 }
 
 export default function ProfilePage(props: ProfilePageProps) {
-  const [collapsed, setCollapsed] = useState(false)
   const [user, loading] = useAuthState(auth)
   const router = useRouter()
   const { toast } = useToast()
@@ -159,227 +157,220 @@ export default function ProfilePage(props: ProfilePageProps) {
 
   if (loading || !isInitialized) {
     return (
-      <div className="flex h-screen bg-dark text-cream overflow-hidden">
-        <DashboardSidebar collapsed={collapsed} setCollapsed={setCollapsed} />
-        <main className="flex-1 overflow-auto p-6 md:p-8 lg:p-10">
-          <div className="max-w-3xl mx-auto">
-            <div className="flex items-center justify-center h-[calc(100vh-200px)]">
-              <div className="animate-pulse">Loading profile...</div>
-            </div>
+      <main className="flex-1 overflow-auto p-6 md:p-8 lg:p-10">
+        <div className="max-w-3xl mx-auto">
+          <div className="flex items-center justify-center h-[calc(100vh-200px)]">
+            <div className="animate-pulse">Loading profile...</div>
           </div>
-        </main>
-      </div>
+        </div>
+      </main>
     )
   }
 
   return (
-    <div className="flex h-screen bg-dark text-cream overflow-hidden">
-      <DashboardSidebar collapsed={collapsed} setCollapsed={setCollapsed} />
+    <main className="flex-1 overflow-auto p-6 md:p-8 lg:p-10">
+      <div className="max-w-3xl mx-auto">
+        <header className="mb-8">
+          <h1 className="text-2xl md:text-3xl font-medium font-outfit">Profile</h1>
+          <p className="text-cream/60 text-sm mt-1 font-outfit">Manage your account settings and preferences</p>
+        </header>
 
-      <main className="flex-1 overflow-auto p-6 md:p-8 lg:p-10">
-        <div className="max-w-3xl mx-auto">
-          <header className="mb-8">
-            <h1 className="ml-12 md:ml-0 text-2xl md:text-3xl font-medium font-outfit">Profile</h1>
-            <p className="text-cream/60 text-sm mt-1 font-outfit">Manage your account settings and preferences</p>
-          </header>
+        <Tabs defaultValue="account" className="space-y-6">
+          <TabsList className="bg-cream/5 text-cream">
+            <TabsTrigger value="account" className="data-[state=active]:bg-cream/10">
+              Account
+            </TabsTrigger>
+            <TabsTrigger value="security" className="data-[state=active]:bg-cream/10">
+              Security
+            </TabsTrigger>
+          </TabsList>
 
-          <Tabs defaultValue="account" className="space-y-6">
-            <TabsList className="bg-cream/5 text-cream">
-              <TabsTrigger value="account" className="data-[state=active]:bg-cream/10">
-                Account
-              </TabsTrigger>
-              <TabsTrigger value="security" className="data-[state=active]:bg-cream/10">
-                Security
-              </TabsTrigger>
-            </TabsList>
+          <TabsContent value="account">
+            <MotionDiv
+              className="bg-cream/5 rounded-xl border border-cream/10 p-6"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              <div className="flex flex-col md:flex-row gap-8 items-start mb-8">
+                <div className="flex flex-col items-center">
+                  <Avatar className="h-24 w-24 mb-4">
+                    {user?.photoURL ? (
+                      <AvatarImage src={user.photoURL} alt={name} />
+                    ) : null}
+                    <AvatarFallback className="text-2xl">
+                      {name ? name.charAt(0).toUpperCase() : user?.displayName?.charAt(0)?.toUpperCase() || "U"}
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
+                <div className="flex-1">
+                  <h2 className="text-xl font-medium mb-2">{name || "User"}</h2>
+                  <p className="text-cream/60 text-sm mb-4">{email || "No email"}</p>
+                  <p className="text-cream/60 text-sm">
+                    Member since:{" "}
+                    {userData?.createdAt ? new Date(
+                      typeof userData.createdAt === 'object' && userData.createdAt && 'toDate' in userData.createdAt 
+                        ? (userData.createdAt as { toDate(): Date }).toDate() 
+                        : userData.createdAt as string | number
+                    ).toLocaleDateString() : "Unknown"}
+                  </p>
+                </div>
+              </div>
 
-            <TabsContent value="account">
-              <MotionDiv
-                className="bg-cream/5 rounded-xl border border-cream/10 p-6"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-              >
-                <div className="flex flex-col md:flex-row gap-8 items-start mb-8">
-                  <div className="flex flex-col items-center">
-                    <Avatar className="h-24 w-24 mb-4">
-                      {user?.photoURL ? (
-                        <AvatarImage src={user.photoURL} alt={name} />
-                      ) : null}
-                      <AvatarFallback className="text-2xl">
-                        {name ? name.charAt(0).toUpperCase() : user?.displayName?.charAt(0)?.toUpperCase() || "U"}
-                      </AvatarFallback>
-                    </Avatar>
-                  </div>
-                  <div className="flex-1">
-                    <h2 className="text-xl font-medium mb-2">{name || "User"}</h2>
-                    <p className="text-cream/60 text-sm mb-4">{email || "No email"}</p>
-                    <p className="text-cream/60 text-sm">
-                      Member since:{" "}
-                      {userData?.createdAt ? new Date(
-                        typeof userData.createdAt === 'object' && userData.createdAt && 'toDate' in userData.createdAt 
-                          ? (userData.createdAt as { toDate(): Date }).toDate() 
-                          : userData.createdAt as string | number
-                      ).toLocaleDateString() : "Unknown"}
-                    </p>
+              <form onSubmit={handleUpdateProfile} className="space-y-6">
+                <div className="space-y-2">
+                  <label htmlFor="name" className="text-sm font-outfit block">
+                    Full Name
+                  </label>
+                  <Input
+                    id="name"
+                    name="name"
+                    autoComplete="name"
+                    type="text"
+                    value={name}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
+                    placeholder="Your name"
+                    required
+                    className="bg-cream/5 border-cream/10 text-cream placeholder:text-cream/40 focus-visible:ring-cream/20"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="email" className="text-sm font-outfit block">
+                    Email
+                  </label>
+                  <Input
+                    id="email"
+                    name="email"
+                    autoComplete="email"
+                    type="email"
+                    value={email}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+                    placeholder="Your email"
+                    required
+                    className="bg-cream/5 border-cream/10 text-cream placeholder:text-cream/40 focus-visible:ring-cream/20"
+                  />
+                </div>
+
+                <div className="pt-4 flex justify-end">
+                  <Button
+                    type="submit"
+                    disabled={updating}
+                    className="bg-cream text-dark hover:bg-cream/90 font-medium"
+                  >
+                    {updating ? "Saving..." : "Save Changes"}
+                    {!updating && <Save className="ml-2 h-4 w-4" />}
+                  </Button>
+                </div>
+              </form>
+            </MotionDiv>
+          </TabsContent>
+
+          <TabsContent value="security">
+            <MotionDiv
+              className="bg-cream/5 rounded-xl border border-cream/10 p-6"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              <h2 className="text-xl font-medium mb-6">Change Password</h2>
+              <form onSubmit={handleUpdatePassword} className="space-y-6">
+                <div className="space-y-2">
+                  <label htmlFor="current-password" className="text-sm font-outfit block">
+                    Current Password
+                  </label>
+                  <div className="relative">
+                    <Input
+                      id="current-password"
+                      name="current-password"
+                      autoComplete="current-password"
+                      type={showCurrentPassword ? "text" : "password"}
+                      value={currentPassword}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCurrentPassword(e.target.value)}
+                      placeholder="••••••••"
+                      required
+                      className="bg-cream/5 border-cream/10 text-cream placeholder:text-cream/40 focus-visible:ring-cream/20 pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-cream/40 hover:text-cream transition-colors"
+                    >
+                      {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
                   </div>
                 </div>
 
-                <form onSubmit={handleUpdateProfile} className="space-y-6">
-                  <div className="space-y-2">
-                    <label htmlFor="name" className="text-sm font-outfit block">
-                      Full Name
-                    </label>
+                <div className="space-y-2">
+                  <label htmlFor="new-password" className="text-sm font-outfit block">
+                    New Password
+                  </label>
+                  <div className="relative">
                     <Input
-                      id="name"
-                      name="name"
-                      autoComplete="name"
-                      type="text"
-                      value={name}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
-                      placeholder="Your name"
+                      id="new-password"
+                      name="new-password"
+                      autoComplete="new-password"
+                      type={showNewPassword ? "text" : "password"}
+                      value={newPassword}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewPassword(e.target.value)}
+                      placeholder="••••••••"
                       required
-                      className="bg-cream/5 border-cream/10 text-cream placeholder:text-cream/40 focus-visible:ring-cream/20"
+                      minLength={6}
+                      className="bg-cream/5 border-cream/10 text-cream placeholder:text-cream/40 focus-visible:ring-cream/20 pr-10"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-cream/40 hover:text-cream transition-colors"
+                    >
+                      {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
                   </div>
+                </div>
 
-                  <div className="space-y-2">
-                    <label htmlFor="email" className="text-sm font-outfit block">
-                      Email
-                    </label>
+                <div className="space-y-2">
+                  <label htmlFor="confirm-password" className="text-sm font-outfit block">
+                    Confirm New Password
+                  </label>
+                  <div className="relative">
                     <Input
-                      id="email"
-                      name="email"
-                      autoComplete="email"
-                      type="email"
-                      value={email}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
-                      placeholder="Your email"
+                      id="confirm-password"
+                      name="confirm-password"
+                      autoComplete="new-password"
+                      type={showConfirmPassword ? "text" : "password"}
+                      value={confirmPassword}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfirmPassword(e.target.value)}
+                      placeholder="••••••••"
                       required
-                      className="bg-cream/5 border-cream/10 text-cream placeholder:text-cream/40 focus-visible:ring-cream/20"
+                      minLength={6}
+                      className="bg-cream/5 border-cream/10 text-cream placeholder:text-cream/40 focus-visible:ring-cream/20 pr-10"
                     />
-                  </div>
-
-                  <div className="pt-4 flex justify-end">
-                    <Button
-                      type="submit"
-                      disabled={updating}
-                      className="bg-cream text-dark hover:bg-cream/90 font-medium"
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-cream/40 hover:text-cream transition-colors"
                     >
-                      {updating ? "Saving..." : "Save Changes"}
-                      {!updating && <Save className="ml-2 h-4 w-4" />}
-                    </Button>
+                      {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
                   </div>
-                </form>
-              </MotionDiv>
-            </TabsContent>
+                </div>
 
-            <TabsContent value="security">
-              <MotionDiv
-                className="bg-cream/5 rounded-xl border border-cream/10 p-6"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-              >
-                <h2 className="text-xl font-medium mb-6">Change Password</h2>
-                <form onSubmit={handleUpdatePassword} className="space-y-6">
-                  <div className="space-y-2">
-                    <label htmlFor="current-password" className="text-sm font-outfit block">
-                      Current Password
-                    </label>
-                    <div className="relative">
-                      <Input
-                        id="current-password"
-                        name="current-password"
-                        autoComplete="current-password"
-                        type={showCurrentPassword ? "text" : "password"}
-                        value={currentPassword}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCurrentPassword(e.target.value)}
-                        placeholder="••••••••"
-                        required
-                        className="bg-cream/5 border-cream/10 text-cream placeholder:text-cream/40 focus-visible:ring-cream/20 pr-10"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-cream/40 hover:text-cream transition-colors"
-                      >
-                        {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label htmlFor="new-password" className="text-sm font-outfit block">
-                      New Password
-                    </label>
-                    <div className="relative">
-                      <Input
-                        id="new-password"
-                        name="new-password"
-                        autoComplete="new-password"
-                        type={showNewPassword ? "text" : "password"}
-                        value={newPassword}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewPassword(e.target.value)}
-                        placeholder="••••••••"
-                        required
-                        minLength={6}
-                        className="bg-cream/5 border-cream/10 text-cream placeholder:text-cream/40 focus-visible:ring-cream/20 pr-10"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowNewPassword(!showNewPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-cream/40 hover:text-cream transition-colors"
-                      >
-                        {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label htmlFor="confirm-password" className="text-sm font-outfit block">
-                      Confirm New Password
-                    </label>
-                    <div className="relative">
-                      <Input
-                        id="confirm-password"
-                        name="confirm-password"
-                        autoComplete="new-password"
-                        type={showConfirmPassword ? "text" : "password"}
-                        value={confirmPassword}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfirmPassword(e.target.value)}
-                        placeholder="••••••••"
-                        required
-                        minLength={6}
-                        className="bg-cream/5 border-cream/10 text-cream placeholder:text-cream/40 focus-visible:ring-cream/20 pr-10"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-cream/40 hover:text-cream transition-colors"
-                      >
-                        {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="pt-4 flex justify-end">
-                    <Button
-                      type="submit"
-                      disabled={updating}
-                      className="bg-cream text-dark hover:bg-cream/90 font-medium"
-                    >
-                      {updating ? "Updating..." : "Update Password"}
-                      {!updating && <Save className="ml-2 h-4 w-4" />}
-                    </Button>
-                  </div>
-                </form>
-              </MotionDiv>
-            </TabsContent>
-          </Tabs>
-        </div>
-      </main>
-    </div>
+                <div className="pt-4 flex justify-end">
+                  <Button
+                    type="submit"
+                    disabled={updating}
+                    className="bg-cream text-dark hover:bg-cream/90 font-medium"
+                  >
+                    {updating ? "Updating..." : "Update Password"}
+                    {!updating && <Save className="ml-2 h-4 w-4" />}
+                  </Button>
+                </div>
+              </form>
+            </MotionDiv>
+          </TabsContent>
+        </Tabs>
+      </div>
+    </main>
   )
 }
 
