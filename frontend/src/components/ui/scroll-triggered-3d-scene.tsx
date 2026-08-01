@@ -195,15 +195,16 @@ function ScrollTriggered3DScene() {
           ease: "power3.out"
         })
       },
-      onEnterBack: () => {
+      // Scrolling up out of the footer band must hand the object back to the
+      // contact state. Without this the footer state was never released, so it
+      // stayed in its final pose all the way up until the hero re-triggered.
+      onLeaveBack: () => {
         animateToPosition({
-          x: "0%",
-          y: "55%",
-          scale: isMobile ? 2.2 : 2.8,
-          rotation: 0,
-          opacity: 0.9,
-          duration: 2.0,
-          ease: "power3.out"
+          x: "15%",
+          y: "5%",
+          scale: 0.5,
+          rotation: 25,
+          opacity: 0.5
         })
       }
     })
@@ -211,28 +212,6 @@ function ScrollTriggered3DScene() {
     scrollTriggers.push(heroTrigger, aboutTrigger, featuresTrigger, contactTrigger, footerTrigger)
 
 
-    // Add fallback scroll listener for footer animation
-    const handleFooterScroll = () => {
-      const scrollY = window.scrollY
-      const windowHeight = window.innerHeight
-      const documentHeight = document.documentElement.scrollHeight
-      const scrollProgress = scrollY / (documentHeight - windowHeight)
-      
-      // Trigger footer animation when scroll progress is > 0.85 (near the end)
-      if (scrollProgress > 0.85) {
-        animateToPosition({
-          x: "0%",
-          y: "55%",
-          scale: isMobile ? 1.4 : 1.6,
-          rotation: 0,
-          opacity: 0.9,
-          duration: 2.0,
-          ease: "power3.out"
-        })
-      }
-    }
-    
-    window.addEventListener('scroll', handleFooterScroll)
 
     // Refresh ScrollTrigger after setup with longer delay to ensure footer is available
     setTimeout(() => {
@@ -241,7 +220,6 @@ function ScrollTriggered3DScene() {
 
     return () => {
       scrollTriggers.forEach(trigger => trigger.kill())
-      window.removeEventListener('scroll', handleFooterScroll)
       ScrollTrigger.refresh()
     }
   }, [isMobile, isLoaded])

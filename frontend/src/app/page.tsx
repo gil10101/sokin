@@ -234,7 +234,7 @@ export default function LandingPage() {
   const activeFeature = coreFeatures[currentFeature] ?? coreFeatures[0]
 
   return (
-    <div className="flex min-h-screen flex-col bg-dark text-cream relative overflow-hidden">
+    <div className="flex min-h-screen flex-col bg-dark text-cream relative overflow-x-clip">
       {/* Fixed 3D Scene Background - only render when components are loaded */}
       {mounted && componentsLoaded && <ScrollTriggered3DScene />}
       
