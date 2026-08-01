@@ -35,6 +35,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import { useCurrency } from "@/hooks/use-currency"
+import { EmptyState } from "./empty-state"
 
 interface SavingsGoal {
   id?: string
@@ -605,14 +606,12 @@ export function SavingsGoals({ hideHeader = false }: SavingsGoalsProps) {
 
       {/* Empty State */}
       {goals.length === 0 && !loading && (
-        <div className="text-center py-16">
-          <div className="max-w-md mx-auto">
-            <Target className="h-16 w-16 text-cream/40 mx-auto mb-6" />
-            <h3 className="text-xl font-medium mb-3 text-cream/70">No savings goals yet</h3>
-            <p className="text-cream/50 mb-8 leading-relaxed">
-              Create your first savings goal to start tracking your financial progress and build healthy saving habits.
-            </p>
-
+        <EmptyState
+          size="lg"
+          icon={Target}
+          title="No savings goals yet"
+          description="Create your first savings goal to start tracking your financial progress and build healthy saving habits."
+          action={
             <Button
               onClick={() => setShowCreateGoal(true)}
               className="bg-cream/10 hover:bg-cream/20 text-cream/80 border-cream/20 h-11 px-6"
@@ -620,8 +619,8 @@ export function SavingsGoals({ hideHeader = false }: SavingsGoalsProps) {
               <Plus className="mr-2 h-4 w-4" />
               Create Your First Goal
             </Button>
-          </div>
-        </div>
+          }
+        />
       )}
 
       {/* Add Contribution Dialog */}

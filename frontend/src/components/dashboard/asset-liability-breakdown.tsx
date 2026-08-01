@@ -31,6 +31,7 @@ import {
   LiabilityType
 } from '@/lib/types'
 import { useCurrency } from "@/hooks/use-currency"
+import { EmptyState } from "./empty-state"
 
 interface AssetLiabilityBreakdownProps {
   assets: Asset[]
@@ -265,9 +266,11 @@ export function AssetLiabilityBreakdown({
                 )}
 
                 {isExpanded && categoryAssets.length === 0 && (
-                  <div className="border-t border-cream/10 p-4 text-center text-cream/60">
-                    No {config.label.toLowerCase()} added yet
-                  </div>
+                  <EmptyState
+                    className="border-t border-cream/10"
+                    size="sm"
+                    title={`No ${config.label.toLowerCase()} added yet`}
+                  />
                 )}
               </div>
             )
@@ -351,9 +354,11 @@ export function AssetLiabilityBreakdown({
                 )}
 
                 {isExpanded && categoryLiabilities.length === 0 && (
-                  <div className="border-t border-cream/10 p-4 text-center text-cream/60">
-                    No {config.label.toLowerCase()} added yet
-                  </div>
+                  <EmptyState
+                    className="border-t border-cream/10"
+                    size="sm"
+                    title={`No ${config.label.toLowerCase()} added yet`}
+                  />
                 )}
               </div>
             )

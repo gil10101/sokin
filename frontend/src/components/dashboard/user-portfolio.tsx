@@ -20,6 +20,7 @@ import {
   formatPercent,
   formatVolume
 } from "@/lib/stock-api"
+import { EmptyState } from "./empty-state"
 
 interface UserPortfolioProps {
   className?: string
@@ -312,11 +313,12 @@ export const UserPortfolio: React.FC<UserPortfolioProps> = ({ className, onRefre
         </CardHeader>
         <CardContent className="p-0">
           {userPortfolio.length === 0 ? (
-            <div className="text-center py-8 text-cream/60 px-6">
-              <PieChart className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p>No holdings yet</p>
-              <p className="text-xs mt-1">Start trading to build your portfolio</p>
-            </div>
+            <EmptyState
+              size="sm"
+              icon={PieChart}
+              title="No holdings yet"
+              description="Start trading to build your portfolio"
+            />
           ) : (
             <ScrollArea className="h-[400px]">
               <div className="px-1">
@@ -423,10 +425,7 @@ export const UserPortfolio: React.FC<UserPortfolioProps> = ({ className, onRefre
         </CardHeader>
         <CardContent className="p-0">
           {recentTransactions.length === 0 ? (
-            <div className="text-center py-6 text-cream/60 px-6">
-              <Clock className="h-6 w-6 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">No transactions yet</p>
-            </div>
+            <EmptyState size="sm" icon={Clock} title="No transactions yet" />
           ) : (
             <ScrollArea className="h-[200px]">
               <div className="space-y-2 px-3 pb-2">

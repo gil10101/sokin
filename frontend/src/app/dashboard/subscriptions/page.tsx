@@ -50,6 +50,7 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { MotionContainer } from "@/components/ui/motion-container"
 import { subscriptionsAPI } from "@/lib/api"
 import { useCurrency } from "@/hooks/use-currency"
+import { EmptyState } from "@/components/dashboard/empty-state"
 
 // Define subscription interface
 interface Subscription {
@@ -776,17 +777,19 @@ export default function SubscriptionsPage(props: SubscriptionsPageProps) {
                 <LoadingSpinner size="lg" />
               </div>
             ) : filteredSubscriptions.length === 0 ? (
-              <div className="text-center py-8 sm:py-12">
-                <p className="text-cream/60 mb-4 text-sm sm:text-base">No subscriptions found</p>
-                <Button
-                  onClick={() => setOpenDialog(true)}
-                  variant="outline"
-                  className="bg-transparent border-cream/10 text-cream hover:bg-cream/10 w-full sm:w-auto"
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Your First Subscription
-                </Button>
-              </div>
+              <EmptyState
+                title="No subscriptions found"
+                action={
+                  <Button
+                    onClick={() => setOpenDialog(true)}
+                    variant="outline"
+                    className="bg-transparent border-cream/10 text-cream hover:bg-cream/10 w-full sm:w-auto"
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Your First Subscription
+                  </Button>
+                }
+              />
             ) : (
               <div className="space-y-4">
                 <div className="hidden md:grid grid-cols-12 gap-4 border-b border-cream/10 pb-2">
@@ -976,7 +979,7 @@ export default function SubscriptionsPage(props: SubscriptionsPageProps) {
                                 </div>
                               </div>
                             ) : (
-                              <p className="text-xs sm:text-sm text-cream/60">No projected payments available</p>
+                              <EmptyState size="sm" title="No projected payments available" />
                             )}
                           </div>
                         </div>

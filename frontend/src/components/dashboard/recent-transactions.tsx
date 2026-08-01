@@ -7,6 +7,7 @@ import { format } from "date-fns"
 import { expensesAPI } from "@/lib/api"
 import { logger } from "@/lib/logger"
 import { useCurrency } from "@/hooks/use-currency"
+import { EmptyState } from "./empty-state"
 
 // Helper function to safely parse dates
 const safeParseDate = (dateValue: string | number | Date | null | undefined): Date => {
@@ -134,12 +135,10 @@ export function RecentTransactions({ expenses: parentExpenses }: RecentTransacti
 
   if (transactions.length === 0) {
     return (
-      <div className="flex items-center justify-center py-8">
-        <div className="text-center">
-          <div className="text-cream/60 mb-2">No recent transactions</div>
-          <div className="text-sm text-cream/40">Add some expenses to see them here</div>
-        </div>
-      </div>
+      <EmptyState
+        title="No recent transactions"
+        description="Add some expenses to see them here"
+      />
     )
   }
 

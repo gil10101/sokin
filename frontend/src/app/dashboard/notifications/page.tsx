@@ -11,6 +11,7 @@ import { MotionDiv, AnimatePresence } from "@/components/ui/dynamic-motion"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { EmptyState } from "@/components/dashboard/empty-state"
 
 interface NotificationsPageProps {
   params?: Promise<Record<string, string>>;
@@ -182,9 +183,7 @@ export default function NotificationsPage(props: NotificationsPageProps) {
                     <LoadingSpinner size="lg" />
                   </div>
                 ) : (
-                  <div className="text-center py-12">
-                    <p className="text-cream/60 mb-4">No notifications found</p>
-                  </div>
+                  <EmptyState title="No notifications found" />
                 )}
               </AnimatePresence>
             </TabsContent>

@@ -29,6 +29,7 @@ import {
   formatPercent,
   formatVolume
 } from "@/lib/stock-api"
+import { EmptyState } from "@/components/dashboard/empty-state"
 
 // Simple sparkline component
 const Sparkline: React.FC<{ data: number[]; positive: boolean }> = ({ data, positive }) => {
@@ -750,10 +751,11 @@ export default function StocksPage(props: StocksPageProps) {
                   </div>
 
                   {filteredStocks.length === 0 && (
-                    <div className="text-center py-8 text-cream/60">
-                      <Activity className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p>No stocks found for this criteria</p>
-                    </div>
+                    <EmptyState
+                      size="sm"
+                      icon={Activity}
+                      title="No stocks found for this criteria"
+                    />
                   )}
                 </CardContent>
               </Card>
@@ -970,10 +972,11 @@ export default function StocksPage(props: StocksPageProps) {
                     </div>
 
                     {filteredStocks.length === 0 && (
-                      <div className="text-center py-8 text-cream/60">
-                        <Activity className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                        <p>No stocks found for this criteria</p>
-                      </div>
+                      <EmptyState
+                        size="sm"
+                        icon={Activity}
+                        title="No stocks found for this criteria"
+                      />
                     )}
                   </CardContent>
                 </Card>
@@ -982,10 +985,11 @@ export default function StocksPage(props: StocksPageProps) {
               {/* Mobile/Tablet Card View */}
               <div className="lg:hidden space-y-3">
                 {filteredStocks.length === 0 ? (
-                  <div className="text-center py-8 text-cream/60">
-                    <Activity className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p>No stocks found for this criteria</p>
-                  </div>
+                  <EmptyState
+                    size="sm"
+                    icon={Activity}
+                    title="No stocks found for this criteria"
+                  />
                 ) : (
                   filteredStocks.map((stock) => (
                     <MobileStockCard

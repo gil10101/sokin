@@ -31,6 +31,7 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner"
 // Import the useNotifications hook
 import { useNotifications } from "@/contexts/notifications-context"
 import { useCurrency } from "@/hooks/use-currency"
+import { EmptyState } from "@/components/dashboard/empty-state"
 
 interface Expense {
   id: string
@@ -423,20 +424,23 @@ export default function ExpensesPage(props: ExpensesPageProps) {
                 ))}
               </div>
             ) : filteredExpenses.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-cream/60">No expenses found</p>
-                {searchQuery || categoryFilter !== "all" ? (
-                  <p className="text-cream/40 text-sm mt-2">Try adjusting your filters</p>
-                ) : (
-                  <Button
-                    onClick={() => router.push("/dashboard/add-expense")}
-                    variant="link"
-                    className="text-cream mt-4"
-                  >
-                    Add your first expense
-                  </Button>
-                )}
-              </div>
+              <EmptyState
+                title="No expenses found"
+                description={
+                  searchQuery || categoryFilter !== "all" ? "Try adjusting your filters" : undefined
+                }
+                action={
+                  searchQuery || categoryFilter !== "all" ? undefined : (
+                    <Button
+                      onClick={() => router.push("/dashboard/add-expense")}
+                      variant="link"
+                      className="text-cream"
+                    >
+                      Add your first expense
+                    </Button>
+                  )
+                }
+              />
             ) : (
               <>
                 {/* Mobile Card Layout */}

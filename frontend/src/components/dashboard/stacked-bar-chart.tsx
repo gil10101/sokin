@@ -11,6 +11,7 @@ import { useAuth } from "@/contexts/auth-context"
 import { useViewport } from "@/hooks/use-mobile"
 import { format, subMonths, startOfMonth, endOfMonth, eachMonthOfInterval } from "date-fns"
 import { useCurrency } from "@/hooks/use-currency"
+import { EmptyState } from "./empty-state"
 
 // Helper function to safely parse dates including Firebase Timestamps
 const safeParseDate = (dateValue: string | number | Date | { toDate(): Date } | null | undefined): Date => {
@@ -211,12 +212,12 @@ export function StackedBarChart({ timeframe = "year" }: StackedBarChartProps) {
 
   if (chartData.length === 0 || categories.length === 0) {
     return (
-      <div className="h-full flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-cream/60 mb-1 text-sm">No data available</div>
-          <div className="text-xs text-cream/40">Add expenses to see breakdown</div>
-        </div>
-      </div>
+      <EmptyState
+        className="h-full"
+        size="sm"
+        title="No data available"
+        description="Add expenses to see breakdown"
+      />
     )
   }
 
@@ -227,12 +228,12 @@ export function StackedBarChart({ timeframe = "year" }: StackedBarChartProps) {
 
   if (!hasData) {
     return (
-      <div className="h-full flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-cream/60 mb-1 text-sm">No data for period</div>
-          <div className="text-xs text-cream/40">Add expenses to view</div>
-        </div>
-      </div>
+      <EmptyState
+        className="h-full"
+        size="sm"
+        title="No data for period"
+        description="Add expenses to view"
+      />
     )
   }
 

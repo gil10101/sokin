@@ -26,6 +26,7 @@ import { useAuth } from '@/contexts/auth-context'
 import { api } from '@/lib/api'
 import { NetWorthTrend } from '@/lib/types'
 import { useCurrency } from "@/hooks/use-currency"
+import { EmptyState } from "./empty-state"
 
 /**
  * Renders the user's recorded net worth history.
@@ -205,14 +206,12 @@ export function NetWorthTrends() {
     return (
       <Card className="bg-cream/5 border-cream/10">
         <CardContent className="p-6">
-          <div className="h-96 flex flex-col items-center justify-center text-center">
-            <LineChartIcon className="h-10 w-10 text-cream/30 mb-3" />
-            <p className="text-cream font-medium">No history recorded yet</p>
-            <p className="text-sm text-cream/60 mt-1 max-w-sm">
-              Sokin saves a snapshot of your net worth each month as you update your assets and
-              liabilities. Your first snapshot appears here once you add one.
-            </p>
-          </div>
+          <EmptyState
+            height={384}
+            icon={LineChartIcon}
+            title="No history recorded yet"
+            description="Sokin saves a snapshot of your net worth each month as you update your assets and liabilities. Your first snapshot appears here once you add one."
+          />
         </CardContent>
       </Card>
     )

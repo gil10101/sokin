@@ -60,6 +60,7 @@ import { MotionDiv, MotionMain, MotionSection, AnimatePresence } from "@/compone
 import { cn } from "@/lib/utils"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useCurrency } from "@/hooks/use-currency"
+import { EmptyState } from "@/components/dashboard/empty-state"
 
 interface SavingsGoal {
   id: string
@@ -775,31 +776,30 @@ export default function GoalsPage(props: GoalsPageProps) {
 
         {/* Empty State */}
         {filteredAndSortedGoals.length === 0 && (
-          <div className="text-center py-16">
-            <div className="max-w-md mx-auto">
-              <Target className="h-16 w-16 text-cream/40 mx-auto mb-6" />
-              <h3 className="text-xl font-medium mb-3 text-cream/70">
-                {activeTab === 'completed' 
-                  ? filterBy === 'all' 
-                    ? 'No completed goals yet' 
-                    : `No completed ${categories.find(c => c.value === filterBy)?.label.toLowerCase()} goals yet`
-                  : filterBy === 'all'
-                    ? 'No active goals yet'
-                    : `No active ${categories.find(c => c.value === filterBy)?.label.toLowerCase()} goals yet`
-                }
-              </h3>
-              <p className="text-cream/50 mb-8 leading-relaxed">
-                {activeTab === 'completed' 
-                  ? filterBy === 'all'
-                    ? 'Complete your first goal to see it here!'
-                    : `Complete your first ${categories.find(c => c.value === filterBy)?.label.toLowerCase()} goal to see it here!`
-                  : filterBy === 'all'
-                    ? 'Create your first savings goal to start building wealth and tracking your financial progress.'
-                    : `Create your first ${categories.find(c => c.value === filterBy)?.label.toLowerCase()} goal to start building toward this important milestone.`
-                }
-              </p>
-              {activeTab === 'active' && (
-                <Button 
+          <EmptyState
+            size="lg"
+            icon={Target}
+            title={
+              activeTab === 'completed'
+                ? filterBy === 'all'
+                  ? 'No completed goals yet'
+                  : `No completed ${categories.find(c => c.value === filterBy)?.label.toLowerCase()} goals yet`
+                : filterBy === 'all'
+                  ? 'No active goals yet'
+                  : `No active ${categories.find(c => c.value === filterBy)?.label.toLowerCase()} goals yet`
+            }
+            description={
+              activeTab === 'completed'
+                ? filterBy === 'all'
+                  ? 'Complete your first goal to see it here!'
+                  : `Complete your first ${categories.find(c => c.value === filterBy)?.label.toLowerCase()} goal to see it here!`
+                : filterBy === 'all'
+                  ? 'Create your first savings goal to start building wealth and tracking your financial progress.'
+                  : `Create your first ${categories.find(c => c.value === filterBy)?.label.toLowerCase()} goal to start building toward this important milestone.`
+            }
+            action={
+              activeTab === 'active' ? (
+                <Button
                   onClick={() => {
                     setEditingGoal(null)
                     resetForm()
@@ -812,14 +812,14 @@ export default function GoalsPage(props: GoalsPageProps) {
                   className="bg-cream/10 hover:bg-cream/20 text-cream/80 border-cream/20 h-11 px-6"
                 >
                   <Plus className="mr-2 h-4 w-4" />
-                  {filterBy === 'all' 
-                    ? 'Create Your First Goal' 
+                  {filterBy === 'all'
+                    ? 'Create Your First Goal'
                     : `Create ${categories.find(c => c.value === filterBy)?.label} Goal`
                   }
                 </Button>
-              )}
-            </div>
-          </div>
+              ) : undefined
+            }
+          />
         )}
 
         {/* Create/Edit Goal Dialog */}
@@ -1096,11 +1096,11 @@ export default function GoalsPage(props: GoalsPageProps) {
                         ))}
                     </div>
                   ) : (
-                    <div className="text-center py-8 text-cream/50">
-                      <DollarSign className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                      <p>No contributions yet</p>
-                      <p className="text-sm mt-1">Start adding money to this goal to see your progress!</p>
-                    </div>
+                    <EmptyState
+                      icon={DollarSign}
+                      title="No contributions yet"
+                      description="Start adding money to this goal to see your progress!"
+                    />
                   )}
                 </div>
 

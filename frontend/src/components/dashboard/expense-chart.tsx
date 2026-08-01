@@ -13,6 +13,7 @@ import { safeParseDate } from "@/types/firebase"
 import { logger } from "@/lib/logger"
 import { useExpensesData } from "@/hooks/use-expenses-data"
 import { useCurrency } from "@/hooks/use-currency"
+import { EmptyState } from "./empty-state"
 
 interface Expense {
   id: string
@@ -151,12 +152,11 @@ export function ExpenseChart({ timeframe = "30days" }: ExpenseChartProps) {
 
   if (chartData.length === 0) {
     return (
-      <div className={`${isMobile ? 'h-[280px]' : 'h-[400px]'} flex items-center justify-center`}>
-        <div className="text-center">
-          <div className="text-cream/60 mb-2">No expense data available</div>
-          <div className="text-sm text-cream/40">Add some expenses to see spending trends</div>
-        </div>
-      </div>
+      <EmptyState
+        height={isMobile ? 280 : 400}
+        title="No expense data available"
+        description="Add some expenses to see spending trends"
+      />
     )
   }
 

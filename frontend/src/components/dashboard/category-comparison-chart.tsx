@@ -8,6 +8,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { MotionDiv } from "@/components/ui/dynamic-motion"
 import { useViewport } from "@/hooks/use-mobile"
 import { useCurrency } from "@/hooks/use-currency"
+import { EmptyState } from "./empty-state"
 
 interface CategoryComparisonChartProps {
   data: Array<{ category: string; amount: number }>
@@ -82,12 +83,12 @@ export function CategoryComparisonChart({ data }: CategoryComparisonChartProps) 
 
   if (!data || data.length === 0) {
     return (
-      <div className="flex items-center justify-center h-64 text-cream/50">
-        <div className="text-center">
-          <BarChart3 className="h-8 w-8 mx-auto mb-2 opacity-40" />
-          <p className="text-sm">No category data available</p>
-        </div>
-      </div>
+      <EmptyState
+        className="h-64"
+        size="sm"
+        icon={BarChart3}
+        title="No category data available"
+      />
     )
   }
 

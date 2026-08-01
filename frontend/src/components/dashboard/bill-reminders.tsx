@@ -49,6 +49,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/auth-context'
 import { useToast } from '@/hooks/use-toast'
 import { API } from '@/lib/api'
+import { EmptyState } from "./empty-state"
 
 // Shape returned by the bill reminders API. The lib/api.ts types lag behind the
 // backend schema, which also stores description, reminderDays and autoPayEnabled
@@ -759,13 +760,13 @@ export function BillReminders({
 
         {/* Compact Empty State */}
         {visibleBills.length === 0 && !loading && (
-          <div className="flex-1 flex items-center justify-center text-center py-4">
-            <div>
-              <Bell className="h-6 w-6 text-cream/40 mx-auto mb-2" />
-              <p className="text-xs text-cream/60 mb-2">
-                {filterStatus === 'all' ? "No bills yet" : `No ${filterStatus} bills`}
-              </p>
-              {filterStatus === 'all' && !hideInternalAddButton && (
+          <EmptyState
+            className="flex-1"
+            size="sm"
+            icon={Bell}
+            title={filterStatus === 'all' ? "No bills yet" : `No ${filterStatus} bills`}
+            action={
+              filterStatus === 'all' && !hideInternalAddButton ? (
                 <Button
                   onClick={() => setShowCreateBill(true)}
                   className="bg-cream/10 hover:bg-cream/20 text-cream/80 border-cream/20 px-3 py-1 text-xs h-auto"
@@ -773,9 +774,9 @@ export function BillReminders({
                   <Plus className="mr-1 h-3 w-3" />
                   Add Bill
                 </Button>
-              )}
-            </div>
-          </div>
+              ) : undefined
+            }
+          />
         )}
       </div>
 

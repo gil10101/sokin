@@ -26,6 +26,7 @@ const safeParseDate = (dateValue: unknown): Date => {
 }
 
 import type { Budget } from "@/lib/api"
+import { EmptyState } from "./empty-state"
 
 
 interface BudgetProgressData {
@@ -214,13 +215,13 @@ export function BudgetProgressChart({ selectedMonth }: BudgetProgressChartProps)
 
   if (chartData.length === 0) {
     return (
-      <div className="flex items-center justify-center h-64 text-cream/50">
-        <div className="text-center">
-          <BarChart3 className="h-8 w-8 mx-auto mb-2 opacity-40" />
-          <p className="text-sm">No budget data available</p>
-          <p className="text-xs opacity-75 mt-1">Set up budgets to track your progress</p>
-        </div>
-      </div>
+      <EmptyState
+        className="h-64"
+        size="sm"
+        icon={BarChart3}
+        title="No budget data available"
+        description="Set up budgets to track your progress"
+      />
     )
   }
 

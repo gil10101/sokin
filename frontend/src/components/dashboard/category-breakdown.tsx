@@ -14,6 +14,7 @@ import React from "react"
 import { safeParseDate } from "@/types/firebase"
 import { logger } from "@/lib/logger"
 import { useCurrency } from "@/hooks/use-currency"
+import { EmptyState } from "./empty-state"
 
 // Define transaction type
 interface Transaction {
@@ -271,12 +272,11 @@ export function CategoryBreakdown() {
 
   if (categoryData.length === 0) {
     return (
-      <div className="min-h-[400px] sm:h-[300px] flex items-center justify-center px-4">
-        <div className="text-center">
-          <div className="text-cream/60 mb-2 text-sm sm:text-base">No expense data available</div>
-          <div className="text-xs sm:text-sm text-cream/40">Add some expenses to see category breakdown</div>
-        </div>
-      </div>
+      <EmptyState
+        className="min-h-[400px] sm:min-h-[300px]"
+        title="No expense data available"
+        description="Add some expenses to see category breakdown"
+      />
     )
   }
 

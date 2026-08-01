@@ -19,6 +19,7 @@ import {
   formatChange, 
   formatPercent 
 } from "@/lib/stock-api"
+import { EmptyState } from "./empty-state"
 
 // Simple sparkline component
 const Sparkline: React.FC<{ data: number[]; positive: boolean }> = ({ data, positive }) => {
@@ -387,10 +388,7 @@ export function StockMarket({ compact = false }: StockMarketProps) {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-6 text-cream/60">
-                <Activity className="h-6 w-6 mx-auto mb-2 opacity-50" />
-                <p className="text-xs">No market data available</p>
-              </div>
+              <EmptyState size="sm" icon={Activity} title="No market data available" />
             )}
 
             {/* Sign in prompt if not authenticated */}
@@ -480,10 +478,7 @@ export function StockMarket({ compact = false }: StockMarketProps) {
             ))}
             </div>
           ) : (
-            <div className="text-center py-8 text-cream/60">
-              <Activity className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">No market data available</p>
-            </div>
+            <EmptyState size="sm" icon={Activity} title="No market data available" />
           )}
         </CardContent>
       </Card>

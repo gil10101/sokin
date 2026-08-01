@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react"
 import { ChartError } from "./chart-error"
+import { EmptyState } from "./empty-state"
 import { useAuth } from "@/contexts/auth-context"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell, ResponsiveContainer, LabelList } from "recharts"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
@@ -226,7 +227,7 @@ export function BudgetProgressCard({ refreshTrigger }: BudgetProgressCardProps) 
 
   if (error) {
     return (
-      <div className="h-[300px] flex flex-col items-center justify-center">
+      <div className="h-[300px] flex flex-col items-center justify-center text-center px-4">
         <p className="text-red-400 text-lg mb-4">{error}</p>
         <p className="text-cream/40 text-sm">Please try again later</p>
       </div>
@@ -235,10 +236,11 @@ export function BudgetProgressCard({ refreshTrigger }: BudgetProgressCardProps) 
 
   if (data.length === 0) {
     return (
-      <div className="h-[300px] flex flex-col items-center justify-center">
-        <p className="text-cream/60 text-lg mb-4">No budget data available</p>
-        <p className="text-cream/40 text-sm">Create budgets to track your spending progress</p>
-      </div>
+      <EmptyState
+        height={300}
+        title="No budget data available"
+        description="Create budgets to track your spending progress"
+      />
     )
   }
 

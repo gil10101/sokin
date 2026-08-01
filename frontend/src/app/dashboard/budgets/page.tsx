@@ -56,6 +56,7 @@ const DEFAULT_CATEGORIES = [
 
 import type { Budget, Expense, BudgetPeriod } from "@/lib/api"
 import { useCurrency } from "@/hooks/use-currency"
+import { EmptyState } from "@/components/dashboard/empty-state"
 
 interface BudgetFormData {
   amount: string
@@ -470,29 +471,31 @@ export default function BudgetsPage(props: BudgetsPageProps) {
                     ))}
                   </div>
                 ) : filteredBudgets.length === 0 ? (
-                  <div className="text-center py-8 sm:py-12">
-                    <AlertCircle className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-cream/40 mb-4" />
-                    <h3 className="text-base sm:text-lg font-medium mb-2">No budgets found</h3>
-                    <p className="text-cream/60 mb-4 sm:mb-6 text-sm sm:text-base px-4">
-                      {activeTab === "all"
+                  <EmptyState
+                    icon={AlertCircle}
+                    title="No budgets found"
+                    description={
+                      activeTab === "all"
                         ? "You haven't created any budgets yet."
-                        : `You don't have any ${activeTab} budgets.`}
-                    </p>
-                    <Button
-                      onClick={() => {
-                        resetForm()
-                        if (activeTab !== "all") {
-                          setFormData((prev) => ({ ...prev, period: activeTab as BudgetPeriod }))
-                        }
-                        setOpenDialog(true)
-                      }}
-                      variant="outline"
-                      className="w-full sm:w-auto"
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Create a Budget
-                    </Button>
-                  </div>
+                        : `You don't have any ${activeTab} budgets.`
+                    }
+                    action={
+                      <Button
+                        onClick={() => {
+                          resetForm()
+                          if (activeTab !== "all") {
+                            setFormData((prev) => ({ ...prev, period: activeTab as BudgetPeriod }))
+                          }
+                          setOpenDialog(true)
+                        }}
+                        variant="outline"
+                        className="w-full sm:w-auto"
+                      >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Create a Budget
+                      </Button>
+                    }
+                  />
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                     {filteredBudgets.map((budget) => (

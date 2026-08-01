@@ -22,6 +22,7 @@ interface AdvancedAnalyticsProps {
 
 import type { Budget } from "@/lib/api"
 import { useCurrency } from "@/hooks/use-currency"
+import { EmptyState } from "./empty-state"
 
 interface Expense {
   id: string
@@ -280,12 +281,11 @@ export function AdvancedAnalytics({ budgets, timeframe = "6months" }: AdvancedAn
             </CardHeader>
             <CardContent className="pb-6">
               {categoryComparisonData.length === 0 ? (
-                <div className="h-96 flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="text-cream/60 mb-1 text-sm">No category data available</div>
-                    <div className="text-xs text-cream/40">Add expenses to see breakdown</div>
-                  </div>
-                </div>
+                <EmptyState
+                  className="h-96"
+                  title="No category data available"
+                  description="Add expenses to see breakdown"
+                />
               ) : (
                 <CategoryComparisonChart data={categoryComparisonData} />
               )}
