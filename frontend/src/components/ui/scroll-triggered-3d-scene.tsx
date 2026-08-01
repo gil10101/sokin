@@ -132,10 +132,14 @@ function ScrollTriggered3DScene() {
       trigger: "#features",
       start: "top center",
       end: "bottom center",
+      // The carousel panel is vertically centred in the viewport, but this
+      // element's box is anchored at top:65%, so an offset of -21% of its own
+      // height is what lands the object on the panel's centre line rather than
+      // below it. x:31% puts it on the centre of the empty right-hand column.
       onEnter: () => {
         animateToPosition({
-          x: "25%",
-          y: "-5%",
+          x: "31%",
+          y: "-21%",
           scale: 0.6,
           rotation: -10,
           opacity: 0.7
@@ -143,8 +147,8 @@ function ScrollTriggered3DScene() {
       },
       onEnterBack: () => {
         animateToPosition({
-          x: "25%",
-          y: "-5%",
+          x: "31%",
+          y: "-21%",
           scale: 0.6,
           rotation: -10,
           opacity: 0.7
@@ -177,13 +181,22 @@ function ScrollTriggered3DScene() {
       }
     })
 
-    // Footer section animation - dramatic close-up effect (triggers at end of contact section)
-    const contactElement = document.getElementById("contact")
-    
+    // Footer section animation - dramatic close-up effect.
+    //
+    // This has to hang off the footer, not off the bottom of #contact. The
+    // contact section is the last full-height block on the page and the footer
+    // below it is only ~120px tall, so "#contact bottom 80%" resolves to a
+    // scroll position past the end of the document - the page physically
+    // cannot scroll far enough to reach it and the trigger never fired. The
+    // object was left parked in its contact pose, which is the "random spot"
+    // it was ending up in.
+    //
+    // "#footer top bottom" fires the moment the footer edges into view, which
+    // is always reachable however short the footer is.
     const footerTrigger = ScrollTrigger.create({
-      trigger: "#contact",
-      start: "bottom 80%",
-      end: "bottom 20%",
+      trigger: "#footer",
+      start: "top bottom",
+      end: "bottom top",
       onEnter: () => {
         animateToPosition({
           x: "0%",
