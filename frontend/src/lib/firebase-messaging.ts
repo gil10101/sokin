@@ -1,4 +1,4 @@
-import { getMessaging, getToken, onMessage, Messaging } from 'firebase/messaging';
+import { getMessaging, getToken, onMessage, isSupported, Messaging } from 'firebase/messaging';
 import { auth } from './firebase';
 import { logger } from './logger';
 
@@ -33,38 +33,71 @@ interface FirebaseMessagePayload {
 
 // Initialize Firebase messaging only on client side
 let messaging: Messaging | null = null;
+let messagingInstance: Promise<Messaging | null> | null = null;
 
-const initializeMessagingInstance = () => {
-  if (typeof window !== 'undefined' && !messaging) {
-    try {
+/**
+ * Resolves the messaging instance, or null on a browser that cannot do push.
+ *
+ * `getMessaging()` looks synchronous but runs its own support check as a
+ * floating promise and throws from inside it, so a try/catch around the call
+ * catches nothing - the failure arrives later as an unhandled rejection. On
+ * iOS Safari that is guaranteed rather than occasional, and it reached Sentry
+ * as an unhandled error on every page load for a signed-in visitor. Asking
+ * `isSupported()` first is the guard Firebase documents for exactly this, and
+ * it turns an unsupported browser into a null rather than a crash report.
+ *
+ * The promise is memoised, including a null result: a browser that cannot do
+ * push will not start being able to mid-session, and re-asking would re-run
+ * the IndexedDB probe on every call.
+ */
+const getMessagingInstance = async (): Promise<Messaging | null> => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  if (!messagingInstance) {
+    messagingInstance = (async () => {
       // Check if Firebase is properly initialized
       if (!auth || !auth.app) {
         logger.error('Firebase not properly initialized for messaging');
         return null;
       }
 
-      messaging = getMessaging(auth.app);
-    } catch (error: unknown) {
-      // Failed to initialize Firebase messaging - push notifications unavailable
-      logger.error('Failed to initialize Firebase messaging', { error: error instanceof Error ? error.message : 'Unknown error' });
-      messaging = null;
-    }
+      // Not an error: a browser without the push APIs is a supported visitor,
+      // not a fault, so this must not open an issue in the error tracker.
+      if (!(await isSupported())) {
+        logger.info('Push messaging is not supported in this browser');
+        return null;
+      }
+
+      try {
+        messaging = getMessaging(auth.app);
+        return messaging;
+      } catch (error: unknown) {
+        // Failed to initialize Firebase messaging - push notifications unavailable
+        logger.error('Failed to initialize Firebase messaging', { error: error instanceof Error ? error.message : 'Unknown error' });
+        return null;
+      }
+    })();
   }
-  return messaging;
+
+  return messagingInstance;
 };
 
 // Request notification permission and get FCM token
 export const requestNotificationPermission = async (): Promise<string | null> => {
   try {
-    // Check if we're in a browser environment
+    // Check if we're in a browser environment. Absence of the Notification API
+    // is a property of the browser, not a fault, so it is logged at info -
+    // warn and above are forwarded to the error tracker.
     if (typeof window === 'undefined' || !('Notification' in window)) {
-      logger.warn('Notifications not supported in this environment');
+      logger.info('Notifications not supported in this environment');
       return null;
     }
 
-    const messagingInstance = initializeMessagingInstance();
-    if (!messagingInstance) {
-      logger.warn('Firebase messaging not available');
+    const instance = await getMessagingInstance();
+    if (!instance) {
+      logger.info('Firebase messaging not available');
       return null;
     }
 
@@ -75,7 +108,7 @@ export const requestNotificationPermission = async (): Promise<string | null> =>
       logger.info('Notification permission granted');
       
       // Get FCM token
-      const token = await getToken(messagingInstance, {
+      const token = await getToken(instance, {
         vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY
       });
       
@@ -115,13 +148,13 @@ const registerFCMToken = async (token: string) => {
 };
 
 // Handle foreground messages
-export const setupForegroundMessageListener = (callback: (payload: FirebaseMessagePayload) => void) => {
-  const messagingInstance = initializeMessagingInstance();
-  if (!messagingInstance) {
+export const setupForegroundMessageListener = async (callback: (payload: FirebaseMessagePayload) => void) => {
+  const instance = await getMessagingInstance();
+  if (!instance) {
     return () => {}; // Return empty cleanup function
   }
-  
-  return onMessage(messagingInstance, (payload) => {
+
+  return onMessage(instance, (payload) => {
 
     callback(payload);
   });
@@ -166,14 +199,15 @@ export const initializeMessaging = async () => {
       await requestNotificationPermission();
 
       // Setup foreground message listener
-      setupForegroundMessageListener(showForegroundNotification);
+      await setupForegroundMessageListener(showForegroundNotification);
 
     } catch (error: unknown) {
       // Failed to initialize Firebase messaging service - push notifications unavailable
       logger.error('Failed to initialize messaging service', { error: error instanceof Error ? error.message : 'Unknown error' });
     }
   } else {
-    // Service Worker not supported in this browser
-    logger.warn('Service Worker not supported in this browser');
+    // A browser without service workers cannot receive push at all. That is a
+    // capability of the browser, not a failure, so it stays out of the tracker.
+    logger.info('Service Worker not supported in this browser');
   }
 }; 

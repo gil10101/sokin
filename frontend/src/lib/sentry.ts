@@ -3,7 +3,7 @@
  */
 
 // Initialize Sentry with default functions
-let captureException: (error: Error) => void = (error: Error) => {
+let captureException: (error: Error, context?: Record<string, unknown>) => void = (error: Error) => {
   // Error not logged to console
 };
 
@@ -53,9 +53,12 @@ if (isValidDSN && isReportingEnvironment) {
         const originalCaptureException = captureException;
         const originalCaptureMessage = captureMessage;
 
-        captureException = (error: Error) => {
+        captureException = (error: Error, context?: Record<string, unknown>) => {
           try {
-            Sentry.captureException(error);
+            // The context is the only thing that identifies which call site
+            // failed and for which user. Dropping it - which this did - left
+            // every issue in the stream with a title and nothing to act on.
+            Sentry.captureException(error, context ? { extra: context } : undefined);
           } catch (e) {
             // Sentry capture failed, error not logged to console
           }
@@ -118,7 +121,7 @@ export { captureException };
  * Capture an error with additional context
  */
 export function captureError(error: Error, context?: Record<string, unknown>) {
-    captureException(error);
+    captureException(error, context);
 }
 
 /**
