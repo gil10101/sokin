@@ -4,7 +4,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { useEffect, useState, useRef } from "react"
 import { ArrowRight, Menu, X, ArrowDown, BarChart3, PieChart, Target, Wallet, TrendingUp, CalendarClock, LineChart, Sparkles } from "lucide-react"
-import { motion } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
 import { useAuth } from "@/contexts/auth-context"
 import dynamic from "next/dynamic"
 
@@ -184,38 +184,54 @@ export default function LandingPage() {
   }
 
   /**
-   * Which feature is expanded is driven by scroll position, not a timer.
+   * The carousel index is a pure function of scroll position within the
+   * section's track, not a timer and not an observer.
    *
-   * A section that advances on its own moves the thing you are reading out
-   * from under you, and it makes the section's state independent of where the
-   * page actually is. Each row reports when it enters a narrow band around the
-   * middle of the viewport, and the last one to enter wins - so scrolling is
-   * the only thing that changes the selection.
+   * The track is taller than the viewport and holds a sticky panel; how far the
+   * track has travelled past the top of the screen maps directly to an index.
+   * Because the panel is sticky and fixed-height, advancing never changes the
+   * document's layout - so reading scroll position can't perturb the thing that
+   * produced it.
    */
-  const featureRefs = useRef<Array<HTMLDivElement | null>>([])
+  const featuresTrackRef = useRef<HTMLElement | null>(null)
 
   useEffect(() => {
-    const rows = featureRefs.current.filter(Boolean) as HTMLDivElement[]
-    if (rows.length === 0) return
+    const track = featuresTrackRef.current
+    if (!track) return
 
-    // A focus band roughly a third of the way down. Negative top/bottom margins
-    // shrink the observer's viewport to that strip, so a row only counts as
-    // active while it is crossing it.
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (!entry.isIntersecting) continue
-          const index = rows.indexOf(entry.target as HTMLDivElement)
-          if (index !== -1) setCurrentFeature(index)
-        }
-      },
-      { rootMargin: "-35% 0px -55% 0px", threshold: 0 }
-    )
+    let frame = 0
+    const update = () => {
+      frame = 0
+      const rect = track.getBoundingClientRect()
+      const scrollable = rect.height - window.innerHeight
+      if (scrollable <= 0) return
 
-    rows.forEach((row) => observer.observe(row))
-    return () => observer.disconnect()
+      // 0 when the track's top hits the top of the viewport, 1 when its bottom does.
+      const progress = Math.min(Math.max(-rect.top / scrollable, 0), 1)
+      const index = Math.min(
+        coreFeatures.length - 1,
+        Math.floor(progress * coreFeatures.length)
+      )
+      setCurrentFeature((prev) => (prev === index ? prev : index))
+    }
+
+    // rAF-coalesced: scroll fires far more often than we need to recompute.
+    const onScroll = () => {
+      if (frame) return
+      frame = requestAnimationFrame(update)
+    }
+
+    update()
+    window.addEventListener("scroll", onScroll, { passive: true })
+    window.addEventListener("resize", onScroll)
+    return () => {
+      window.removeEventListener("scroll", onScroll)
+      window.removeEventListener("resize", onScroll)
+      if (frame) cancelAnimationFrame(frame)
+    }
   }, [])
 
+  const activeFeature = coreFeatures[currentFeature] ?? coreFeatures[0]
 
   return (
     <div className="flex min-h-screen flex-col bg-dark text-cream relative overflow-hidden">
@@ -457,114 +473,92 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section id="features" className={`${isMobile ? 'py-20' : 'py-32'} bg-dark`}>
-          {/*
-            Left-weighted on purpose. During this section the scroll-triggered
-            3D object animates to x: "25%", y: "-5%" - the right half, slightly
-            above centre. The previous layout put its copy exactly there, so the
-            text and the object fought for the same space. Holding the content
-            to the left column turns that overlap into deliberate negative
-            space, and the object becomes the section's right-hand mass instead
-            of an obstruction.
-          */}
-          <div className="container mx-auto px-6 md:px-12 lg:px-16">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
-              <div className="lg:col-span-7 xl:col-span-6">
-                <motion.div
-                  initial={{ opacity: 0, y: isMobile ? 0 : 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: isMobile ? 0.6 : 0.8 }}
-                  className={isMobile ? 'mb-10' : 'mb-16'}
-                >
-                  <p className="text-sm font-roboto-mono text-cream/60 mb-4">02 / Features</p>
-                  <h2 className={`${isMobile ? 'text-3xl' : 'text-4xl lg:text-5xl'} font-medium tracking-tight font-outfit max-w-xl`}>
-                    Built to tell you the truth about your money.
-                  </h2>
-                </motion.div>
+        {/*
+          A scroll-driven vertical carousel.
 
-                <div className="border-t border-cream/10">
-                  {coreFeatures.map((feature, index) => {
-                    const isActive = index === currentFeature
-                    return (
-                      <motion.div
-                        key={feature.title}
-                        ref={(node) => { featureRefs.current[index] = node }}
-                        initial={{ opacity: 0, y: isMobile ? 0 : 16 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true, margin: "-10%" }}
-                        transition={{ duration: 0.5 }}
-                        className="border-b border-cream/10"
-                      >
-                        {/*
-                          A left accent bar and text brightness carry the active
-                          state. Nothing here changes size, so the section's
-                          height is identical whichever row is active.
-                        */}
-                        <div
-                          className={`flex gap-4 sm:gap-5 py-6 pl-4 border-l-2 transition-colors duration-500 ${
-                            isActive ? "border-l-cream/70 bg-cream/[0.03]" : "border-l-transparent"
-                          }`}
+          The section is a tall scroll track wrapping a sticky, viewport-height
+          panel. Scrolling through the track advances the index; the panel never
+          moves or resizes, so there is no reflow to fight - which is what made
+          the previous accordion lurch on mobile.
+
+          No `bg-dark` here, deliberately. Every other section leaves its
+          background transparent so the fixed 3D scene shows through; this
+          section was the only one painting over it, which is why the object
+          disappeared exactly here.
+        */}
+        <section id="features" ref={featuresTrackRef} className="relative">
+          <div style={{ height: `${coreFeatures.length * 55}vh` }}>
+            <div className="sticky top-0 h-screen flex items-center overflow-hidden">
+              <div className="container mx-auto px-6 md:px-12 lg:px-16 w-full">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                  <div className="lg:col-span-6">
+                    <p className="text-sm font-roboto-mono text-cream/60 mb-4">02 / Features</p>
+                    <h2 className={`${isMobile ? 'text-2xl' : 'text-3xl lg:text-4xl'} font-medium tracking-tight font-outfit mb-10 max-w-lg`}>
+                      Built to tell you the truth about your money.
+                    </h2>
+
+                    {/* Fixed-height stage: the panel below swaps content inside it,
+                        so nothing above or below ever shifts. */}
+                    <div className={`relative ${isMobile ? 'h-[270px]' : 'h-[240px]'}`}>
+                      <AnimatePresence mode="wait">
+                        <motion.div
+                          key={activeFeature.id}
+                          initial={{ opacity: 0, y: 24 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -24 }}
+                          transition={{ duration: 0.35, ease: "easeOut" }}
+                          className="absolute inset-0"
                         >
-                          <span
-                            className={`font-roboto-mono text-xs tabular-nums pt-1 transition-colors duration-500 ${
-                              isActive ? "text-cream/80" : "text-cream/30"
-                            }`}
-                          >
-                            {feature.id}
-                          </span>
-
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2.5">
-                              <feature.icon
-                                className={`h-4 w-4 shrink-0 transition-colors duration-500 ${
-                                  isActive ? "text-cream" : "text-cream/45"
-                                }`}
-                              />
-                              <h3
-                                className={`font-outfit tracking-tight transition-colors duration-500 ${
-                                  isMobile ? "text-lg" : "text-xl"
-                                } ${isActive ? "text-cream" : "text-cream/65"}`}
-                              >
-                                {feature.title}
-                              </h3>
-                            </div>
-
-                            <p
-                              className={`mt-2 text-sm leading-relaxed font-outfit max-w-lg transition-colors duration-500 ${
-                                isActive ? "text-cream/75" : "text-cream/45"
-                              }`}
-                            >
-                              {feature.description}
-                            </p>
-
-                            <div className="mt-3 flex flex-wrap gap-2">
-                              {feature.tags.map((tag) => (
-                                <span
-                                  key={tag}
-                                  className={`px-2.5 py-0.5 rounded-full border text-[11px] font-roboto-mono transition-colors duration-500 ${
-                                    isActive
-                                      ? "border-cream/25 text-cream/70"
-                                      : "border-cream/10 text-cream/35"
-                                  }`}
-                                >
-                                  {tag}
-                                </span>
-                              ))}
-                            </div>
+                          <div className="flex items-center gap-3 mb-4">
+                            <span className="font-roboto-mono text-xs tabular-nums text-cream/50">
+                              {activeFeature.id}
+                            </span>
+                            <span className="h-px flex-1 max-w-[40px] bg-cream/20" />
+                            <activeFeature.icon className="h-4 w-4 text-cream/70" />
                           </div>
-                        </div>
-                      </motion.div>
-                    )
-                  })}
+
+                          <h3 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-medium font-outfit tracking-tight mb-3`}>
+                            {activeFeature.title}
+                          </h3>
+                          <p className={`${isMobile ? 'text-sm' : 'text-base'} text-cream/70 font-outfit leading-relaxed max-w-md`}>
+                            {activeFeature.description}
+                          </p>
+                          <div className="mt-5 flex flex-wrap gap-2">
+                            {activeFeature.tags.map((tag) => (
+                              <span
+                                key={tag}
+                                className="px-2.5 py-0.5 rounded-full border border-cream/20 text-cream/60 text-[11px] font-roboto-mono"
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        </motion.div>
+                      </AnimatePresence>
+                    </div>
+
+                    {/* Progress rail - shows position in the set without being a control,
+                        since scroll is what advances it. */}
+                    <div className="mt-8 flex gap-1.5" aria-hidden="true">
+                      {coreFeatures.map((f, i) => (
+                        <span
+                          key={f.id}
+                          className={`h-0.5 flex-1 rounded-full transition-colors duration-300 ${
+                            i === currentFeature ? "bg-cream/70" : "bg-cream/15"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <p className="mt-3 font-roboto-mono text-[11px] text-cream/40">
+                      {String(currentFeature + 1).padStart(2, "0")} / {String(coreFeatures.length).padStart(2, "0")}
+                    </p>
+                  </div>
+
+                  {/* Right column left clear for the 3D object, which the scroll
+                      trigger parks at x:25% during this section. */}
+                  <div className="hidden lg:block lg:col-span-6" aria-hidden="true" />
                 </div>
               </div>
-
-              {/*
-                Intentionally empty at lg and up: this is the column the 3D
-                object occupies once the features trigger fires.
-              */}
-              <div className="hidden lg:block lg:col-span-5 xl:col-span-6" aria-hidden="true" />
             </div>
           </div>
         </section>
