@@ -43,12 +43,18 @@ export const metadata: Metadata = {
   title: "Sokin",
   description: APP_DESCRIPTION,
   manifest: '/manifest.json',
+  // The `?v=2` is a cache-buster, not decoration. Browsers cache a favicon far
+  // more aggressively than a page asset and will keep serving a stale one for
+  // days; the previous icons were broken for exactly that long, so shipping
+  // corrected files at the same URLs would not have reached anyone who had
+  // already loaded the site. Bump it whenever the icons are regenerated.
   icons: {
     icon: [
-      { url: '/favicon.png', sizes: '32x32', type: 'image/png' },
-      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/favicon.png?v=2', sizes: '32x32', type: 'image/png' },
+      { url: '/icon-192.png?v=2', sizes: '192x192', type: 'image/png' },
+      { url: '/icon-512.png?v=2', sizes: '512x512', type: 'image/png' },
     ],
-    apple: '/apple-touch-icon.png',
+    apple: '/apple-touch-icon.png?v=2',
   },
   openGraph: {
     title: "Sokin",
