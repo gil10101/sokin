@@ -1,0 +1,42 @@
+# Dependency updates.
+#
+# There was no config here, and automated security fixes were switched off, so
+# nothing proposed updates on its own - the repo carried 237 advisories that
+# were only ever resolved by hand.
+#
+# Updates are grouped deliberately. Ungrouped, the current backlog would open
+# around forty pull requests at once, which gets ignored and leaves the repo no
+# better off than having no config at all. Minor and patch updates land as one
+# PR per ecosystem; majors are separated out one per package, because those are
+# the ones that need reading (framer-motion 13, tailwind 4, express 5,
+# typescript 7 and eslint 10 are all breaking as of this writing).
+version: 2
+updates:
+  # One entry covers frontend and backend: this is an npm workspace with a
+  # single lockfile at the root, so pointing at "/" is what sees both.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 8
+    groups:
+      non-major:
+        update-types:
+          - minor
+          - patch
+    ignore:
+      # Pinned to the Node version the CI runners and Vercel actually provide.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 4
+    groups:
+      actions:
+        patterns:
+          - "*"

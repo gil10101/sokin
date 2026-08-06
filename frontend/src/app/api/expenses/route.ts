@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-
-const BACKEND_URL = process.env.BACKEND_URL
-
-if (!BACKEND_URL) {
-  throw new Error('BACKEND_URL environment variable is not configured')
-}
+import { getBackendUrl, backendNotConfigured } from '../backend-url'
 
 export async function GET(request: NextRequest) {
   try {
+    const backendUrl = getBackendUrl()
+    if (!backendUrl) {
+      return backendNotConfigured()
+    }
+
     // Get the authorization header
     const authorization = request.headers.get('authorization')
 
@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Forward the request to the Express.js backend
-    const response = await fetch(`${BACKEND_URL}/api/expenses`, {
+    const response = await fetch(`${backendUrl}/api/expenses`, {
       method: 'GET',
       headers: {
         'Authorization': authorization,
@@ -44,6 +44,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const backendUrl = getBackendUrl()
+    if (!backendUrl) {
+      return backendNotConfigured()
+    }
+
     // Get the JSON data from the request
     const body = await request.json()
     
@@ -58,7 +63,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Forward the request to the Express.js backend
-    const response = await fetch(`${BACKEND_URL}/api/expenses`, {
+    const response = await fetch(`${backendUrl}/api/expenses`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-
-const BACKEND_URL = process.env.BACKEND_URL
-
-if (!BACKEND_URL) {
-  throw new Error('BACKEND_URL environment variable is not configured')
-}
+import { getBackendUrl, backendNotConfigured } from '../../backend-url'
 
 export async function POST(request: NextRequest) {
   try {
+    const backendUrl = getBackendUrl()
+    if (!backendUrl) {
+      return backendNotConfigured()
+    }
+
     // Get the form data from the request
     const formData = await request.formData()
     
@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Forward the request to the Express.js backend
-    const response = await fetch(`${BACKEND_URL}/api/receipts/process`, {
+    const response = await fetch(`${backendUrl}/api/receipts/process`, {
       method: 'POST',
       headers: {
         'Authorization': authorization,
