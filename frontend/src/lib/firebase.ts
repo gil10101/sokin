@@ -11,8 +11,38 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 }
 
+/**
+ * Stand-in config used only when prerendering without the real values.
+ *
+ * `getAuth()` runs at module scope, and the root layout pulls this file into
+ * every statically generated page - including framework pages like
+ * /_not-found. With no NEXT_PUBLIC_FIREBASE_API_KEY present it threw
+ * `auth/invalid-api-key` during "Generating static pages" and took the whole
+ * build down, which is why CI could never build the app.
+ *
+ * Substituting a placeholder is safe specifically because this is the *client*
+ * SDK: there is no signed-in user on the server, so a prerender never reads
+ * anything off this instance. Nothing is authenticated against the placeholder
+ * project because nothing is authenticated at all.
+ */
+const PRERENDER_PLACEHOLDER = {
+  apiKey: "AIzaSyPrerenderPlaceholderNotARealKey00",
+  authDomain: "prerender.invalid",
+  projectId: "prerender-placeholder",
+}
+
+/**
+ * In the browser the real config is required, and its absence stays fatal
+ * exactly as before - a silently unauthenticated app would be far worse than a
+ * loud failure. Only the server path falls back, so behaviour where it matters
+ * is unchanged.
+ */
+const isBrowser = typeof window !== "undefined"
+const configForInit =
+  firebaseConfig.apiKey || isBrowser ? firebaseConfig : PRERENDER_PLACEHOLDER
+
 // Initialize Firebase only if it hasn't been initialized already
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0]
+const app = !getApps().length ? initializeApp(configForInit) : getApps()[0]
 const auth = getAuth(app)
 
 /**

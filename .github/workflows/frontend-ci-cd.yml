@@ -38,6 +38,13 @@ jobs:
       - name: Run ESLint
         run: npm run lint --workspace=frontend
 
+      # The suite was never run here. Lint and build both passed on commits
+      # that broke tested behaviour, because nothing executed the tests.
+      - name: Run tests
+        run: npm run test --workspace=frontend
+
+      # Deliberately no env here. The build must not need runtime configuration
+      # to succeed - it used to, and that is exactly what kept this job red.
       - name: Build frontend
         run: npm run build --workspace=frontend
 

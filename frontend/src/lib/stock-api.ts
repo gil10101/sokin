@@ -88,15 +88,25 @@ interface CacheEntry<T> {
 }
 
 export class StockAPI {
-  // Base API URL from env (ensure /api suffix).
-  private static baseUrl = (() => {
+  /**
+   * Base API URL from env (ensure /api suffix).
+   *
+   * A getter rather than a static field. As a field the IIFE ran when the
+   * class was defined, which is module evaluation - so merely importing this
+   * file threw when NEXT_PUBLIC_API_URL was absent, and since the root layout
+   * pulls it into every statically generated page that failed `next build`
+   * during "Generating static pages" rather than at the point of use. Every
+   * read site is `this.baseUrl`, so deferring it to first access changes
+   * nothing at runtime beyond where the error surfaces.
+   */
+  private static get baseUrl(): string {
     const envUrl = process.env.NEXT_PUBLIC_API_URL
     if (!envUrl) {
       throw new Error('NEXT_PUBLIC_API_URL environment variable is not configured')
     }
     // If environment URL doesn't end with /api, add it
     return envUrl.endsWith('/api') ? envUrl : `${envUrl}/api`
-  })()
+  }
 
   private static cache = new Map<string, CacheEntry<StockData | MarketIndex[] | UserPortfolioStock[] | StockData[]>>()
 
