@@ -61,6 +61,13 @@ export function formatCompactCurrency(amount: number, options: CurrencyOptions =
         style: "currency",
         currency: code,
         notation: "compact",
+        // Both bounds, not just the maximum. Given only a maximum, older ICU
+        // pads compact output to it - the same 66000 renders "$66K" on one
+        // runtime and "$66.0K" on another, so the axis labels a visitor saw
+        // depended on their browser's ICU version. Pinning the minimum to 0
+        // makes the output identical everywhere while still showing a decimal
+        // when there is one ("$66.5K").
+        minimumFractionDigits: 0,
         maximumFractionDigits: 1,
       })
     try {
