@@ -34,6 +34,31 @@ const transactionSchema = Joi.object({
 });
 
 /**
+ * The watchlist write routes reached their controllers unvalidated, so the
+ * 50-symbol ceiling in firestore.rules was never enforced on this path - the
+ * backend writes with the Admin SDK, which bypasses rules entirely. A client
+ * could send as many symbols as fit in the 1MB body limit and have them
+ * stored. These schemas restore the ceiling where it is actually applied.
+ */
+const MAX_WATCHLIST_SYMBOLS = 50;
+
+const watchlistSymbolSchema = Joi.string().trim().uppercase().min(1).max(10)
+  .pattern(/^[A-Z0-9.^]+$/)
+  .messages({ 'string.pattern.base': 'Invalid stock symbol format' });
+
+const addToWatchlistSchema = Joi.object({
+  symbol: watchlistSymbolSchema.required()
+});
+
+const updateWatchlistSchema = Joi.object({
+  symbols: Joi.array()
+    .items(watchlistSymbolSchema)
+    .max(MAX_WATCHLIST_SYMBOLS)
+    .required()
+    .messages({ 'array.max': `A watchlist can hold at most ${MAX_WATCHLIST_SYMBOLS} symbols` })
+});
+
+/**
  * Public routes (no authentication required for basic market data)
  */
 
@@ -134,6 +159,7 @@ router.get(
 router.post(
   '/watchlist',
   auth, writeRateLimit,
+  validate(addToWatchlistSchema),
   asyncHandler(stocksController.addToWatchlist)
 );
 
@@ -145,6 +171,7 @@ router.post(
 router.put(
   '/watchlist',
   auth, writeRateLimit,
+  validate(updateWatchlistSchema),
   asyncHandler(stocksController.updateWatchlist)
 );
 

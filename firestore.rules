@@ -96,16 +96,28 @@ service cloud.firestore {
     /**
      * Users collection - User profiles and settings
      * Security: Users can only read/write their own profile
+     *
+     * There is deliberately no separate `allow write` here. Rules are OR-ed,
+     * so a broad `allow write: if isOwner(userId)` alongside the validated
+     * create/update below would satisfy every write on its own and switch the
+     * validation off entirely - the document shape would go unchecked while
+     * still looking guarded.
      */
     match /users/{userId} {
-      allow read, write: if isOwner(userId);
-      
-      // Validate user document structure on writes
+      allow read, delete: if isOwner(userId);
+
+      // Validate user document structure on writes. The identity fields must
+      // agree with the document path: a profile that claims a different uid
+      // than the one it is stored under is what every later ownership check
+      // in this file reads back.
       allow create, update: if isOwner(userId) &&
-        hasValidTimestamps() &&
-        request.resource.data.userId == userId &&
-        request.resource.data.email is string;
-      
+        (!('email' in request.resource.data) ||
+         request.resource.data.email is string) &&
+        (!('uid' in request.resource.data) ||
+         request.resource.data.uid == userId) &&
+        (!('userId' in request.resource.data) ||
+         request.resource.data.userId == userId);
+
       /**
        * User's categories subcollection - Custom expense categories
        * Security: Inherits user ownership from parent document
@@ -310,8 +322,10 @@ service cloud.firestore {
      * Validation: Ensures valid stock symbols
      */
     match /watchlists/{userId} {
-      allow read, write: if isOwner(userId);
-      allow create: if isAuthenticated() && 
+      // As with /users, no blanket `allow write`: it would OR past the symbol
+      // list validation below and let a client store an unbounded array.
+      allow read, delete: if isOwner(userId);
+      allow create: if isAuthenticated() &&
         request.auth.uid == request.resource.data.userId &&
         request.resource.data.userId == userId &&
         hasRequiredFields(['userId', 'symbols']) &&
@@ -467,8 +481,17 @@ service cloud.firestore {
      */
     match /predictions/{predictionId} {
       allow read, delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
-      // Write access restricted - predictions are typically generated server-side
-      allow create, update: if isAuthenticated() && request.auth.uid == request.resource.data.userId;
+
+      allow create: if isAuthenticated() &&
+        request.auth.uid == request.resource.data.userId;
+
+      // An update must also check the document that is already there. Checking
+      // only request.resource lets any signed-in user overwrite someone else's
+      // prediction by stamping their own userId onto the replacement, which is
+      // a cross-account write, not a self-write.
+      allow update: if isAuthenticated() &&
+        request.auth.uid == resource.data.userId &&
+        request.auth.uid == request.resource.data.userId;
     }
 
   }

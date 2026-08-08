@@ -29,12 +29,18 @@ service firebase.storage {
     /**
      * User receipts directory - Private to each user
      * Users can upload and view their own receipt images
+     *
+     * Note there is no blanket `allow write` next to these rules. Storage
+     * rules are OR-ed and `write` covers create, update and delete, so a
+     * broad ownership-only write rule would satisfy every upload by itself
+     * and the size and content-type checks below would never be evaluated -
+     * any signed-in user could park arbitrary files of any size under their
+     * own prefix.
      */
     match /receipts/{userId}/{allPaths=**} {
-      // Only authenticated users can access files
-      allow read, write: if isOwner(userId);
+      allow read, delete: if isOwner(userId);
 
-      // Additional validation for uploads
+      // Uploads must be images and bounded in size
       allow create: if isOwner(userId) &&
         // Limit file size to 10MB
         request.resource.size < 10 * 1024 * 1024 &&
@@ -42,21 +48,24 @@ service firebase.storage {
         request.resource.contentType.matches('image/.*');
 
       allow update: if isOwner(userId) &&
-        request.resource.size < 10 * 1024 * 1024;
+        request.resource.size < 10 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/.*');
     }
 
     /**
      * User profile images directory - Private to each user
+     * Same shape as /receipts: validated create/update only, no blanket write.
      */
     match /profile-images/{userId}/{allPaths=**} {
-      allow read, write: if isOwner(userId);
+      allow read, delete: if isOwner(userId);
 
       allow create: if isOwner(userId) &&
         request.resource.size < 5 * 1024 * 1024 && // 5MB limit
         request.resource.contentType.matches('image/.*');
 
       allow update: if isOwner(userId) &&
-        request.resource.size < 5 * 1024 * 1024;
+        request.resource.size < 5 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/.*');
     }
 
     /**
