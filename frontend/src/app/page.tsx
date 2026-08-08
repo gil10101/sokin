@@ -4,7 +4,6 @@ import Link from "next/link"
 import Image from "next/image"
 import { useEffect, useState, useRef } from "react"
 import { ArrowRight, Menu, X, ArrowDown, BarChart3, PieChart, Target, Wallet, TrendingUp, CalendarClock, LineChart, Sparkles } from "lucide-react"
-import { motion, AnimatePresence } from "framer-motion"
 import { useAuth } from "@/contexts/auth-context"
 import dynamic from "next/dynamic"
 
@@ -17,7 +16,14 @@ const MobileHero3DScene = dynamic(() => import("@/components/ui/mobile-hero-3d-s
   ssr: false,
   loading: () => null
 })
-import { useIsMobile } from "@/hooks/use-mobile"
+import {
+  Drift,
+  Reveal,
+  RevealGroup,
+  RevealNoScriptFallback,
+  menuStyles,
+} from "@/components/ui/reveal"
+import { SwapPanel } from "@/components/ui/swap-panel"
 
 /**
  * Feature copy for the landing section.
@@ -136,7 +142,18 @@ export default function LandingPage() {
   const { user, loading } = useAuth()
   const [mounted, setMounted] = useState(false)
   const [componentsLoaded, setComponentsLoaded] = useState(false)
-  const isMobile = useIsMobile()
+  /**
+   * Used only to decide whether to mount a WebGL canvas, which is a genuine
+   * JavaScript question - there is no way to conditionally construct a canvas
+   * from a media query, and mounting both scenes would run two GPU contexts.
+   *
+   * It is deliberately not used for anything the page looks like. It reports
+   * every breakpoint as false until after mount, so any layout, type scale or
+   * animation keyed off it renders wrong on the first paint and then corrects
+   * itself in front of the reader; on a phone that cost 304px of movement and a
+   * CLS of 0.94. Those decisions are all Tailwind breakpoint classes now, which
+   * are right in the first frame.
+   */
   const viewport = useResponsiveViewport()
   const [currentFeature, setCurrentFeature] = useState(0)
 
@@ -241,7 +258,7 @@ export default function LandingPage() {
       <header className="fixed top-0 z-50 w-full bg-dark/80 backdrop-blur-sm">
         <div className="container mx-auto px-4 sm:px-6 md:px-12 lg:px-16 flex h-16 sm:h-20 md:h-24 items-center justify-between">
           <div className="flex-1 flex justify-start">
-            <span className={`${isMobile ? 'text-lg' : 'text-xl'} font-medium font-outfit tracking-tight`}>
+            <span className="text-lg md:text-xl font-medium font-outfit tracking-tight">
               Sokin<span className="text-xs align-super">™</span>
             </span>
           </div>
@@ -298,157 +315,202 @@ export default function LandingPage() {
             <button
               className="md:hidden flex items-center justify-center rounded-md p-2 text-cream/60 hover:text-cream"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
+              aria-expanded={isMenuOpen}
+              aria-controls="mobile-menu"
+              aria-label={isMenuOpen ? "Close menu" : "Open menu"}
             >
               {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
             </button>
           </div>
         </div>
-        {isMenuOpen && (
-          <motion.div
-            className="md:hidden px-4 sm:px-6 py-6 bg-dark/95 backdrop-blur-md border-t border-cream/10"
-            initial={{ opacity: 0, height: isMobile ? "auto" : 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: isMobile ? "auto" : 0 }}
-            transition={{ duration: isMobile ? 0.15 : 0.2 }}
-          >
-            <nav className={`flex flex-col ${isMobile ? 'gap-6' : 'gap-4'}`}>
-              <button
-                onClick={() => scrollToSection("about")}
-                className={`${isMobile ? 'text-base' : 'text-sm'} font-outfit transition-colors hover:text-cream text-cream/60 text-left`}
-              >
-                About
-              </button>
-              <button
-                onClick={() => scrollToSection("features")}
-                className={`${isMobile ? 'text-base' : 'text-sm'} font-outfit transition-colors hover:text-cream text-cream/60 text-left`}
-              >
-                Features
-              </button>
-              <button
-                onClick={() => scrollToSection("contact")}
-                className={`${isMobile ? 'text-base' : 'text-sm'} font-outfit transition-colors hover:text-cream text-cream/60 text-left`}
-              >
-                Contact
-              </button>
-              {user ? (
-                <Link 
-                  href="/dashboard" 
-                  className={`${isMobile ? 'text-base' : 'text-sm'} font-outfit text-cream text-left`} 
-                  onClick={() => setIsMenuOpen(false)}
+        {/*
+          Always mounted, collapsed by a grid track rather than unmounted.
+          Unmounting it meant the close animation never ran at all - there was
+          no AnimatePresence around it, so `exit` was dead code - and it left
+          the panel with nothing to animate from on the way in. `inert` keeps a
+          closed menu out of the tab order and the accessibility tree, which a
+          zero-height box with visible overflow hidden would not do on its own.
+
+          The menu is the only place on this page where a size is animated. It
+          can be, because it hangs off a fixed header: the document behind it
+          does not reflow when it opens.
+        */}
+        <div
+          id="mobile-menu"
+          className={`md:hidden ${menuStyles.shell}`}
+          data-open={isMenuOpen}
+          inert={!isMenuOpen}
+        >
+          <div className={menuStyles.clip}>
+            <div className={`${menuStyles.content} px-4 sm:px-6 py-6 bg-dark/95 backdrop-blur-md border-t border-cream/10`}>
+              <nav className="flex flex-col gap-6">
+                <button
+                  onClick={() => scrollToSection("about")}
+                  className="text-base font-outfit transition-colors hover:text-cream text-cream/60 text-left"
                 >
-                  Dashboard
-                </Link>
-              ) : (
-                <>
-                  <Link 
-                    href="/login" 
-                    className={`${isMobile ? 'text-base' : 'text-sm'} font-outfit text-cream text-left`} 
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    Login
-                  </Link>
+                  About
+                </button>
+                <button
+                  onClick={() => scrollToSection("features")}
+                  className="text-base font-outfit transition-colors hover:text-cream text-cream/60 text-left"
+                >
+                  Features
+                </button>
+                <button
+                  onClick={() => scrollToSection("contact")}
+                  className="text-base font-outfit transition-colors hover:text-cream text-cream/60 text-left"
+                >
+                  Contact
+                </button>
+                {user ? (
                   <Link
-                    href="/signup"
-                    className={`inline-flex items-center justify-center ${isMobile ? 'h-12 px-8 text-base' : 'h-10 px-6 text-sm'} rounded-full bg-cream text-dark font-medium mt-2`}
+                    href="/dashboard"
+                    className="text-base font-outfit text-cream text-left"
                     onClick={() => setIsMenuOpen(false)}
                   >
-                    Sign Up
+                    Dashboard
                   </Link>
-                </>
-              )}
-            </nav>
-          </motion.div>
-        )}
+                ) : (
+                  <>
+                    <Link
+                      href="/login"
+                      className="text-base font-outfit text-cream text-left"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      Login
+                    </Link>
+                    <Link
+                      href="/signup"
+                      className="inline-flex items-center justify-center h-12 px-8 text-base rounded-full bg-cream text-dark font-medium mt-2"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      Sign Up
+                    </Link>
+                  </>
+                )}
+              </nav>
+            </div>
+          </div>
+        </div>
       </header>
       <main className="flex-1 relative z-20">
-        <section id="hero" className={`min-h-screen flex flex-col justify-center relative ${isMobile ? 'pt-16 pb-12' : 'pt-12 sm:pt-16 pb-8'}`}>
-          {/* Responsive 3D Scene - mobile/tablet get inline scene */}
-          {(viewport.isMobile || viewport.isTablet) && mounted && componentsLoaded && (
-            <div className="relative z-10 mt-4 mb-8">
+        {/*
+          The hero starts on mount rather than on intersection - it is already
+          on screen, and an observer would only add a frame of latency to the
+          first thing the visitor sees.
+        */}
+        <RevealGroup
+          as="section"
+          id="hero"
+          on="load"
+          className="min-h-screen flex flex-col justify-center relative pt-16 pb-12 md:pb-8"
+        >
+          {/*
+            The slot is always in the layout below `lg` and always the same
+            height, so the canvas mounting a beat later cannot shove the hero
+            text down - which it used to, by 304px, while that text was midway
+            through its own entry animation. Only the canvas inside it waits for
+            JavaScript; the space it will occupy does not.
+          */}
+          <Reveal cue="scene" className="relative z-10 mt-4 mb-8 h-[clamp(250px,30vh,380px)] lg:hidden">
+            {(viewport.isMobile || viewport.isTablet) && mounted && componentsLoaded && (
               <MobileHero3DScene />
-            </div>
-          )}
-          
+            )}
+          </Reveal>
+
           <div className="w-full px-6 md:px-8 lg:px-12 relative z-10 max-w-[1600px] mx-auto flex-1 flex items-center">
-            <div className={`flex flex-col lg:flex-row gap-0 lg:gap-8 items-center ${isMobile ? 'min-h-[50vh]' : 'min-h-[80vh]'} ${isMobile ? 'mt-0' : 'mt-8 lg:mt-12'} w-full`}>
+            <div className="flex flex-col lg:flex-row gap-0 lg:gap-8 items-center min-h-[50vh] md:min-h-[80vh] mt-0 md:mt-8 lg:mt-12 w-full">
               {/* Left side - Text content */}
-              <motion.div
+              <div
                 // w-full on mobile: without a width this column shrink-wraps to
                 // its content inside the flex parent, so the "centred" text sat
                 // in an off-centre box. lg:w-1/2 takes over at the breakpoint.
+                //
+                // The column no longer animates as one block. It was a single
+                // fade, so nothing in it could lead or follow anything else and
+                // the whole hero read as one flat state change.
                 className="flex flex-col justify-center text-center w-full lg:w-1/2 flex-shrink-0 order-2 lg:order-1"
-                initial={{ opacity: 0, x: isMobile ? 0 : -50 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={isMobile ? { duration: 0.8, ease: "easeOut" } : { duration: 1.5, ease: "easeOut" }}
               >
-                <h1 className={`${isMobile ? 'text-5xl mb-4' : 'text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl mb-6'} font-medium tracking-tight font-outfit`}>
+                <Reveal
+                  as="h1"
+                  cue="headline"
+                  className="text-5xl md:text-6xl lg:text-7xl xl:text-8xl mb-4 md:mb-6 font-medium tracking-tight font-outfit"
+                >
                   Sokin
-                </h1>
-                <p className={`${isMobile ? 'text-xl mb-10' : 'text-lg md:text-xl lg:text-2xl mb-8'} text-cream/70 font-outfit max-w-md mx-auto`}>
+                </Reveal>
+                <Reveal
+                  as="p"
+                  cue="tagline"
+                  className="text-xl lg:text-2xl mb-10 md:mb-8 text-cream/70 font-outfit max-w-md mx-auto"
+                >
                   Personal finance, redefined.
-                </p>
-                <div className={`flex flex-col ${isMobile ? 'gap-4' : 'sm:flex-row gap-4'} justify-center`}>
+                </Reveal>
+                <Reveal cue="actions" className="flex flex-col md:flex-row gap-4 justify-center">
                   <Link
                     href={user ? "/dashboard" : "/signup"}
-                    className={`inline-flex ${isMobile ? 'h-14 px-10 text-base' : 'h-12 px-8 text-sm'} items-center justify-center rounded-full bg-cream text-dark font-medium transition-all hover:bg-cream/90 group`}
+                    className="inline-flex h-14 px-10 text-base md:h-12 md:px-8 md:text-sm items-center justify-center rounded-full bg-cream text-dark font-medium transition-all hover:bg-cream/90 group"
                   >
                     {user ? "Go to Dashboard" : "Get Started"}
-                    <ArrowRight className={`ml-2 ${isMobile ? 'h-5 w-5' : 'h-4 w-4'} transform group-hover:translate-x-1 transition-transform duration-300`} />
+                    <ArrowRight className="ml-2 h-5 w-5 md:h-4 md:w-4 transform group-hover:translate-x-1 transition-transform duration-300" />
                   </Link>
                   <button
                     onClick={() => scrollToSection("about")}
-                    className={`inline-flex ${isMobile ? 'h-14 px-10 text-base' : 'h-12 px-8 text-sm'} items-center justify-center rounded-full border border-cream/20 font-medium text-cream transition-colors hover:border-cream/40`}
+                    className="inline-flex h-14 px-10 text-base md:h-12 md:px-8 md:text-sm items-center justify-center rounded-full border border-cream/20 font-medium text-cream transition-colors hover:border-cream/40"
                   >
                     Learn More
                   </button>
-                </div>
-              </motion.div>
+                </Reveal>
+              </div>
 
-              {/* Right side - Space for 3D Scene (desktop only) */}
-              {viewport.isDesktop && (
-                <div className="relative w-full lg:w-1/2 h-[60vh] min-h-[500px] max-h-[800px] order-1 lg:order-2 -mt-4 lg:mt-0 pointer-events-none">
-                  {/* This space is reserved for the 3D scene which now floats in the background */}
-                </div>
-              )}
+              {/* Right side - Space for the 3D scene, which floats in the
+                  background. Hidden by a breakpoint rather than by a
+                  JavaScript check, so the column it reserves exists in the
+                  first painted frame. */}
+              <div className="hidden lg:block relative lg:w-1/2 h-[60vh] min-h-[500px] max-h-[800px] lg:order-2 pointer-events-none" />
             </div>
 
-            {/* Scroll indicator - simplified for mobile */}
-            <motion.div
-              className={`absolute ${isMobile ? 'bottom-8' : 'bottom-12'} left-1/2 -translate-x-1/2`}
-              animate={isMobile ? {} : { y: [0, 10, 0] }}
-              transition={isMobile ? {} : { duration: 2, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
-            >
-              <button
-                onClick={() => scrollToSection("about")}
-                className="text-cream/60 hover:text-cream transition-colors"
-              >
-                <ArrowDown className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'}`} />
-              </button>
-            </motion.div>
+            {/* Scroll indicator. The positioning element keeps its own
+                `-translate-x-1/2`, so the entry and the bob each get an element
+                of their own - three transforms on one node would fight. */}
+            <div className="absolute bottom-8 md:bottom-12 left-1/2 -translate-x-1/2">
+              <Reveal cue="scrollCue">
+                <Drift>
+                  <button
+                    onClick={() => scrollToSection("about")}
+                    className="text-cream/60 hover:text-cream transition-colors"
+                    aria-label="Scroll to about"
+                  >
+                    <ArrowDown className="h-6 w-6 md:h-8 md:w-8" />
+                  </button>
+                </Drift>
+              </Reveal>
+            </div>
           </div>
-        </section>
+        </RevealGroup>
 
-        <section id="about" className={`${isMobile ? 'py-16' : 'min-h-screen py-24'} flex items-center`}>
+        <section id="about" className="py-16 md:min-h-screen md:py-24 flex items-center">
           <div className="container mx-auto px-6 md:px-12 lg:px-16 w-full">
-            <div className={`flex flex-col lg:flex-row items-center justify-between ${isMobile ? 'gap-8' : 'min-h-[60vh]'}`}>
+            <div className="flex flex-col lg:flex-row items-center justify-between gap-8 md:gap-0 md:min-h-[60vh]">
               {/* Left side - Space for 3D Scene */}
               <div className="hidden lg:block lg:w-1/2">
                 {/* Space reserved for 3D scene */}
               </div>
 
-              {/* Right side - Content */}
-              <motion.div
-                className="w-full lg:w-1/2 text-center"
-                initial={{ opacity: 0, y: isMobile ? 0 : 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={isMobile ? { duration: 0.6 } : { duration: 0.8 }}
-              >
-                <p className={`text-sm font-roboto-mono text-cream/60 ${isMobile ? 'mb-8' : 'mb-12'}`}>01 / About</p>
-                <h2 className={`${isMobile ? 'text-3xl mb-8' : 'text-3xl md:text-4xl lg:text-5xl mb-12'} font-medium tracking-tight font-outfit`}>
+              {/* Right side - Content. The group sits on the content rather than
+                  on the section: the section is a screen tall, so an observer on
+                  it would fire while the words were still below the fold. */}
+              <RevealGroup on="view" className="w-full lg:w-1/2 text-center">
+                <Reveal as="p" cue="eyebrow" className="text-sm font-roboto-mono text-cream/60 mb-8 md:mb-12">
+                  01 / About
+                </Reveal>
+                <Reveal
+                  as="h2"
+                  cue="heading"
+                  className="text-3xl md:text-4xl lg:text-5xl mb-8 md:mb-12 font-medium tracking-tight font-outfit"
+                >
                   A new approach to managing your finances.
-                </h2>
-                <div className={`grid grid-cols-1 ${isMobile ? 'gap-8' : 'md:grid-cols-2 gap-12 md:gap-16'}`}>
+                </Reveal>
+                <Reveal cue="body" className="grid grid-cols-1 gap-8 md:grid-cols-2 md:gap-16">
                   <div>
                     <p className="text-lg text-cream/70 font-outfit mb-6">
                       Sokin is more than just an expense tracker. It&apos;s a complete financial companion designed with you in
@@ -467,8 +529,8 @@ export default function LandingPage() {
                       No clutter, no confusion. Just clarity and control.
                     </p>
                   </div>
-                </div>
-              </motion.div>
+                </Reveal>
+              </RevealGroup>
             </div>
           </div>
         </section>
@@ -493,48 +555,46 @@ export default function LandingPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
                   <div className="lg:col-span-6">
                     <p className="text-sm font-roboto-mono text-cream/60 mb-4">02 / Features</p>
-                    <h2 className={`${isMobile ? 'text-2xl' : 'text-3xl lg:text-4xl'} font-medium tracking-tight font-outfit mb-10 max-w-lg`}>
+                    <h2 className="text-2xl md:text-3xl lg:text-4xl font-medium tracking-tight font-outfit mb-10 max-w-lg">
                       Built to tell you the truth about your money.
                     </h2>
 
                     {/* Fixed-height stage: the panel below swaps content inside it,
                         so nothing above or below ever shifts. */}
-                    <div className={`relative ${isMobile ? 'h-[270px]' : 'h-[240px]'}`}>
-                      <AnimatePresence mode="wait">
-                        <motion.div
-                          key={activeFeature.id}
-                          initial={{ opacity: 0, y: 24 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -24 }}
-                          transition={{ duration: 0.35, ease: "easeOut" }}
-                          className="absolute inset-0"
-                        >
-                          <div className="flex items-center gap-3 mb-4">
-                            <span className="font-roboto-mono text-xs tabular-nums text-cream/50">
-                              {activeFeature.id}
-                            </span>
-                            <span className="h-px flex-1 max-w-[40px] bg-cream/20" />
-                            <activeFeature.icon className="h-4 w-4 text-cream/70" />
-                          </div>
+                    <div className="relative h-[270px] md:h-[240px]">
+                      {/*
+                        The one animation on this page that framer still drives -
+                        the outgoing card has to outlive the state change that
+                        removed it, which CSS cannot express. `SwapPanel` is what
+                        keeps it honest about `prefers-reduced-motion`, since it
+                        cannot inherit the stylesheet's media query.
+                      */}
+                      <SwapPanel swapKey={activeFeature.id} className="absolute inset-0">
+                        <div className="flex items-center gap-3 mb-4">
+                          <span className="font-roboto-mono text-xs tabular-nums text-cream/50">
+                            {activeFeature.id}
+                          </span>
+                          <span className="h-px flex-1 max-w-[40px] bg-cream/20" />
+                          <activeFeature.icon className="h-4 w-4 text-cream/70" />
+                        </div>
 
-                          <h3 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-medium font-outfit tracking-tight mb-3`}>
-                            {activeFeature.title}
-                          </h3>
-                          <p className={`${isMobile ? 'text-sm' : 'text-base'} text-cream/70 font-outfit leading-relaxed max-w-md`}>
-                            {activeFeature.description}
-                          </p>
-                          <div className="mt-5 flex flex-wrap gap-2">
-                            {activeFeature.tags.map((tag) => (
-                              <span
-                                key={tag}
-                                className="px-2.5 py-0.5 rounded-full border border-cream/20 text-cream/60 text-[11px] font-roboto-mono"
-                              >
-                                {tag}
-                              </span>
-                            ))}
-                          </div>
-                        </motion.div>
-                      </AnimatePresence>
+                        <h3 className="text-2xl md:text-3xl font-medium font-outfit tracking-tight mb-3">
+                          {activeFeature.title}
+                        </h3>
+                        <p className="text-sm md:text-base text-cream/70 font-outfit leading-relaxed max-w-md">
+                          {activeFeature.description}
+                        </p>
+                        <div className="mt-5 flex flex-wrap gap-2">
+                          {activeFeature.tags.map((tag) => (
+                            <span
+                              key={tag}
+                              className="px-2.5 py-0.5 rounded-full border border-cream/20 text-cream/60 text-[11px] font-roboto-mono"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      </SwapPanel>
                     </div>
 
                     {/* Progress rail - shows position in the set without being a control,
@@ -563,82 +623,85 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section id="contact" className={`${isMobile ? 'py-16' : 'min-h-screen py-24'} flex items-center`}>
+        <section id="contact" className="py-16 md:min-h-screen md:py-24 flex items-center">
           <div className="container mx-auto px-6 md:px-12 lg:px-16 w-full">
-            <motion.div
-              className={`max-w-3xl mx-auto ${isMobile ? 'text-center' : ''}`}
-              initial={{ opacity: 0, y: isMobile ? 0 : 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={isMobile ? { duration: 0.6 } : { duration: 0.8 }}
-            >
-              <p className={`text-sm font-roboto-mono text-cream/60 ${isMobile ? 'mb-8' : 'mb-12'}`}>03 / Contact</p>
-              <h2 className={`${isMobile ? 'text-3xl mb-8' : 'text-3xl md:text-4xl lg:text-5xl mb-12'} font-medium tracking-tight font-outfit`}>
+            <RevealGroup on="view" className="max-w-3xl mx-auto text-center md:text-left">
+              <Reveal as="p" cue="eyebrow" className="text-sm font-roboto-mono text-cream/60 mb-8 md:mb-12">
+                03 / Contact
+              </Reveal>
+              <Reveal
+                as="h2"
+                cue="heading"
+                className="text-3xl md:text-4xl lg:text-5xl mb-8 md:mb-12 font-medium tracking-tight font-outfit"
+              >
                 Ready to transform your finances?
-              </h2>
+              </Reveal>
 
-              <div className={`grid grid-cols-1 ${isMobile ? 'gap-8' : 'md:grid-cols-2 gap-12 md:gap-24'}`}>
+              <Reveal cue="body" className="grid grid-cols-1 gap-8 md:grid-cols-2 md:gap-24">
                 <div>
-                  <p className={`${isMobile ? 'text-base mb-8' : 'text-lg mb-6'} text-cream/70 font-outfit`}>
+                  <p className="text-base mb-8 md:text-lg md:mb-6 text-cream/70 font-outfit">
                     Join Sokin today and experience a new way to manage your personal finances. It&apos;s completely free to
                     use.
                   </p>
-                  <motion.div 
-                    whileHover={isMobile ? {} : { scale: 1.05 }} 
-                    whileTap={isMobile ? {} : { scale: 0.95 }} 
-                    className="inline-block"
-                  >
+                  {/*
+                    The hover and tap scales were framer props gated on
+                    `isMobile`, which is false on the first render - so a phone
+                    got the desktop tap-shrink until the hook resolved. A
+                    breakpoint-prefixed transform has no such window, and it
+                    also drops out under reduced motion with the rest.
+                  */}
+                  <div className="inline-block transition-transform duration-200 md:hover:scale-105 md:active:scale-95 motion-reduce:transform-none motion-reduce:transition-none">
                     <Link
                       href={user ? "/dashboard" : "/signup"}
-                      className={`inline-flex ${isMobile ? 'h-14 px-10 text-base' : 'h-12 px-8 text-sm'} items-center justify-center rounded-full border border-cream/20 font-medium text-cream transition-colors hover:border-cream group`}
+                      className="inline-flex h-14 px-10 text-base md:h-12 md:px-8 md:text-sm items-center justify-center rounded-full border border-cream/20 font-medium text-cream transition-colors hover:border-cream group"
                     >
                       {user ? "Go to Dashboard" : "Get Started"}
-                      <ArrowRight className={`ml-2 ${isMobile ? 'h-5 w-5' : 'h-4 w-4'} transform group-hover:translate-x-1 transition-transform duration-300`} />
+                      <ArrowRight className="ml-2 h-5 w-5 md:h-4 md:w-4 transform group-hover:translate-x-1 transition-transform duration-300" />
                     </Link>
-                  </motion.div>
+                  </div>
                 </div>
-                <div className={isMobile ? 'mt-8' : ''}>
-                  <p className={`${isMobile ? 'text-base mb-4' : 'text-lg mb-6'} text-cream/70 font-outfit`}></p>
-                  <p className={`${isMobile ? 'text-base mb-2' : 'text-lg mb-2'} text-cream font-outfit`}></p>
-                  <p className={`${isMobile ? 'text-base' : 'text-lg'} text-cream font-outfit`}></p>
+                <div className="mt-8 md:mt-0">
+                  <p className="text-base mb-4 md:text-lg md:mb-6 text-cream/70 font-outfit"></p>
+                  <p className="text-base mb-2 md:text-lg text-cream font-outfit"></p>
+                  <p className="text-base md:text-lg text-cream font-outfit"></p>
                 </div>
-              </div>
-            </motion.div>
+              </Reveal>
+            </RevealGroup>
           </div>
         </section>
       </main>
-      <footer id="footer" className={`${isMobile ? 'py-8' : 'py-12'} relative z-20`}>
+      <footer id="footer" className="py-8 md:py-12 relative z-20">
         <div className="container mx-auto px-6 md:px-12 lg:px-16">
-          <div className={`flex flex-col ${isMobile ? 'items-center text-center gap-8' : 'md:flex-row justify-between items-start gap-6'} max-w-3xl mx-auto`}>
+          <div className="flex flex-col items-center text-center gap-8 md:flex-row md:justify-between md:items-start md:text-left md:gap-6 max-w-3xl mx-auto">
             <div>
-              <span className={`${isMobile ? 'text-xl' : 'text-lg'} font-medium font-outfit tracking-tight`}>
+              <span className="text-xl md:text-lg font-medium font-outfit tracking-tight">
                 Sokin<span className="text-xs align-super">™</span>
               </span>
             </div>
-            <div className={`flex items-center ${isMobile ? 'flex-col gap-4' : 'gap-4'}`}>
+            <div className="flex items-center flex-col gap-4 md:flex-row">
               {user ? (
                 <Link
                   href="/dashboard"
-                  className={`${isMobile ? 'text-base' : 'text-sm'} text-cream/60 hover:text-cream transition-colors font-outfit group inline-flex items-center`}
+                  className="text-base md:text-sm text-cream/60 hover:text-cream transition-colors font-outfit group inline-flex items-center"
                 >
                   Dashboard
-                  <ArrowRight className={`ml-1 ${isMobile ? 'h-4 w-4' : 'h-3 w-3'} transform group-hover:translate-x-1 transition-transform duration-300`} />
+                  <ArrowRight className="ml-1 h-4 w-4 md:h-3 md:w-3 transform group-hover:translate-x-1 transition-transform duration-300" />
                 </Link>
               ) : (
                 <>
                   <Link
                     href="/login"
-                    className={`${isMobile ? 'text-base' : 'text-sm'} text-cream/60 hover:text-cream transition-colors font-outfit group inline-flex items-center`}
+                    className="text-base md:text-sm text-cream/60 hover:text-cream transition-colors font-outfit group inline-flex items-center"
                   >
                     Login
-                    <ArrowRight className={`ml-1 ${isMobile ? 'h-4 w-4' : 'h-3 w-3'} transform group-hover:translate-x-1 transition-transform duration-300`} />
+                    <ArrowRight className="ml-1 h-4 w-4 md:h-3 md:w-3 transform group-hover:translate-x-1 transition-transform duration-300" />
                   </Link>
                   <Link
                     href="/signup"
-                    className={`${isMobile ? 'text-base' : 'text-sm'} text-cream/60 hover:text-cream transition-colors font-outfit group inline-flex items-center`}
+                    className="text-base md:text-sm text-cream/60 hover:text-cream transition-colors font-outfit group inline-flex items-center"
                   >
                     Sign Up
-                    <ArrowRight className={`ml-1 ${isMobile ? 'h-4 w-4' : 'h-3 w-3'} transform group-hover:translate-x-1 transition-transform duration-300`} />
+                    <ArrowRight className="ml-1 h-4 w-4 md:h-3 md:w-3 transform group-hover:translate-x-1 transition-transform duration-300" />
                   </Link>
                 </>
               )}
@@ -646,6 +709,7 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
+      <RevealNoScriptFallback />
     </div>
   )
 }

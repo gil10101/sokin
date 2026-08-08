@@ -55,24 +55,20 @@ function MobileHero3DScene() {
 
   const cameraSettings = getCameraSettings()
 
-  // Responsive height calculation
-  const getResponsiveHeight = () => {
-    if (!viewportHeight) return "300px"
-
-    const heightPercent = viewportHeight < 600 ? 35 : viewportHeight < 800 ? 32 : 30
-    const minHeight = viewportHeight < 600 ? 250 : viewportHeight < 800 ? 280 : 300
-    const maxHeight = viewportHeight < 600 ? 320 : viewportHeight < 800 ? 350 : 380
-
-    return `clamp(${minHeight}px, ${heightPercent}vh, ${maxHeight}px)`
-  }
-
+  /**
+   * The slot in the hero owns the height, not this component.
+   *
+   * It used to measure the viewport and pick its own, which meant it rendered
+   * at a placeholder 300px for one frame and then resized - and because the
+   * canvas only mounts once WebGL has been checked and the dynamic import has
+   * landed, the whole hero below it moved twice while the entry animation was
+   * running. A slot that is already the right size cannot do that, and the
+   * canvas simply fills whatever it is given.
+   */
   return (
     <div
-      className="relative w-full pointer-events-none"
-      style={{
-        height: getResponsiveHeight(),
-        overflow: "hidden"
-      }}
+      className="relative w-full h-full pointer-events-none"
+      style={{ overflow: "hidden" }}
     >
       {webglAvailable && (
       <Suspense fallback={null}>

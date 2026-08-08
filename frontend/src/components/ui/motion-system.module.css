@@ -1,0 +1,318 @@
+/*
+ * Entry motion for the landing page.
+ *
+ * This lives in CSS rather than in framer-motion props because the page is
+ * server-rendered. The hidden pose ships inside the HTML and is painted before
+ * any JavaScript runs, so a breakpoint that JavaScript resolves cannot
+ * influence it: `useIsMobile()` reports false until after mount, which is how a
+ * 390px-wide phone ended up being handed the desktop's 50px lateral slide over
+ * 1.5s. Correcting it on the client is not an option either - matching the
+ * server means animating from the wrong pose, and not matching it is a
+ * hydration mismatch or a visible flash of the corrected pose.
+ *
+ * A media query knows the answer before the first paint. So everything that
+ * depends on viewport size - throw distance, duration, cue timing - is decided
+ * here, and JavaScript only ever decides *when* an element is allowed to
+ * arrive.
+ */
+
+:global(:root) {
+  /* Mirrors EASE in src/lib/motion.ts - keep the two in step. */
+  --ease-entrance: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --ease-drift: cubic-bezier(0.37, 0, 0.63, 1);
+}
+
+/*
+ * The hidden pose. Only `opacity` and `transform` are touched, so an arriving
+ * element never asks the browser for layout and never moves anything around it.
+ */
+.reveal {
+  --reveal-throw: 24px;
+  --reveal-duration: 600ms;
+  --reveal-delay: 0ms;
+
+  opacity: 0;
+  transform: translate3d(0, var(--reveal-throw), 0);
+  transition:
+    opacity var(--reveal-duration) var(--ease-entrance) var(--reveal-delay),
+    transform var(--reveal-duration) var(--ease-entrance) var(--reveal-delay);
+}
+
+/*
+ * Hinting is only worth anything before the transition starts. Once an element
+ * has arrived it must not keep a compositor layer alive - there is a WebGL
+ * canvas painting behind all of this, and idle layers cost it memory.
+ */
+.revealRoot:not([data-revealed="true"]) .reveal,
+.reveal:not([data-revealed="true"]) {
+  will-change: opacity, transform;
+}
+
+/*
+ * The release has to be written out; it does not follow from the `:not()`
+ * above. A cue inside a group carries no `data-revealed` of its own - the group
+ * holds the one attribute for the whole block - so `:not([data-revealed="true"])`
+ * matches every grouped cue forever, and each one would hold its layer for the
+ * life of the page. This rule must stay after the hint: for a standalone cue the
+ * two selectors weigh the same and source order is what decides.
+ */
+.revealRoot[data-revealed="true"] .reveal,
+.reveal[data-revealed="true"] {
+  will-change: auto;
+}
+
+/*
+ * A group flips one attribute and every cue underneath it starts on its own
+ * schedule. Doing it this way rather than per-element observers is what keeps
+ * the choreography intact: children of one block must be timed against the
+ * moment the block arrived, not against the moment each child happened to
+ * cross the viewport edge.
+ *
+ * A `.reveal` used without a group falls back to revealing itself, so content
+ * can never be stranded at opacity 0.
+ */
+.revealRoot[data-revealed="true"] .reveal,
+.reveal[data-revealed="true"] {
+  opacity: 1;
+  transform: none;
+}
+
+/*
+ * The cues.
+ *
+ * These are hand-set beats, not an index multiplied by a constant. Later cues
+ * run shorter and travel less than earlier ones, so each is still in flight
+ * when the next begins and the group lands almost together - a fixed delay per
+ * child with a fixed duration is what makes an entry read as a list loading.
+ * The shrinking throw also gives the block a sense of settling, because the
+ * elements that arrive last have the least distance left to lose.
+ */
+.cueScene {
+  --reveal-delay: 0ms;
+  --reveal-duration: 720ms;
+  --reveal-throw: 30px;
+}
+
+.cueHeadline {
+  --reveal-delay: 90ms;
+  --reveal-duration: 640ms;
+  --reveal-throw: 26px;
+}
+
+.cueTagline {
+  --reveal-delay: 175ms;
+  --reveal-duration: 600ms;
+  --reveal-throw: 22px;
+}
+
+.cueActions {
+  --reveal-delay: 250ms;
+  --reveal-duration: 560ms;
+  --reveal-throw: 18px;
+}
+
+/* Arrives after a beat, once the block above it has settled - it is an
+   invitation to leave, so it must not compete with what it is inviting you
+   away from. */
+.cueScrollCue {
+  --reveal-delay: 620ms;
+  --reveal-duration: 520ms;
+  --reveal-throw: 12px;
+}
+
+.cueEyebrow {
+  --reveal-delay: 0ms;
+  --reveal-duration: 560ms;
+  --reveal-throw: 18px;
+}
+
+.cueHeading {
+  --reveal-delay: 80ms;
+  --reveal-duration: 620ms;
+  --reveal-throw: 26px;
+}
+
+.cueBody {
+  --reveal-delay: 165ms;
+  --reveal-duration: 580ms;
+  --reveal-throw: 22px;
+}
+
+/*
+ * Phones are not a scaled-down desktop.
+ *
+ * A 26px throw that reads as a gentle lift across a 1280px canvas is a lurch
+ * inside a 390px one, and the whole viewport is close enough to the eye that a
+ * 600ms settle feels slow. Everything travels roughly two thirds as far and
+ * lands roughly a third sooner, and the gaps between cues tighten with it so
+ * the group still overlaps rather than stretching out.
+ */
+@media (max-width: 767px) {
+  .reveal {
+    --reveal-throw: 15px;
+    --reveal-duration: 440ms;
+  }
+
+  .cueScene {
+    --reveal-delay: 0ms;
+    --reveal-duration: 540ms;
+    --reveal-throw: 20px;
+  }
+
+  .cueHeadline {
+    --reveal-delay: 55ms;
+    --reveal-duration: 460ms;
+    --reveal-throw: 16px;
+  }
+
+  .cueTagline {
+    --reveal-delay: 110ms;
+    --reveal-duration: 430ms;
+    --reveal-throw: 13px;
+  }
+
+  .cueActions {
+    --reveal-delay: 165ms;
+    --reveal-duration: 410ms;
+    --reveal-throw: 11px;
+  }
+
+  .cueScrollCue {
+    --reveal-delay: 430ms;
+    --reveal-duration: 380ms;
+    --reveal-throw: 9px;
+  }
+
+  .cueEyebrow {
+    --reveal-delay: 0ms;
+    --reveal-duration: 400ms;
+    --reveal-throw: 12px;
+  }
+
+  .cueHeading {
+    --reveal-delay: 55ms;
+    --reveal-duration: 450ms;
+    --reveal-throw: 17px;
+  }
+
+  .cueBody {
+    --reveal-delay: 115ms;
+    --reveal-duration: 420ms;
+    --reveal-throw: 14px;
+  }
+}
+
+/*
+ * The scroll cue's continuous bob.
+ *
+ * Kept on its own element, nested inside the revealing one, because a keyframe
+ * animation and a transition cannot both own `transform` on the same node - the
+ * animation wins and the entry never moves.
+ */
+.drift {
+  --drift-distance: 10px;
+  --drift-duration: 2600ms;
+
+  animation: drift var(--drift-duration) var(--ease-drift) infinite;
+}
+
+@keyframes drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+
+  50% {
+    transform: translate3d(0, var(--drift-distance), 0);
+  }
+}
+
+@media (max-width: 767px) {
+  .drift {
+    --drift-distance: 7px;
+    --drift-duration: 2200ms;
+  }
+}
+
+/*
+ * The mobile menu.
+ *
+ * Height is the one thing on this page that has to animate, and animating
+ * `height` from 0 to `auto` is not expressible. `grid-template-rows` from `0fr`
+ * to `1fr` is, and it confines the work to this subtree: the panel lives inside
+ * a `position: fixed` header, so its height changing never reflows the document
+ * behind it. The padding, background and border sit on the inner content rather
+ * than the shell, otherwise a closed menu would still occupy its own padding
+ * and draw its top border as a stray line under the header.
+ */
+.menuShell {
+  --menu-duration: 300ms;
+
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--menu-duration) var(--ease-exit);
+}
+
+.menuShell[data-open="true"] {
+  grid-template-rows: 1fr;
+  transition-timing-function: var(--ease-entrance);
+}
+
+.menuClip {
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* The contents settle a fraction after the panel starts opening, so the menu
+   reads as one movement instead of a box and its text arriving together. */
+.menuContent {
+  opacity: 0;
+  transform: translate3d(0, -6px, 0);
+  transition:
+    opacity calc(var(--menu-duration) * 0.6) var(--ease-exit),
+    transform calc(var(--menu-duration) * 0.6) var(--ease-exit);
+}
+
+.menuShell[data-open="true"] .menuContent {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity var(--menu-duration) var(--ease-entrance) 40ms,
+    transform var(--menu-duration) var(--ease-entrance) 40ms;
+}
+
+/*
+ * Reduced motion.
+ *
+ * The rule is that content still has to arrive - a reader who asked for less
+ * motion did not ask for a blank page - so opacity is kept and every translate,
+ * loop and height change is dropped. This sits on the same classes the rest of
+ * the page uses rather than at the call sites, so a new element cannot be added
+ * to the choreography without inheriting it.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .reveal,
+  .revealRoot[data-revealed="true"] .reveal,
+  .reveal[data-revealed="true"] {
+    transform: none;
+    transition-property: opacity;
+    transition-duration: 240ms;
+    transition-timing-function: linear;
+  }
+
+  .drift {
+    animation: none;
+  }
+
+  .menuShell,
+  .menuShell[data-open="true"] {
+    transition: none;
+  }
+
+  .menuContent,
+  .menuShell[data-open="true"] .menuContent {
+    transform: none;
+    transition: none;
+  }
+}
