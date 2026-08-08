@@ -19,7 +19,19 @@ updates:
     schedule:
       interval: weekly
       day: monday
-    open-pull-requests-limit: 8
+    # Zero disables *version* updates. Security updates are explicitly exempt -
+    # "security update pull requests are not subject to this limit and do not
+    # count toward it" - so vulnerabilities still raise a PR, while routine
+    # version churn does not.
+    #
+    # This is set for a project being handed over. Left at 8, the first run
+    # opened eight pull requests, six of them majors nobody had scheduled time
+    # to review, plus a grouped non-major PR that is close to the `npm update`
+    # measured to add 18 advisories. That is noise on a repo whose lockfile
+    # currently audits clean.
+    #
+    # Raise it to re-enable version updates when someone owns them again.
+    open-pull-requests-limit: 0
     groups:
       non-major:
         update-types:
@@ -59,7 +71,8 @@ updates:
     schedule:
       interval: weekly
       day: monday
-    open-pull-requests-limit: 4
+    # Same reasoning as npm above; security updates are unaffected.
+    open-pull-requests-limit: 0
     groups:
       actions:
         patterns:
