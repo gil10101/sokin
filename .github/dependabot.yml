@@ -30,6 +30,30 @@ updates:
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
 
+      # The majors below were each evaluated and deliberately not taken. The
+      # lockfile as it stands audits clean at zero vulnerabilities, and every
+      # attempt to move off it made that worse rather than better - a blanket
+      # `npm update` pulled in 18 advisories (7 high), and express@5 pulled in
+      # 3 high ones by re-resolving @vercel/node's tree. None of these upgrades
+      # fixes a vulnerability, and none of the current versions is end-of-life,
+      # so the only thing on offer is risk.
+      #
+      # These are ignored so the repo does not accumulate six breaking pull
+      # requests nobody is scheduled to review. Remove an entry when someone
+      # owns that migration; the reasoning is in git history, not folklore.
+      - dependency-name: "express"
+        update-types: ["version-update:semver-major"]   # 5.x: passes all 476 backend tests, but drags 3 high advisories in via @vercel/node
+      - dependency-name: "framer-motion"
+        update-types: ["version-update:semver-major"]   # 13.0.0 published 2026-08-05 with no patch release yet; passes tests, but tests do not cover animation behaviour
+      - dependency-name: "tailwindcss"
+        update-types: ["version-update:semver-major"]   # 4.x is a CSS-first config rewrite, against a large custom theme and a new motion stylesheet
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]   # 7.x is the native port, too new to adopt on a project being handed over
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]   # 10.x is config churn with no runtime benefit
+      - dependency-name: "date-fns"
+        update-types: ["version-update:semver-major"]   # 2.x -> 4.x spans two majors of export changes across many call sites
+
   - package-ecosystem: github-actions
     directory: /
     schedule:
