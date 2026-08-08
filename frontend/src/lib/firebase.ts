@@ -25,8 +25,13 @@ const firebaseConfig = {
  * anything off this instance. Nothing is authenticated against the placeholder
  * project because nothing is authenticated at all.
  */
+// Deliberately not shaped like a Google API key. An earlier version of this
+// used an "AIza..."-prefixed literal, which is the pattern secret scanners
+// match on - it raised a credential alert on a value that was never a
+// credential. A fake secret that trips the alarm is worse than no fake secret
+// at all, because it teaches everyone to wave the alarm through.
 const PRERENDER_PLACEHOLDER = {
-  apiKey: "AIzaSyPrerenderPlaceholderNotARealKey00",
+  apiKey: "prerender-placeholder-not-a-credential",
   authDomain: "prerender.invalid",
   projectId: "prerender-placeholder",
 }
