@@ -15,9 +15,6 @@ on:
 env:
   NODE_VERSION: '22.x'
   NEXT_TELEMETRY_DISABLED: '1'
-  # Pinned rather than @latest: a CLI that upgrades itself under the pipeline is
-  # how the previous one ended up unable to deploy at all. Bump deliberately.
-  VERCEL_CLI_VERSION: '58.9.0'
 
 jobs:
   lint-and-build:
@@ -51,75 +48,18 @@ jobs:
       - name: Build frontend
         run: npm run build --workspace=frontend
 
-  deploy-production:
-    name: Deploy to Vercel (Production)
-    runs-on: ubuntu-latest
-    needs: lint-and-build
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      # amondnet/vercel-action is unmaintained and pins Vercel CLI 25.1.0, which
-      # the deploy API now refuses outright: "Your Vercel CLI version is
-      # outdated. This endpoint requires version 47.2.2 or later." Every
-      # production deploy failed on that line, so the CLI is invoked directly
-      # and pinned to a version we choose rather than one the action froze.
-      - name: Install Vercel CLI
-        run: npm install -g vercel@${{ env.VERCEL_CLI_VERSION }}
-
-      - name: Pull Vercel environment
-        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
-        working-directory: frontend
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_FRONTEND_PROJECT_ID }}
-
-      - name: Build
-        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
-        working-directory: frontend
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_FRONTEND_PROJECT_ID }}
-
-      - name: Deploy
-        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
-        working-directory: frontend
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_FRONTEND_PROJECT_ID }}
-
-  deploy-preview:
-    name: Deploy Preview
-    runs-on: ubuntu-latest
-    needs: lint-and-build
-    if: github.event_name == 'pull_request'
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install Vercel CLI
-        run: npm install -g vercel@${{ env.VERCEL_CLI_VERSION }}
-
-      - name: Pull Vercel environment
-        run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
-        working-directory: frontend
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_FRONTEND_PROJECT_ID }}
-
-      - name: Build
-        run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
-        working-directory: frontend
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_FRONTEND_PROJECT_ID }}
-
-      - name: Deploy Preview to Vercel
-        run: vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }}
-        working-directory: frontend
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_FRONTEND_PROJECT_ID }}
+# No deploy job here on purpose.
+#
+# This repository is connected to Vercel's Git integration, which builds and
+# deploys every push to main by itself. The workflow used to deploy as well,
+# which meant two production deployments raced on every push - and because the
+# action it used had been failing since long before anyone noticed, the only
+# visible effect was a permanently red pipeline next to a site that was
+# updating fine on its own.
+#
+# What is left here are the gates that actually add something the Git
+# integration does not run: lint, the test suite, and a build that must not
+# depend on runtime configuration.
+#
+# If deploys should move here instead, turn the Git integration off first,
+# otherwise both will fire. The removed steps are in git history.
